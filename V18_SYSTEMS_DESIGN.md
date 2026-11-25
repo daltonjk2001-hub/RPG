@@ -2,7 +2,7 @@
 
 ## Architecture
 
-V18 is additive: `source/solo_realms_v17.js` is assembled with `source/SR18_SYSTEMS_LAYER.js` by `tools/build_v18.py`. The main HTML is regenerated from the combined source as one inline script and the retained V17 HTML shell in `backup/previous_release_htmls/`. The PWA is derived from the same standalone output, adding only install metadata and service-worker registration, so both builds use identical application code. The new Save Center uses a separate IndexedDB database so it does not overwrite the inherited rules-library object store.
+V18 is additive: `source/solo_realms_v17.js` is assembled with `source/SR18_SYSTEMS_LAYER.js` by `tools/build_v18.py`. The main HTML is regenerated from the combined source as one inline script and the retained V17 HTML shell in `build-inputs/Solo_Realms_V17_Main.html`. The PWA is derived from the same standalone output, adding only install metadata and service-worker registration, so both builds use identical application code. The build then mirrors the complete `pwa/` directory into `docs/`, the GitHub Pages publication source; `docs/` is generated output and must not be edited independently. The new Save Center uses a separate IndexedDB database so it does not overwrite the inherited rules-library object store.
 
 ## Spell resolver
 

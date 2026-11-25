@@ -51,3 +51,22 @@ V18 is an expanded procedural rules engine. It does not claim a hand-coded bespo
 - Corrected the README attribution link to `V18_ATTRIBUTION.md`.
 - Updated the regression runner to rebuild before testing and verify build parity, manifest, service-worker registration, icons and attribution paths.
 - No gameplay logic or save format changes are intended in this maintenance release.
+
+
+## V18.1.1 — Existing-system hardening
+
+- The build now regenerates `docs/` as an exact mirror of canonical `pwa/` output for GitHub Pages.
+- The PWA regression suite checks that every deployable file exists in both directories with byte-for-byte identical contents.
+- Updated architecture and project-layout documentation to reflect the actual `build-inputs/` template path and generated publication directory.
+- No gameplay logic, multiplayer protocol, or save format changes.
+
+
+## V18.1.2 — Cross-system reliability hardening
+
+- IndexedDB initialization now clears a failed cached connection promise so a later save operation can retry; stale database connections are closed on version changes.
+- Campaign restore now stops if it cannot first create a recovery snapshot of the active campaign, preventing a failed backup from silently preceding a destructive load.
+- Monster attack parsing recognizes ranged stat-block attack wording and normal/long range bands; ranged attacks no longer trigger melee-only Parry reactions.
+- Recharge-use tracking is applied to individual resolved actions in solo and multiplayer Multiattack sequences.
+- Added regression assertions for ranged attack parsing, Parry behavior and recharge cooldown state, plus a dedicated transient IndexedDB-open recovery test.
+- Added a GitHub Actions workflow to rebuild the release and run the complete regression runner on hardening-branch pushes and pull requests.
+- No save schema, campaign field, spell rule, character progression rule or multiplayer protocol version changes are intended.

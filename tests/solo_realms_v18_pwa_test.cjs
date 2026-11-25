@@ -6,10 +6,10 @@ const manifest=JSON.parse(fs.readFileSync(path.join(root,'manifest.webmanifest')
 const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');
 const pngSize=(file)=>{const b=fs.readFileSync(file);return b.length>24?{w:b.readUInt32BE(16),h:b.readUInt32BE(20)}:null;};
 assert('PWA entry page links to manifest',index.includes('rel="manifest" href="./manifest.webmanifest"'));
-assert('PWA uses V18 Reliable Free Edition title',index.includes('Solo Realms V18'));
+assert('PWA entry identifies the V18 application',index.includes('Solo Realms V18'));
 assert('PWA registers service worker on secure origins',index.includes("navigator.serviceWorker.register('./sw.js')"));
 assert('Manifest requests standalone display',manifest.display==='standalone');
-assert('Manifest long and short names identify V16',manifest.name.includes('V18')&&manifest.short_name.includes('V18'));
+assert('Manifest long and short names identify V18',manifest.name.includes('V18')&&manifest.short_name.includes('V18'));
 assert('Service worker uses an isolated V18 cache namespace',sw.includes('solo-realms-systems-v18'));
 assert('Manifest uses correct subfolder scope and start URL',manifest.scope==='./'&&manifest.start_url==='./index.html');
 assert('Manifest has 192 and 512 icons',manifest.icons.some(x=>x.sizes==='192x192')&&manifest.icons.some(x=>x.sizes==='512x512'));
@@ -19,6 +19,10 @@ assert('Service worker caches the main app shell',sw.includes("'./index.html'")&
 assert('Service worker only handles same-origin GET requests',sw.includes("request.method !== 'GET'")&&sw.includes('url.origin !== self.location.origin'));
 assert('Service worker provides offline navigation fallback',sw.includes("cache.match('./index.html')"));
 assert('Install notes explain Android, online multiplayer, and offline solo launch',(()=>{const notes=fs.readFileSync(path.join(root,'README-INSTALL.md'),'utf8');return notes.includes('Android')&&notes.includes('Multiplayer requires internet')&&notes.includes('Solo play');})());
+const docsRoot=path.join(__dirname,'..','docs');
+const listFiles=(dir,base=dir)=>fs.readdirSync(dir,{withFileTypes:true}).flatMap(entry=>entry.isDirectory()?listFiles(path.join(dir,entry.name),base):[path.relative(base,path.join(dir,entry.name)).split(path.sep).join('/')]).sort();
+const pwaFiles=listFiles(root),docsFiles=fs.existsSync(docsRoot)?listFiles(docsRoot):[];
+assert('GitHub Pages docs output mirrors every PWA file',JSON.stringify(pwaFiles)===JSON.stringify(docsFiles)&&pwaFiles.every(file=>fs.readFileSync(path.join(root,file)).equals(fs.readFileSync(path.join(docsRoot,file)))));
 for(const x of checks)console.log(`${x.pass?'PASS':'FAIL'} ${x.name}`);
 console.log(`\nRESULT ${checks.filter(x=>x.pass).length}/${checks.length} V18 PWA checks passed`);
 if(checks.some(x=>!x.pass))process.exitCode=1;

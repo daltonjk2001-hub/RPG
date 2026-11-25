@@ -156,7 +156,7 @@ sr14AbilityCheck=function(c,skill,dc,opts={}){
  const applicable=effects.filter(x=>x.bonusType==='check');
  const bonus=applicable.reduce((n,x)=>n+Number(x.bonus||0)+(x.bonusDice?rollDice(x.bonusDice):0),0);
  const mode=matching.length?(opts.mode==='disadvantage'?'normal':'advantage'):(opts.mode||'normal');
- const r=sr18AbilityCheckBase(c,skill,dc,{...opts,mode});if(bonus){r.bonus+=bonus;r.total+=bonus;r.success=r.success||r.total>=dc;}
+ const r=sr18AbilityCheckBase(c,skill,dc,{...opts,mode});if(bonus){r.bonus+=bonus;r.total+=bonus;r.success=r.total>=dc;}
  for(const x of applicable.filter(x=>x.once)){c.activeEffects=c.activeEffects.filter(y=>y!==x);if(c.concentration?.spell===x.name)c.concentration=null;}
  return r;
 };
@@ -182,7 +182,8 @@ sr11Tick=function(actor){sr18TickBase(actor);if(actor?.activeEffects){actor.acti
 // Improved monster actions: recharge, Multiattack sequences, typed damage, saves, conditions, reactions and morale.
 function sr18ParseRecharge(action){const s=`${action?.name||''} ${action?.description||''}`;const m=s.match(/recharge\s*(\d)(?:\s*[–-]\s*(\d))?/i);return m?{min:Number(m[1]),max:Number(m[2]||6)}:null;}
 function sr18ParseCondition(text){return sr18DetectCondition(text);}
-function sr18ParseActionRange(action){const d=sr18Text(action?.description||'');const reach=Number((d.match(/reach\s+(\d+)\s*ft/i)||[])[1]||5),ranged=/ranged (?:weapon|spell) attack|range\s+\d+\s*\/\s*\d+/i.test(d);const r=(d.match(/range\s+(\d+)(?:\s*\/\s*\d+)?\s*ft/i)||[])[1];return {ranged,reach:ranged?Number(r||60):reach};}
+function sr18ParseActionRange(action){const d=sr18Text(action?.description||'');const rangeMatch=d.match(/\brange\s+(\d+)(?:\s*\/\s*(\d+))?\s*ft\b/i);const reach=Number((d.match(/\breach\s+(\d+)\s*ft\b/i)||[])[1]||5);const ranged=/\branged\s+(?:(?:weapon|spell)\s+)?attack(?:\s+roll)?\b/i.test(d)||!!rangeMatch;return {ranged,reach:ranged?Number(rangeMatch?.[1]||60):reach,normalRange:Number(rangeMatch?.[1]||0),longRange:Number(rangeMatch?.[2]||0)};}
+function sr18MarkRechargeUsed(enemy,action){const recharge=sr18ParseRecharge(action);if(!enemy||!recharge)return false;enemy._sr18Recharge=enemy._sr18Recharge||{};enemy._sr18Recharge[sr18Text(action.name)]=false;return true;}
 function sr18ExpandMultiattack(enemy){
  const actions=enemy?.actions||[],multi=actions.find(a=>/^multiattack$/i.test(a.name||''));if(!multi)return null;
  const text=sr18Text(multi.description),words={one:1,two:2,three:3,four:4,five:5,six:6},sequence=[];
@@ -226,14 +227,14 @@ function sr18ResolveMonsterAction(enemy,action,target){
    if(!result.success&&condition&&!sr18ConditionImmunity(t,condition))sr11Add(cc,condition,Math.max(1,Number((desc.match(/(?:until the end of|for) (?:its|the target's|your) next turn/i)||[]).length?1:1),1),enemy.name);
    log(`${enemy.name} uses ${action.name}; ${hero.name} makes a ${save.ability} save (${result.total} vs DC ${save.dc}) and takes ${actual} ${type} damage${condition&&!result.success?` and gains ${condition}`:''}.`,'badlog');
   }else{
-   const bonus=Number(action.attack_bonus??enemy.attack)||0,r=sr11RollAttack(bonus,enemy,cc,true),ac=sr12WithHero(hero,()=>computeAC())+(cc.buffRounds>0?2:0)+(state.combat?.mp?sr11Cover(t.pos,enemy.pos):0),hit=r.r===20||(r.r!==1&&r.total>=ac);
+   const bonus=Number(action.attack_bonus??enemy.attack)||0,r=sr11RollAttack(bonus,enemy,cc,!range.ranged),ac=sr12WithHero(hero,()=>computeAC())+(cc.buffRounds>0?2:0)+(state.combat?.mp?sr11Cover(t.pos,enemy.pos):0),hit=r.r===20||(r.r!==1&&r.total>=ac);
    if(hit){let amount=rollDice(dice);if(r.r===20)amount+=rollDice(dice);const actual=sr18MonsterApplyDamage(t,amount,type,enemy);log(`${enemy.name} uses ${action.name} against ${hero.name}: hit for ${actual} ${type} damage.`,'badlog');}else log(`${enemy.name} uses ${action.name} against ${hero.name}: miss.`,'rolllog');
   }
  }
  did=true;return did;
 }
 function sr18PrepareMonsterTurn(enemy){
- const b=state.combat;enemy.conditions=Array.isArray(enemy.conditions)?enemy.conditions:[];
+ const b=state.combat;enemy.conditions=Array.isArray(enemy.conditions)?enemy.conditions:[];enemy._sr18Recharge=enemy._sr18Recharge||{};
  if(enemy._sr18LegendaryRound!==b.round){enemy.legendaryRemaining=Number(enemy.statBlock?.legendary_actions_per_round||3);enemy._sr18LegendaryRound=b.round;}
  enemy.reactionAvailable=true;enemy._sr18ParryUsed=false;enemy._sr18ReductionUsed=false;
  for(const action of enemy.actions||[]){const recharge=sr18ParseRecharge(action);if(!recharge)continue;const key=sr18Text(action.name);if(enemy._sr18Recharge?.[key]===false){const roll=die(6);if(roll>=recharge.min&&roll<=recharge.max){enemy._sr18Recharge[key]=true;log(`${enemy.name} recharges ${key}.`,'rolllog');}}else if(!enemy._sr18Recharge)enemy._sr18Recharge={};
@@ -269,10 +270,9 @@ function sr18MonsterTurnSolo(entry){
    sr10EnemyMove(enemy);
    if(sr12Distance(enemy.pos,target.pos)>range.reach){sr18MonsterMorale(enemy);return true;}
   }
-  let used=0;for(const a of seq){if(state.character.hp<=0||enemy.hp<=0)break;if(sr18ResolveMonsterAction(enemy,a,target))used++;}
+  let used=0;for(const a of seq){if(state.character.hp<=0||enemy.hp<=0)break;if(sr18ResolveMonsterAction(enemy,a,target)){used++;sr18MarkRechargeUsed(enemy,a);}}
   if(used)log(`${enemy.name} completes its Multiattack (${used} attacks resolved).`,'badlog');
- }else sr18ResolveMonsterAction(enemy,action,target);
- const recharge=sr18ParseRecharge(action);if(recharge){enemy._sr18Recharge=enemy._sr18Recharge||{};enemy._sr18Recharge[action.name]=false;}
+ }else if(sr18ResolveMonsterAction(enemy,action,target))sr18MarkRechargeUsed(enemy,action);
  sr18MonsterMorale(enemy);return true;
 }
 const sr18SoloMonsterTurnBase=sr10EnemyTurn;
@@ -284,9 +284,8 @@ sr12EnemyTurn=function(enemy){
  const target=sr18MonsterTarget(enemy);if(!target)return;
  if((enemy.conditions||[]).some(x=>['incapacitated','stunned','paralyzed','unconscious'].includes(typeof x==='string'?x:x.name))){log(`${enemy.name} cannot act because of a condition.`,'muted');return;}
  const seq=sr18ExpandMultiattack(enemy),action=seq?.[0]||sr18ChooseMonsterAction(enemy,target);if(!action)return sr18MPMonsterTurnBase(enemy);
- if(seq){const d=sr18ParseActionRange(seq[0]),dist=enemy.pos&&target.pos?sr12Distance(enemy.pos,target.pos):0;if(!d.ranged&&dist>d.reach){sr12EnemyStep(enemy,target.pos);if(sr12Distance(enemy.pos,target.pos)>d.reach){enemy.specialUsedRound=state.combat.round;return;}}let done=0;for(const a of seq){if(target.player.character.hp<=0)break;if(sr18ResolveMonsterAction(enemy,a,target))done++;}if(done)log(`${enemy.name} completes its Multiattack (${done} attacks resolved).`,'badlog');}
- else{const d=sr18ParseActionRange(action),dist=enemy.pos&&target.pos?sr12Distance(enemy.pos,target.pos):0;if(!d.ranged&&dist>d.reach){sr12EnemyStep(enemy,target.pos);if(sr12Distance(enemy.pos,target.pos)>d.reach){enemy.specialUsedRound=state.combat.round;return;}}sr18ResolveMonsterAction(enemy,action,target);}
- const recharge=sr18ParseRecharge(action);if(recharge){enemy._sr18Recharge=enemy._sr18Recharge||{};enemy._sr18Recharge[action.name]=false;}
+ if(seq){const d=sr18ParseActionRange(seq[0]),dist=enemy.pos&&target.pos?sr12Distance(enemy.pos,target.pos):0;if(!d.ranged&&dist>d.reach){sr12EnemyStep(enemy,target.pos);if(sr12Distance(enemy.pos,target.pos)>d.reach){enemy.specialUsedRound=state.combat.round;return;}}let done=0;for(const a of seq){if(target.player.character.hp<=0)break;if(sr18ResolveMonsterAction(enemy,a,target)){done++;sr18MarkRechargeUsed(enemy,a);}}if(done)log(`${enemy.name} completes its Multiattack (${done} attacks resolved).`,'badlog');}
+ else{const d=sr18ParseActionRange(action),dist=enemy.pos&&target.pos?sr12Distance(enemy.pos,target.pos):0;if(!d.ranged&&dist>d.reach){sr12EnemyStep(enemy,target.pos);if(sr12Distance(enemy.pos,target.pos)>d.reach){enemy.specialUsedRound=state.combat.round;return;}}if(sr18ResolveMonsterAction(enemy,action,target))sr18MarkRechargeUsed(enemy,action);}
  sr18MonsterMorale(enemy);enemy.specialUsedRound=state.combat.round;return;
 };
 function sr18RunLegendaryAction(enemy){
@@ -375,7 +374,7 @@ function sr18AdvanceWorld(reason='action',days=0){
 const sr18RecordActionBase=sr16RecordPlayerAction;
 sr16RecordPlayerAction=function(text,options={}){const out=sr18RecordActionBase(text,options);if(out&&state.campaign){const w=sr18EnsureWorld();w.actionLedger.unshift({id:out.id,day:w.clock.day,kind:out.kind,text:out.text,target:out.target,success:out.success,location:out.location});w.actionLedger=w.actionLedger.slice(0,60);const kind=out.kind;if(['violence','theft','intimidation'].includes(kind))w.clocks[0].value=Math.min(w.clocks[0].limit,w.clocks[0].value+1);if(['investigation','negotiation','deception'].includes(kind))w.clocks[1].value=Math.min(w.clocks[1].limit,w.clocks[1].value+1);if(!options.noTick)sr18AdvanceWorld('action',0);}return out;};
 const sr18TravelBase=travelRegion;
-travelRegion=function(index){const before=Number(state.campaign?.day)||1;const out=sr18TravelBase(index);if(state.campaign){const delta=Math.max(0,(Number(state.campaign.day)||before)-before);sr18AdvanceWorld('travel',delta||1);}return out;};
+travelRegion=function(index){const beforeDay=Number(state.campaign?.day)||1,beforeLocation=state.campaign?.location,beforeRegion=state.campaign?.region;const out=sr18TravelBase(index);if(state.campaign&&out!==false&&(Number(state.campaign.day)!==beforeDay||state.campaign.location!==beforeLocation||state.campaign.region!==beforeRegion)){const delta=Math.max(0,(Number(state.campaign.day)||beforeDay)-beforeDay);sr18AdvanceWorld('travel',delta||1);}return out;};
 const sr18LongRestBase=longRest;
 longRest=function(){const before=Number(state.campaign?.day)||1;const out=sr18LongRestBase();if(state.campaign&&Number(state.campaign.day)>before)sr18AdvanceWorld('long rest',Number(state.campaign.day)-before);return out;};
 const sr18JournalBase=journalPage;
@@ -387,8 +386,17 @@ srAIContext=function(){const x=sr18AIContextBase();const w=sr18EnsureWorld();if(
 function sr18OpenDB(){
  if(typeof indexedDB==='undefined')return Promise.reject(new Error('IndexedDB unavailable'));
  if(SR18_DB_PROMISE)return SR18_DB_PROMISE;
- SR18_DB_PROMISE=new Promise((resolve,reject)=>{const req=indexedDB.open(SR18_SAVE_DB,1);req.onupgradeneeded=()=>{const db=req.result;for(const store of ['slots','recovery'])if(!db.objectStoreNames.contains(store))db.createObjectStore(store);};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error('Could not open save archive'));});
- return SR18_DB_PROMISE;
+ let connection;
+ const pending=new Promise((resolve,reject)=>{
+  let req;
+  try{req=indexedDB.open(SR18_SAVE_DB,1);}catch(error){reject(error);return;}
+  req.onupgradeneeded=()=>{const db=req.result;for(const store of ['slots','recovery'])if(!db.objectStoreNames.contains(store))db.createObjectStore(store);};
+  req.onsuccess=()=>{connection=req.result;if(!connection){reject(new Error('Save archive opened without a database connection'));return;}connection.onversionchange=()=>{try{connection.close();}catch(error){}if(SR18_DB_PROMISE===cached)SR18_DB_PROMISE=null;};resolve(connection);};
+  req.onerror=()=>reject(req.error||new Error('Could not open save archive'));
+ });
+ const cached=pending.catch(error=>{if(SR18_DB_PROMISE===cached)SR18_DB_PROMISE=null;throw error;});
+ SR18_DB_PROMISE=cached;
+ return cached;
 }
 async function sr18DBPut(store,key,value){const db=await sr18OpenDB();return new Promise((resolve,reject)=>{const tx=db.transaction(store,'readwrite');tx.objectStore(store).put(value,key);tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error||new Error('Save archive write failed'));tx.onabort=()=>reject(tx.error||new Error('Save archive write aborted'));});}
 async function sr18DBGet(store,key){const db=await sr18OpenDB();return new Promise((resolve,reject)=>{const tx=db.transaction(store,'readonly'),req=tx.objectStore(store).get(key);req.onsuccess=()=>resolve(req.result??null);req.onerror=()=>reject(req.error||new Error('Save archive read failed'));});}
@@ -409,7 +417,7 @@ async function sr18LatestRecovery(){let candidates=[];for(let i=0;i<6;i++){try{c
 function sr18NormalizeImported(value){if(value?.schema==='solo-realms-v18-save-v1')return value.state;return value?.state?.character&&value?.state?.campaign?value.state:value;}
 async function sr18RestoreState(s,label='save'){
  const valid=sr18ValidateSave(sr18NormalizeImported(s));if(!valid.ok)throw new Error(valid.reason);
- if(state?.character&&state?.campaign)await sr18WriteRecovery('before loading another save');
+ if(state?.character&&state?.campaign){const protectedCurrent=await sr18WriteRecovery('before loading another save');if(!protectedCurrent)throw new Error('The current campaign could not be backed up. Loading was cancelled to protect your progress.');}
  state=valid.state;srEnsureState();sr3EnsureCampaign();if(state.character)sr14EnsureCharacter(state.character);sr18EnsureWorld();state.log=Array.isArray(state.log)?state.log:[];save();document.getElementById('dynamicModal')?.remove();render();toast(`Restored ${state.character.name} from ${label}.`);return true;
 }
 async function sr18SaveExport(){if(!state?.character||!state?.campaign){toast('There is no active campaign to export.');return false;}return sr17Download(`${(state.character.name||'Solo_Realms').replace(/[^a-z0-9_-]+/gi,'_')}_Campaign_Save_V18.json`,JSON.stringify(sr18Snapshot('Portable campaign backup'),null,2),'application/json');}
@@ -461,6 +469,8 @@ function sr18RunTests(){
   ];
   for(const [label,sp,want] of spells){const got=sr18InferSpellEffect(label,sp,fb);ok(`Spell engine classifies ${label}`,got.kind===want.kind&&(!want.condition||got.condition===want.condition)&&(!want.save||got.save===want.save)&&(!want.area||got.area===want.area));}
   const area=sr18Area({area:15,areaShape:'cone'},'');ok('Area templates retain shape and size',area.active&&area.size===15&&area.shape==='cone');
+  const ranged=sr18ParseActionRange({description:'Ranged Weapon Attack Roll: +6, range 30/120 ft. Hit: 1d8 piercing damage.'});ok('Ranged stat-block attacks retain normal and long range',ranged.ranged&&ranged.normalRange===30&&ranged.longRange===120);
+  const rechargeProbe={};sr18MarkRechargeUsed(rechargeProbe,{name:'Fire Breath (Recharge 5–6)',description:'Recharge 5–6'});ok('Recharge abilities enter cooldown after being used',rechargeProbe._sr18Recharge?.['Fire Breath (Recharge 5–6)']===false);
   ok('Condition inference recognizes restrained, stunned and frightened',sr18DetectCondition('The target is stunned and frightened')==='stunned'&&sr18DetectCondition('The target becomes restrained')==='restrained'&&sr18DetectCondition('The target is frightened then stunned')==='frightened');
   const formula=sr14DamageDice({level:1,damage:'2d6',upcast:'One additional 1d6 for each spell slot level above 1.'},3);ok('Upcasting adds the published per-slot damage dice',formula==='4d6');
   const mock={actions:[{name:'Multiattack',description:'The creature makes three attacks: two with its Claws and one with its Bite.'},{name:'Claws',description:'Melee Attack Roll: +5, reach 5 ft. Hit: 1d6 slashing damage.',damage:[{dice:'1d6',type:'slashing'}]},{name:'Bite',description:'Melee Attack Roll: +4, reach 5 ft. Hit: 1d8 piercing damage.',damage:[{dice:'1d8',type:'piercing'}]}]};
@@ -482,6 +492,6 @@ function sr18RunTests(){
  }catch(e){ok('V18 rules, living world and save tests execute without runtime errors',false,String(e?.stack||e));}
  return out;
 }
-globalThis.__SR18_TEST={version:SR18_VERSION,inferSpell:sr18InferSpellEffect,area:sr18Area,condition:sr18DetectCondition,expandMultiattack:sr18ExpandMultiattack,recharge:sr18ParseRecharge,chooseMonsterAction:sr18ChooseMonsterAction,resolveMonsterAction:sr18ResolveMonsterAction,monsterTurnSolo:sr18MonsterTurnSolo,monsterDamage:sr18MonsterApplyDamage,typedDamage:sr12ApplyDamage,applySpellUtility:sr18ApplySpellUtility,classifyImprovisation:sr18ClassifyImprovisation,improvisationDecision:sr18ImprovisationDecision,ensureWorld:sr18EnsureWorld,advanceWorld:sr18AdvanceWorld,addWorldEvent:sr18AddWorldEvent,validateSave:sr18ValidateSave,normalizeImport:sr18NormalizeImported,snapshot:sr18Snapshot,storeSlot:sr18StoreSlot,readSlot:sr18ReadSlot,deleteSlot:sr18DeleteSlot,writeRecovery:sr18WriteRecovery,restore:sr18RestoreState,latestRecovery:sr18LatestRecovery,exportSave:sr18SaveExport,importFile:sr18ImportFile,saveCenter:sr18SaveCenter,render:render,header:header,adventurePage:adventurePage,tests:sr18RunTests,get state(){return state;},set state(v){state=v;}};
+globalThis.__SR18_TEST={version:SR18_VERSION,openDB:sr18OpenDB,inferSpell:sr18InferSpellEffect,area:sr18Area,condition:sr18DetectCondition,expandMultiattack:sr18ExpandMultiattack,recharge:sr18ParseRecharge,parseActionRange:sr18ParseActionRange,markRechargeUsed:sr18MarkRechargeUsed,prepareMonsterTurn:sr18PrepareMonsterTurn,chooseMonsterAction:sr18ChooseMonsterAction,resolveMonsterAction:sr18ResolveMonsterAction,monsterTurnSolo:sr18MonsterTurnSolo,monsterDamage:sr18MonsterApplyDamage,typedDamage:sr12ApplyDamage,applySpellUtility:sr18ApplySpellUtility,classifyImprovisation:sr18ClassifyImprovisation,improvisationDecision:sr18ImprovisationDecision,ensureWorld:sr18EnsureWorld,advanceWorld:sr18AdvanceWorld,addWorldEvent:sr18AddWorldEvent,validateSave:sr18ValidateSave,normalizeImport:sr18NormalizeImported,snapshot:sr18Snapshot,storeSlot:sr18StoreSlot,readSlot:sr18ReadSlot,deleteSlot:sr18DeleteSlot,writeRecovery:sr18WriteRecovery,restore:sr18RestoreState,latestRecovery:sr18LatestRecovery,exportSave:sr18SaveExport,importFile:sr18ImportFile,saveCenter:sr18SaveCenter,render:render,header:header,adventurePage:adventurePage,tests:sr18RunTests,get state(){return state;},set state(v){state=v;}};
 // Re-render after the additive systems are installed so the V18 header and Save Center are visible on first boot.
 try { render(); } catch (error) { console.warn('V18 initial render:', error); }

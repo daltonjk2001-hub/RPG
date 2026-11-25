@@ -1,6 +1,6 @@
 # Solo Realms V18 test report
 
-**Result: 422 / 422 automated assertions passed.**
+**Result: 431 / 431 automated assertions passed.**
 
 Tested on the packaged V18 source in a Node.js VM with simulated browser DOM, localStorage, IndexedDB and download/network fixtures. The run command is `bash tests/run_v18.sh`. The runner now invokes `tools/build_v18.py` first, so the tested HTML/PWA artifacts are regenerated from the tracked repository source files on every run.
 
@@ -9,13 +9,13 @@ Tested on the packaged V18 source in a Node.js VM with simulated browser DOM, lo
 | Multiplayer / initiative | 179 | 179 | Versioned protocol 20, authenticated joins, shared state and initiative ordering regressions |
 | Legacy progression / Director | 37 | 37 | Inherited character progression, campaign flow and procedural offline Director baseline |
 | UI | 19 | 19 | Simplified navigation, combat controls, rendered V18 identity and Save Center entry |
-| PWA | 14 | 14 | Manifest, install shell, V18 service-worker cache, icons and offline navigation contract |
+| PWA | 15 | 15 | Manifest, install shell, V18 service-worker cache, icons, offline navigation contract, and exact GitHub Pages mirror validation |
 | Rules / campaign | 58 | 58 | Retained V14 rules, spells, creatures, classes, progression and campaign behavior |
 | Character resources | 30 | 30 | Retained V15.2 class resources and Hit Dice coverage |
 | Reactive DM | 19 | 19 | Retained V16 NPC memory, companion behavior, consequences, rivals and protocol compatibility |
 | Library reliability | 28 | 28 | V17 library install/restore, reference downloads, JSON backup import and restart behavior |
 | V18 integrated systems | 38 | 38 | Spell effect inference, typed damage, monster Multiattack execution, improvisation, world state, eight save slots, recovery, restore/import and invalid-save rejection |
-| **Total** | **422** | **422** | |
+| **Total** | **423** | **423** | |
 
 Additional checks passed:
 - `node --check source/solo_realms_v18.js`
@@ -25,6 +25,10 @@ Additional checks passed:
 - Main HTML and PWA entry both identify V18.
 - Standalone and PWA application scripts are byte-for-byte identical after each build.
 - The build completes from the clean repository inputs without relying on a generated V18 HTML file.
+
+## V18.1.1 hardening verification
+
+The build now regenerates the GitHub Pages `docs/` directory as an exact mirror of canonical `pwa/` output. The PWA suite verifies the complete file list and byte-for-byte equality, preventing a successful source build from leaving the published site stale. Project documentation now identifies `build-inputs/` as the retained V17 shell location.
 
 ## V18.1 maintenance verification
 
@@ -40,3 +44,11 @@ V18 implements a broad data-driven spell resolver and stat-block combat layer, n
 ## Repository packaging note
 
 The GitHub repository package tracks only the V17 HTML shell required by the build under `build-inputs/`. Other historical HTML backups, archived version documents, and captured test-output logs are excluded.
+
+## V18.1.2 cross-system hardening verification
+
+GitHub Actions run [#45532271595](https://github.com/daltonjk2001-hub/RPG/actions/runs/45532271595) completed successfully on the consolidated hardening branch. The workflow rebuilt the standalone game, PWA and GitHub Pages mirror, then ran all ten regression suites: **431 / 431 assertions passed**.
+
+New focused checks cover ranged stat-block attack parsing, preserving melee-only Parry reactions, recharge cooldown tracking, recovery from a transient IndexedDB initialization failure, retrying the database open, and completing a save write after the retry. The existing progression, NPC/companion memory, spell, world, legacy campaign, multiplayer and PWA suites also passed.
+
+This is automated regression evidence in a simulated browser environment. It does not replace live browser/device checks, two-device multiplayer playtesting, or a long-running campaign compatibility test using a user's real save files.
