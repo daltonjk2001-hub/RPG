@@ -1,0 +1,229 @@
+/* SOLO REALMS V20 — SEVEN-SYSTEM GAMEPLAY LOOP.
+ * Additive gameplay layer. V18 remains authoritative for core rules, rolls,
+ * damage, inventory and saves; V19 remains authoritative for Director/NPC memory.
+ */
+const SR20_GAMEPLAY_VERSION='20.0.0';
+const SR20_MODES=['exploration','social','travel','tactical','survival','campaign'];
+const SR20_SKILL_ABILITIES={athletics:'STR',acrobatics:'DEX',sleightofhand:'DEX',stealth:'DEX',arcana:'INT',history:'INT',investigation:'INT',nature:'INT',religion:'INT',animalhandling:'WIS',insight:'WIS',medicine:'WIS',perception:'WIS',survival:'WIS',deception:'CHA',intimidation:'CHA',performance:'CHA',persuasion:'CHA'};
+const SR20_CLASS_EDGES={
+ barbarian:['athletics','survival','intimidation'],bard:['persuasion','performance','deception','insight'],
+ cleric:['insight','medicine','religion'],druid:['nature','animalhandling','survival'],
+ fighter:['athletics','perception','intimidation'],monk:['acrobatics','insight','stealth'],
+ paladin:['persuasion','religion','intimidation'],ranger:['survival','perception','stealth','nature'],
+ rogue:['stealth','sleightofhand','investigation','deception'],sorcerer:['arcana','persuasion','deception'],
+ warlock:['arcana','intimidation','deception'],wizard:['arcana','investigation','history']
+};
+function sr20Clamp(v,min=0,max=100){return Math.max(min,Math.min(max,Number(v)||0));}
+function sr20Id(){return typeof makeId==='function'?makeId():'sr20-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);}
+function sr20EnsureCampaign(){
+ const c=state?.campaign;if(!c)return null;
+ c.sr20=c.sr20&&typeof c.sr20==='object'?c.sr20:{};
+ const g=c.sr20;g.version=SR20_GAMEPLAY_VERSION;
+ g.clock=g.clock&&typeof g.clock==='object'?g.clock:{watch:0,actions:0};
+ g.survival=g.survival&&typeof g.survival==='object'?g.survival:{fatigue:0,exposure:0,foodShortages:0,waterShortages:0};
+ g.survival.fatigue=sr20Clamp(g.survival.fatigue,0,6);
+ for(const k of ['objectives','leads','consequences','records'])g[k]=Array.isArray(g[k])?g[k]:[];
+ g.social=g.social&&typeof g.social==='object'?g.social:{};
+ g.tactical=g.tactical&&typeof g.tactical==='object'?g.tactical:{stance:'balanced',intent:'',round:0};
+ g.momentum=Math.max(0,Number(g.momentum)||0);
+ if(!g.objectives.length&&c.mainQuest&&typeof c.mainQuest==='object'){
+  g.objectives.push({id:'main-quest',type:'main',title:String(c.mainQuest.title||'Current campaign objective'),detail:String(c.mainQuest.goal||c.mainQuest.description||'Advance the central adventure.'),progress:Math.max(0,Number(c.mainQuest.progress)||0),goal:Math.max(1,Number(c.mainQuest.goalCount||c.mainQuest.target||c.mainQuest.goal)||1),status:'active'});
+ }
+ return g;
+}
+function sr20ClassName(ch=state?.character){return String(ch?.classId||ch?.class||ch?.className||'Adventurer').toLowerCase();}
+function sr20ClassEdge(skill,ch=state?.character){
+ const name=sr20ClassName(ch),key=Object.keys(SR20_CLASS_EDGES).find(k=>name.includes(k));
+ return !!key&&SR20_CLASS_EDGES[key].includes(String(skill||'').toLowerCase().replace(/[\s_-]/g,''));
+}
+function sr20ClassIdentity(ch=state?.character){
+ const name=sr20ClassName(ch),key=Object.keys(SR20_CLASS_EDGES).find(k=>name.includes(k));
+ const names={barbarian:'Force through obstacles and endure harsh conditions',bard:'Read a room, persuade, perform and deceive',cleric:'Read motives, heal and interpret sacred knowledge',druid:'Understand animals, nature and the living world',fighter:'Control space, overcome physical obstacles and assess threats',monk:'Move with precision, awareness and discipline',paladin:'Lead through conviction, persuasion and resolve',ranger:'Track, navigate, scout and read the wilderness',rogue:'Use stealth, nimble hands, investigation and deception',sorcerer:'Solve arcane problems through instinct and force of personality',warlock:'Use occult knowledge, leverage and unsettling presence',wizard:'Apply learned magic, research and deduction'};
+ return {className:key||name,identity:names[key]||'Use your training, background and chosen approach to shape the scene.',edges:(SR20_CLASS_EDGES[key]||[]).slice()};
+}
+function sr20InferMode(text){
+ const t=String(text||'').toLowerCase();
+ if(/\b(attack|fight|combat|ambush|flank|cover|guard|parry|disarm|withdraw|retreat|enemy|opponent)\b/.test(t))return 'tactical';
+ if(/\b(talk|ask|convince|persuade|negotiate|lie|deceive|threaten|intimidate|befriend|bargain|interrogate|charm|apologize)\b/.test(t))return 'social';
+ if(/\b(travel|journey|march|hike|cross|sail|ride|camp|rest|sleep|watch|ration|water|forage|survive)\b/.test(t))return 'travel';
+ if(/\b(search|explore|scout|track|inspect|investigate|discover|clue|examine|map|survey|listen|look around|find)\b/.test(t))return 'exploration';
+ if(/\b(cook|craft|repair|build|forage|harvest|treat|medicine|prepare|weather|cold|heat|hunger|thirst)\b/.test(t))return 'survival';
+ return 'campaign';
+}
+function sr20SkillFor(mode,text,decision){
+ if(decision?.skill)return String(decision.skill);
+ const t=String(text||'').toLowerCase();
+ if(mode==='social')return /\b(lie|deceive|disguise|fake|pretend)\b/.test(t)?'Deception':/\b(threat|intimidat|scare|coerce)\b/.test(t)?'Intimidation':/\b(read|sense|motive|bluff|notice.*lie)\b/.test(t)?'Insight':/\b(perform|sing|play|entertain)\b/.test(t)?'Performance':'Persuasion';
+ if(mode==='travel'||mode==='survival')return /\b(animal|horse|wolf|mount|beast)\b/.test(t)?'Animal Handling':/\b(nature|plant|herb|weather|poison)\b/.test(t)?'Nature':'Survival';
+ if(mode==='tactical')return /\b(sneak|hide|ambush|shadow)\b/.test(t)?'Stealth':/\b(dodge|balance|acrobat)\b/.test(t)?'Acrobatics':'Athletics';
+ if(mode==='exploration')return /\b(listen|hear|spot|watch|notice|see)\b/.test(t)?'Perception':/\b(track|trail|navigate|forage|wilderness)\b/.test(t)?'Survival':/\b(sneak|hide|quiet)\b/.test(t)?'Stealth':'Investigation';
+ return /\b(rune|spell|arcane|magic|ward|enchant)\b/.test(t)?'Arcana':'Investigation';
+}
+function sr20Proficient(ch,skill){
+ const norm=s=>String(s||'').toLowerCase().replace(/[^a-z]/g,'');
+ return [ch?.proficiencies,ch?.skillProficiencies,ch?.skills?.proficient].some(a=>Array.isArray(a)&&a.some(x=>norm(typeof x==='string'?x:x?.name)===norm(skill)));
+}
+function sr20AbilityMod(ch,skill){
+ const ability=SR20_SKILL_ABILITIES[String(skill||'').toLowerCase().replace(/[\s_-]/g,'')]||'INT';
+ return Math.floor((Number(ch?.stats?.[ability]??ch?.stats?.[ability.toLowerCase()]??10)-10)/2);
+}
+function sr20SkillBonus(ch,skill){
+ const level=Math.max(1,Number(ch?.level)||1),prof=2+Math.floor((level-1)/4),trained=sr20Proficient(ch,skill),edge=sr20ClassEdge(skill,ch),ability=sr20AbilityMod(ch,skill);
+ return {ability,proficiency:trained?prof:0,classEdge:edge?1:0,total:ability+(trained?prof:0)+(edge?1:0),trained,edge};
+}
+function sr20FindNPC(target,text){
+ const list=state?.campaign?.npcs||[],q=String(target||'').trim().toLowerCase(),t=String(text||'').toLowerCase();
+ return (q?list.find(n=>String(n?.name||'').toLowerCase()===q):null)||list.find(n=>n?.name&&t.includes(String(n.name).toLowerCase()))||null;
+}
+function sr20SupplyIndex(pattern){
+ const inv=state?.character?.inventory;if(!Array.isArray(inv))return -1;
+ return inv.findIndex(item=>pattern.test(String(typeof item==='string'?item:item?.name||item?.label||'')));
+}
+function sr20ConsumeSupply(pattern){
+ const inv=state?.character?.inventory;if(!Array.isArray(inv))return false;const i=sr20SupplyIndex(pattern);if(i<0)return false;
+ const item=inv[i];if(item&&typeof item==='object'){
+  const key=Number.isFinite(Number(item.quantity))?'quantity':Number.isFinite(Number(item.count))?'count':null;
+  if(key&&Number(item[key])>1)item[key]=Number(item[key])-1;else inv.splice(i,1);
+ }else inv.splice(i,1);return true;
+}
+function sr20AddLead(text,kind='discovery'){
+ const g=sr20EnsureCampaign();if(!g)return null;
+ const lead={id:sr20Id(),day:state.campaign.day||1,location:state.campaign.location||state.campaign.region||'',kind,text:String(text||'An unresolved opportunity awaits.').slice(0,260),status:'unresolved'};
+ g.leads.unshift(lead);g.leads=g.leads.slice(0,20);
+ if(typeof sr18AddWorldEvent==='function')sr18AddWorldEvent('gameplay-lead',lead.text,{leadId:lead.id,kind});return lead;
+}
+function sr20AddConsequence(text,kind='complication'){
+ const g=sr20EnsureCampaign();if(!g)return null;
+ const item={id:sr20Id(),day:state.campaign.day||1,kind,text:String(text||'A consequence is developing.').slice(0,260),status:'unresolved'};
+ g.consequences.unshift(item);g.consequences=g.consequences.slice(0,16);
+ if(typeof sr18AddWorldEvent==='function')sr18AddWorldEvent('gameplay-consequence',item.text,{consequenceId:item.id,kind});return item;
+}
+function sr20TokenMatch(a,b){
+ const words=s=>String(s||'').toLowerCase().match(/[a-z]{4,}/g)||[],right=new Set(words(b));return words(a).some(w=>right.has(w));
+}
+function sr20AdvanceAdventure(text,mode,success){
+ const g=sr20EnsureCampaign(),c=state?.campaign;if(!g||!c)return;
+ if(success){
+  g.momentum++;const objective=g.objectives.find(o=>o.status==='active'&&sr20TokenMatch(text,(o.title||'')+' '+(o.detail||'')));
+  if(objective){objective.progress=Math.min(Math.max(1,Number(objective.goal)||1),(Number(objective.progress)||0)+1);if(objective.progress>=Math.max(1,Number(objective.goal)||1))objective.status='completed';if(objective.type==='main'&&c.mainQuest){c.mainQuest.progress=objective.progress;if(objective.status==='completed'){c.flags=c.flags||{};c.flags.sr20MainObjectiveCompleted=true;}}}
+  if(g.momentum>=3){g.momentum=0;sr20AddLead('An opportunity opens because of the party’s recent progress: '+String(text||'their latest success').slice(0,120)+'.','campaign-opening');}
+ }else if(mode==='campaign'||mode==='exploration'||mode==='social')sr20AddConsequence('The failed approach leaves an unresolved complication: '+String(text||'the party’s plan').slice(0,130)+'.',mode);
+}
+function sr20ActionNarrative(mode,success){
+ const labels={exploration:success?'You uncover something useful.':'The area yields no clear answer, and the delay has a cost.',social:success?'Your approach shifts the conversation in your favor.':'The exchange hardens the other side’s position.',travel:success?'The party makes steady progress through the journey.':'The route proves more demanding than expected.',tactical:success?'You create a tactical opening.':'The opposition reads the move and keeps the advantage.',survival:success?'Your preparation pays off.':'The conditions take a toll on the party.',campaign:success?'Your choice creates forward momentum.':'The plan meets resistance, but the story remains open.'};
+ return labels[mode]||labels.campaign;
+}
+function sr20CampaignDay(){return Math.max(1,Number(state?.campaign?.day)||1);}
+function sr20ResolvePlayerAction(text,options={}){
+ const action=String(text||'').trim().slice(0,500);if(!action)throw new Error('Describe what your character is trying to do.');
+ if(!state?.character||!state?.campaign)throw new Error('Start a campaign before taking a gameplay action.');
+ const g=sr20EnsureCampaign(),ch=state.character,mode=SR20_MODES.includes(options.mode)&&options.mode!=='auto'?options.mode:sr20InferMode(action);
+ let decision=null;try{if(typeof sr18ImprovisationDecision==='function')decision=sr18ImprovisationDecision(action);}catch(e){}
+ const skill=sr20SkillFor(mode,action,decision),bonus=sr20SkillBonus(ch,skill),dc=Math.max(5,Math.min(30,Number(options.dc||decision?.dc)||({travel:11,survival:12,exploration:12,social:13,tactical:13,campaign:12}[mode]||12)));
+ const noRoll=options.noRoll===true||/\b(camp|make camp|short rest|long rest|take a rest|sleep for the night)\b/i.test(action);
+ const adv=!!options.advantage&&!options.disadvantage,dis=!!options.disadvantage&&!options.advantage;
+ const die1=noRoll?null:(Number.isInteger(options.roll)?Math.max(1,Math.min(20,options.roll)):Math.floor(Math.random()*20)+1);
+ const die2=(adv||dis)&&!noRoll?(Number.isInteger(options.secondRoll)?Math.max(1,Math.min(20,options.secondRoll)):Math.floor(Math.random()*20)+1):null;
+ const die=noRoll?null:die2===null?die1:adv?Math.max(die1,die2):Math.min(die1,die2);
+ const fatiguePenalty=g.survival.fatigue>=4&&(mode==='travel'||mode==='survival')?-2:0,total=noRoll?null:die+bonus.total+fatiguePenalty,success=noRoll?true:total>=dc;
+ const target=sr20FindNPC(options.target,action);
+ const outcome={id:sr20Id(),day:sr20CampaignDay(),mode,action,skill,dc,die,die2,advantage:adv,disadvantage:dis,bonus,total,success,noRoll,narrative:sr20ActionNarrative(mode,success),target:target?.name||'',className:sr20ClassIdentity(ch).className,createdAt:new Date().toISOString()};
+ g.clock.actions++;g.clock.watch=Math.floor(g.clock.actions/6);
+ if(mode==='travel'){
+  const food=sr20ConsumeSupply(/\b(ration|food|trail meal|provision)\b/i),water=sr20ConsumeSupply(/\b(water|waterskin|canteen)\b/i);
+  if(!food){g.survival.foodShortages++;g.survival.fatigue=sr20Clamp(g.survival.fatigue+1,0,6);}
+  if(!water){g.survival.waterShortages++;g.survival.fatigue=sr20Clamp(g.survival.fatigue+1,0,6);}
+  g.survival.exposure++;try{if(typeof sr18AdvanceWorld==='function')sr18AdvanceWorld('travel',1);}catch(e){}
+ }else if(mode==='survival'&&/\b(camp|rest|sleep)\b/i.test(action)){
+  const meal=sr20ConsumeSupply(/\b(ration|food|trail meal|provision)\b/i);
+  g.survival.fatigue=sr20Clamp(g.survival.fatigue-(meal?2:1),0,6);g.survival.exposure=Math.max(0,g.survival.exposure-1);
+  try{if(typeof sr18AdvanceWorld==='function')sr18AdvanceWorld('long_rest',1);}catch(e){}
+ }else{try{if(typeof sr18AdvanceWorld==='function')sr18AdvanceWorld('action',0);}catch(e){}}
+ if(mode==='social'&&target){
+  target.sr20=target.sr20&&typeof target.sr20==='object'?target.sr20:{};
+  target.sr20.relationship=sr20Clamp((Number(target.sr20.relationship)||0)+(success?1:-1),-10,10);
+  target.sr20.lastPlayerExchange={day:outcome.day,action,success,skill};
+  if(!success&&target.sr19)target.sr19.suspicion=sr20Clamp((Number(target.sr19.suspicion)||0)+2,0,100);
+  g.social[target.name]={relationship:target.sr20.relationship,lastExchange:target.sr20.lastPlayerExchange};
+ }
+ if(mode==='tactical'){
+  const posture=/\b(cover|hide|defend|guard|protect)\b/i.test(action)?'cover':/\b(flank|circle|outmaneuver)\b/i.test(action)?'flank':/\b(retreat|withdraw|fall back)\b/i.test(action)?'withdraw':/\b(ambush|surprise|sneak)\b/i.test(action)?'ambush':'adaptive';
+  g.tactical={stance:posture,intent:action.slice(0,180),round:Number(state.combat?.round)||0,lastCheck:success?'opening':'contested'};
+  if(state.combat)state.combat.sr20Tactics={...g.tactical,checkTotal:total,dc};
+ }
+ if(mode==='exploration'&&success)sr20AddLead('A discovery connected to the party’s investigation: '+action.slice(0,150)+'.','exploration');
+ if(!success)sr20AddConsequence(outcome.narrative+' Attempt: '+action.slice(0,130)+'.',mode);
+ sr20AdvanceAdventure(action,mode,success);
+ if(typeof sr19ApplyActionBehavior==='function'){
+  const kind=mode==='social'?(/\b(lie|deceiv|bluff)\b/i.test(action)?'deception':/\b(threat|intimidat)\b/i.test(action)?'intimidation':'negotiation'):mode==='exploration'?'investigation':mode==='tactical'?'violence':mode==='travel'?'travel':'open-ended';
+  try{sr19ApplyActionBehavior({kind,text:action,target:target?.name||options.target||'',success});}catch(e){}
+ }
+ const rollText=noRoll?'No check required':'d20 '+die+(die2===null?'':' / '+die2)+' '+(bonus.total>=0?'+':'')+bonus.total+(fatiguePenalty?' '+fatiguePenalty:'')+' = '+total+' vs DC '+dc;
+ outcome.narrative+=' '+rollText+(bonus.edge?' · class edge +1':'')+'.';
+ g.lastOutcome=outcome;g.records.push(outcome);g.records=g.records.slice(-40);
+ if(!Array.isArray(state.log))state.log=[];state.log.push({day:outcome.day,msg:(success?'Success':'Complication')+' · '+mode+': '+action+' — '+rollText+'.'});if(state.log.length>300)state.log=state.log.slice(-300);
+ try{if(typeof save==='function')save();}catch(e){}
+ return outcome;
+}
+function sr20SetObjective(title,detail=''){
+ const g=sr20EnsureCampaign();if(!g)throw new Error('No active campaign.');const clean=String(title||'').trim().slice(0,100);if(!clean)throw new Error('Give the objective a title.');
+ const objective={id:sr20Id(),type:'player',title:clean,detail:String(detail||'').trim().slice(0,240),progress:0,goal:1,status:'active'};
+ g.objectives.unshift(objective);g.objectives=g.objectives.slice(0,20);if(typeof save==='function')save();return objective;
+}
+function sr20CloseItem(id,group,status='resolved'){
+ const g=sr20EnsureCampaign();if(!g)return false;const item=(g[group]||[]).find(x=>x.id===id);if(!item)return false;item.status=status;if(typeof save==='function')save();return true;
+}
+function sr20GameplayPanel(){
+ if(!state?.character||!state?.campaign)return '';
+ const g=sr20EnsureCampaign(),identity=sr20ClassIdentity(),sur=g.survival;
+ const leads=g.leads.slice(0,3).map(x=>'<div class="shop-item"><strong>'+esc(x.kind.replace(/-/g,' '))+'</strong><p>'+esc(x.text)+'</p><button class="btn small" type="button" data-sr20-close="'+esc(x.id)+'" data-sr20-group="leads">Resolve lead</button></div>').join('');
+ const goals=g.objectives.slice(0,3).map(x=>'<div class="shop-item"><strong>'+esc(x.title)+'</strong><p>'+esc(x.detail||'')+' · '+(x.progress||0)+'/'+(x.goal||1)+' · '+esc(x.status)+'</p></div>').join('');
+ const last=g.lastOutcome?'<div class="item-row"><strong>'+(g.lastOutcome.success?'Success':'Complication')+' · '+esc(g.lastOutcome.mode)+'</strong><span class="pill">'+esc(g.lastOutcome.skill)+(g.lastOutcome.total===null?'':' · '+g.lastOutcome.total+'/'+g.lastOutcome.dc)+'</span></div><p>'+esc(g.lastOutcome.narrative)+'</p>':'<p class="muted smalltext">Your choices, checks and consequences will appear here.</p>';
+ const combat=!!state.combat;
+ return '<section class="card" id="sr20-gameplay"><div class="eyebrow">V20 · Integrated gameplay</div><h3>What do you do?</h3><p class="muted smalltext">Describe an action in your own words. The Director classifies the approach, your character’s training shapes the check, and the world remembers the result.</p><div class="two-col"><div><strong>'+esc(state.character.name||'Adventurer')+'</strong><div class="tagline">'+esc(identity.className)+' · '+esc(identity.identity)+'</div></div><div><strong>Journey condition</strong><div class="tagline">Fatigue '+sur.fatigue+'/6 · Travel watches '+g.clock.watch+' · Shortages F'+sur.foodShortages+'/W'+sur.waterShortages+'</div></div></div><form id="sr20-action-form" style="margin-top:10px"><div class="field"><label for="sr20-action-mode">Approach</label><select id="sr20-action-mode"><option value="auto">Let the Director decide</option><option value="exploration">Explore / investigate</option><option value="social">Talk / negotiate</option><option value="travel">Travel / journey</option><option value="tactical"'+(combat?' selected':'')+'>Tactical action'+(combat?' · combat active':'')+'</option><option value="survival">Survival / camp / rest</option><option value="campaign">Other / creative action</option></select></div><div class="field"><label for="sr20-action-text">Your character’s action</label><textarea id="sr20-action-text" rows="3" maxlength="500" placeholder="Example: I study the muddy tracks beside the old road, looking for how many riders passed and where they went." required></textarea></div><div class="field"><label for="sr20-action-target">NPC / target (optional)</label><input id="sr20-action-target" maxlength="80" placeholder="Name of the person you approach"></div><div class="item-actions"><button class="btn primary" type="submit">Resolve action</button><button class="btn" type="button" data-sr20-quick="search">Search nearby</button><button class="btn" type="button" data-sr20-quick="talk">Talk to someone</button><button class="btn" type="button" data-sr20-quick="travel">Travel one watch</button><button class="btn" type="button" data-sr20-quick="rest">Make camp / rest</button></div></form><div class="card" style="margin-top:10px"><div class="eyebrow">Latest outcome</div>'+last+'</div>'+(combat?'<div class="card"><div class="eyebrow">Combat tactics</div><p>Current posture: <strong>'+esc(g.tactical.stance||'balanced')+'</strong>. A successful tactical approach is remembered for the encounter and included in Director context.</p></div>':'')+'<div class="two-col"><div><div class="eyebrow">Current objectives</div>'+(goals||'<p class="muted smalltext">No campaign objective has been set yet.</p>')+'</div><div><div class="eyebrow">Open discoveries</div>'+(leads||'<p class="muted smalltext">No unresolved leads yet.</p>')+'</div></div></section>';
+}
+app.addEventListener('submit',function(e){
+ const form=e.target;if(form?.id!=='sr20-action-form')return;e.preventDefault();e.stopPropagation();
+ try{const text=$('sr20-action-text')?.value||'',mode=$('sr20-action-mode')?.value||'auto',target=$('sr20-action-target')?.value||'';const out=sr20ResolvePlayerAction(text,{mode,target});render();toast((out.success?'Success':'Complication')+' · '+out.skill+' · '+(out.total===null?'no check':out.total+' vs DC '+out.dc));}catch(error){toast(error.message||'Could not resolve that action.');}
+},true);
+app.addEventListener('click',function(e){
+ const quick=e.target?.closest?.('[data-sr20-quick]');
+ if(quick){e.preventDefault();const modes={search:['exploration','I search the nearby area for useful clues, tracks or hidden routes.'],talk:['social','I approach a nearby person and try to learn what they know.'],travel:['travel','We travel onward for one watch, watching the route and conserving our supplies.'],rest:['survival','We make camp, eat if we have supplies, and rest.']};const pair=modes[quick.dataset.sr20Quick];if(pair){const mode=$('sr20-action-mode'),input=$('sr20-action-text');if(mode)mode.value=pair[0];if(input){input.value=pair[1];input.focus();}}return;}
+ const close=e.target?.closest?.('[data-sr20-close]');if(close){e.preventDefault();sr20CloseItem(close.dataset.sr20Close,close.dataset.sr20Group);render();toast('Journal entry updated.');}
+},true);
+const sr20AdventureBase=adventurePage;
+adventurePage=function(){return sr20GameplayPanel()+sr20AdventureBase();};
+const sr20ContextBase=srAIContext;
+srAIContext=function(){
+ const x=sr20ContextBase(),g=sr20EnsureCampaign();if(!g)return x;
+ x.campaign=x.campaign||{};x.campaign.gameplayV20={clock:g.clock,survival:g.survival,objectives:g.objectives.slice(-12),leads:g.leads.slice(0,12),consequences:g.consequences.slice(0,12),social:g.social,tactical:g.tactical,lastOutcome:g.lastOutcome||null};return x;
+};
+function sr20RunTests(){
+ const old=state,results=[],ok=(name,pass,detail='')=>results.push({name,pass:!!pass,detail});
+ try{
+  state={character:{name:'Test Adventurer',classId:'Rogue',level:5,stats:{STR:10,DEX:16,CON:12,INT:14,WIS:12,CHA:10},proficiencies:['Stealth','Investigation','Deception'],inventory:['Rations','Waterskin']},campaign:{day:2,region:'Ashen Vale',location:'Old Road',npcs:[{name:'Mara Venn',faction:'Free Traders'}],companions:[],sideQuests:[],mainQuest:{title:'Find the lost map',goal:'Recover the map from the ruined watchtower',progress:0,target:2}},log:[],combat:null,view:'adventure'};
+  const g=sr20EnsureCampaign();ok('Gameplay schema initializes without replacing V18 campaign fields',g.version===SR20_GAMEPLAY_VERSION&&state.campaign.mainQuest.title==='Find the lost map');
+  ok('Main campaign objective is exposed in the gameplay ledger',g.objectives.length===1&&g.objectives[0].type==='main');
+  ok('Character class identity supplies distinct capabilities',sr20ClassIdentity().edges.includes('stealth')&&sr20ClassIdentity().className==='rogue');
+  const edge=sr20SkillBonus(state.character,'Stealth');ok('Class identity and proficiency both affect a relevant skill check',edge.total===7&&edge.edge&&edge.trained);
+  ok('Free-form player intent is routed into exploration',sr20InferMode('I follow the muddy tracks and scout the ridge')==='exploration');
+  const leadAction=sr20ResolvePlayerAction('I inspect the broken stonework for concealed tracks',{mode:'exploration',roll:17});
+  ok('Exploration resolves a skill check and creates a persistent discovery',leadAction.success&&leadAction.skill==='Investigation'&&g.leads.length===1);
+  const social=sr20ResolvePlayerAction('I persuade Mara Venn to tell me who hired the guards',{mode:'social',target:'Mara Venn',roll:18});
+  ok('Social actions remember the NPC relationship and last exchange',social.success&&state.campaign.npcs[0].sr20.relationship===1&&g.social['Mara Venn'].relationship===1);
+  sr20ResolvePlayerAction('I take cover behind the stone pillar and watch the enemy',{mode:'tactical',roll:16});
+  state.combat={round:2,enemies:[]};sr20ResolvePlayerAction('I flank the nearest enemy',{mode:'tactical',roll:18});
+  ok('Tactical intent persists in the active encounter',state.combat.sr20Tactics.stance==='flank'&&state.combat.sr20Tactics.round===2);
+  const travel=sr20ResolvePlayerAction('We travel onward for one watch',{mode:'travel',roll:12});
+  ok('Travel consumes carried provisions and advances exposure state',travel.success&&g.survival.exposure===1&&state.character.inventory.length===0);
+  const fatigueBefore=g.survival.fatigue;sr20ResolvePlayerAction('We make camp and rest',{mode:'survival',noRoll:true});
+  ok('Camping/rest reduces fatigue without a fabricated check',g.survival.fatigue<fatigueBefore);
+  const failed=sr20ResolvePlayerAction('I threaten the captain without leverage',{mode:'social',target:'Mara Venn',roll:1,dc:25});
+  ok('Failed actions create visible consequences',!failed.success&&g.consequences.length>0);
+  ok('Action outcomes persist in campaign history and the game journal',g.records.length===7&&state.log.length===7);
+  const context=srAIContext();ok('Director context receives all seven gameplay system states',!!context.campaign.gameplayV20&&context.campaign.gameplayV20.objectives.length===1&&context.campaign.gameplayV20.leads.length>0&&context.campaign.gameplayV20.tactical.stance==='flank');
+  const panel=sr20GameplayPanel();ok('Adventure view exposes the integrated action form and contextual gameplay panels',panel.includes('sr20-action-form')&&panel.includes('Current objectives')&&panel.includes('Combat tactics'));
+ }catch(e){ok('V20 seven-system gameplay tests execute without runtime errors',false,String(e?.stack||e));}
+ state=old;return results;
+}
+globalThis.__SR20_TEST={version:SR20_GAMEPLAY_VERSION,ensure:sr20EnsureCampaign,classIdentity:sr20ClassIdentity,classEdge:sr20ClassEdge,inferMode:sr20InferMode,resolve:sr20ResolvePlayerAction,setObjective:sr20SetObjective,closeItem:sr20CloseItem,context:srAIContext,panel:sr20GameplayPanel,tests:sr20RunTests,get state(){return state;},set state(v){state=v;}};
