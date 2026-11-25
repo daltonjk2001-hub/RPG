@@ -303,9 +303,9 @@ function sr20RunTests(){
   sr20ResolvePlayerAction('We travel onward along the pass for one watch',{mode:'travel',roll:12,dc:10});
   const rationStack=state.character.inventory.find(x=>x.name==='Rations'),waterStack=state.character.inventory.find(x=>x.name==='Waterskin');
   ok('Travel decrements one unit from stacked food and water supplies',rationStack?.count===2&&waterStack?.count===1&&g.clock.watch===2);
-  g.survival.fatigue=2;const foodShortagesBefore=g.survival.foodShortages,waterShortagesBefore=g.survival.waterShortages;
+  g.survival.fatigue=2;const foodShortagesBefore=g.survival.foodShortages,waterShortagesBefore=g.survival.waterShortages,consequencesBeforeRest=g.consequences.length;
   const autoRest=sr20ResolvePlayerAction('We make camp and rest for the night',{mode:'auto',roll:20});
-  ok('Auto-routed rest reduces fatigue, advances two watches and avoids travel shortages',autoRest.mode==='survival'&&autoRest.noRoll&&g.survival.fatigue===0&&g.clock.watch===4&&g.survival.foodShortages===foodShortagesBefore&&g.survival.waterShortages===waterShortagesBefore&&state.character.inventory.find(x=>x.name==='Waterskin')?.count===1&&g.consequences.length===0);
+  ok('Auto-routed rest reduces fatigue, advances two watches and avoids travel shortages',autoRest.mode==='survival'&&autoRest.noRoll&&g.survival.fatigue===0&&g.clock.watch===4&&g.survival.foodShortages===foodShortagesBefore&&g.survival.waterShortages===waterShortagesBefore&&state.character.inventory.find(x=>x.name==='Waterskin')?.count===1&&g.consequences.length===consequencesBeforeRest);
   const forage=sr20ResolvePlayerAction('I forage for berries and collect water from the stream',{mode:'auto',roll:20,dc:10});
   const gainedRations=state.character.inventory.find(x=>x?.name==='Rations'),gainedWater=state.character.inventory.find(x=>x?.name==='Waterskin');
   ok('Successful survival checks add proper stackable inventory records',forage.success&&gainedRations?.type==='supply'&&gainedRations.count===2&&gainedWater?.type==='supply'&&gainedWater.count===2);
