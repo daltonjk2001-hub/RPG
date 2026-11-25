@@ -102,7 +102,7 @@ try{
  assert('Attack-record adapter preserves natural-20 criticals regardless of AC',liveCrit.success&&liveCrit.critical&&liveCrit.total===-50);
  assert('Attack-record adapter preserves natural-1 misses despite a high modified total',!liveMiss.success&&liveMiss.automaticMiss);
  assert('Attack-record adapter resolves ordinary hits from modified total against AC',liveNormal.success&&!liveNormal.critical);
- const liveRuntimeCalls=(html.match(/sr25AttackSuccess\\(/g)||[]).length;
+ const liveRuntimeCalls=html.split('sr25AttackSuccess(').length-1;
  assert('Build routes all thirteen retained player, enemy, spell and opportunity attack comparisons through V25',liveRuntimeCalls>=14,`observed calls=${liveRuntimeCalls}`);
  assert('No retained V17 attack-vs-AC comparison bypasses the V25 attack adapter',[
   'roll.r===20||(roll.r!==1&&roll.total>=ac)',
