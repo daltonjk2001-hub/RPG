@@ -3,6 +3,7 @@ name: Solo Realms full regression suite
 on:
   push:
     branches:
+      - main
       - hardening/player-stage-gameplay
   pull_request:
     branches:
