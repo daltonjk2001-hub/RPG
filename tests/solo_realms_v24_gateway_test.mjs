@@ -45,13 +45,6 @@ try {
   assert('Adjudication is normalized to explicit typed contract',
     JSON.parse(body.output).skill === 'Persuasion' && JSON.parse(body.output).dc === 15);
 
-  response = await call('/api/director', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ kind: 'test', input: 'Connection probe' })
-  });
-  body = await response.json();
-  assert('Legacy test task name maps to the bounded connection-test role',
-    response.status === 200 && JSON.parse(body.output).reply.includes('ready'));
   assert('Worker selects server-side OpenAI Responses API', upstream.url === 'https://api.openai.com/v1/responses');
   assert('Worker never forwards API key in request body', !JSON.stringify(upstream.body).includes('test-secret'));
   assert('OpenAI Responses requests are non-stored', upstream.body.store === false);
@@ -62,6 +55,14 @@ try {
     upstream.body.input[1].content.includes('I persuade the gate guard'));
   assert('Client cannot choose a different provider or model',
     upstream.body.model === 'gpt-6.2-sol' && upstream.body.input[0].content.includes('mechanical state'));
+
+  response = await call('/api/director', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ kind: 'test', input: 'Connection probe' })
+  });
+  body = await response.json();
+  assert('Legacy test task name maps to the bounded connection-test role',
+    response.status === 200 && JSON.parse(body.output).reply.includes('ready'));
 
   response = await call('/api/director', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
