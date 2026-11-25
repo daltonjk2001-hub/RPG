@@ -214,7 +214,7 @@ function sr20ResolvePlayerAction(text,options={}){
 function sr20SetObjective(title,detail=''){
  const g=sr20EnsureCampaign();if(!g)throw new Error('No active campaign.');const clean=String(title||'').trim().slice(0,100);if(!clean)throw new Error('Give the objective a title.');
  const objective={id:sr20Id(),type:'player',title:clean,detail:String(detail||'').trim().slice(0,240),progress:0,goal:1,status:'active'};
- g.objectives.unshift(objective);g.objectives=g.objectives.slice(0,20);if(typeof save==='function')save();return objective;
+ g.objectives.unshift(objective);while(g.objectives.length>20){let completedIndex=-1;for(let i=g.objectives.length-1;i>=0;i--){if(g.objectives[i]?.status==='completed'){completedIndex=i;break;}}if(completedIndex<0)break;g.objectives.splice(completedIndex,1);}if(typeof save==='function')save();return objective;
 }
 function sr20CloseItem(id,group,status='resolved'){
  const g=sr20EnsureCampaign();if(!g)return false;const item=(g[group]||[]).find(x=>x.id===id);if(!item)return false;item.status=status;if(typeof save==='function')save();return true;
@@ -223,7 +223,8 @@ function sr20GameplayPanel(){
  if(!state?.character||!state?.campaign)return '';
  const g=sr20EnsureCampaign(),identity=sr20ClassIdentity(),sur=g.survival;
  const leads=g.leads.filter(x=>x.status==='unresolved').slice(0,3).map(x=>'<div class="shop-item"><strong>'+esc(x.kind.replace(/-/g,' '))+'</strong><p>'+esc(x.text)+'</p><button class="btn small" type="button" data-sr20-close="'+esc(x.id)+'" data-sr20-group="leads">Resolve lead</button></div>').join('');
- const goals=g.objectives.slice(0,3).map(x=>'<div class="shop-item"><strong>'+esc(x.title)+'</strong><p>'+esc(x.detail||'')+' · '+(x.progress||0)+'/'+(x.goal||1)+' · '+esc(x.status)+'</p></div>').join('');
+ const visibleObjectives=g.objectives.filter(x=>x.status==='active').concat(g.objectives.filter(x=>x.status==='completed').slice(0,3));
+ const goals=visibleObjectives.map(x=>'<div class="shop-item"><strong>'+esc(x.title)+'</strong><p>'+esc(x.detail||'')+' · '+(x.progress||0)+'/'+(x.goal||1)+' · '+esc(x.status)+'</p></div>').join('');
  const last=g.lastOutcome?'<div class="item-row"><strong>'+(g.lastOutcome.success?'Success':'Complication')+' · '+esc(g.lastOutcome.mode)+'</strong><span class="pill">'+esc(g.lastOutcome.skill)+(g.lastOutcome.total===null?'':' · '+g.lastOutcome.total+'/'+g.lastOutcome.dc)+'</span></div><p>'+esc(g.lastOutcome.narrative)+'</p><p class="muted smalltext">Modifier breakdown: ability '+g.lastOutcome.bonus.ability+' · proficiency +'+g.lastOutcome.bonus.proficiency+' · Expertise +'+g.lastOutcome.bonus.expertiseBonus+' · class edge +'+g.lastOutcome.bonus.classEdge+'</p>':'<p class="muted smalltext">Your choices, checks and consequences will appear here.</p>';
  const onboarding=!g.onboarding.completed?'<div class="card"><strong>Your first adventure</strong><ol><li>Describe what your character tries to do.</li><li>Choose an approach, or let the Director decide.</li><li>Review the roll, modifier breakdown and consequences.</li></ol><p class="muted smalltext">There is no single correct way to approach a scene. Describe your intent in your own words.</p><button class="btn small" type="button" data-sr20-onboarding-dismiss>Got it</button></div>':'';
  const legacy='<div class="tagline">Legacy renown '+g.legacy.renown+' · '+g.legacy.completedObjectives+' objectives completed'+(g.legacy.titles.length?' · Titles: '+g.legacy.titles.map(esc).join(', '):'')+'</div>';
@@ -320,6 +321,7 @@ function sr20RunTests(){
   ok('Action outcomes persist in campaign history and the game journal',g.records.length===11&&state.log.length>=g.records.length);
   const context=srAIContext();ok('Director context receives all seven gameplay system states',!!context.campaign.gameplayV20&&context.campaign.gameplayV20.objectives.length===1&&context.campaign.gameplayV20.leads.length>0&&context.campaign.gameplayV20.tactical.stance==='cover');
   const customObjective=sr20SetObjective('Locate the hidden cistern','Search the ruined watchtower for a concealed water source.');
+  const objectivePanel=sr20GameplayPanel();
   const legacyCompletion=sr20ResolvePlayerAction('I locate the hidden cistern',{mode:'campaign',roll:20,dc:5});
   ok('Completing an objective grants 10 legacy renown and the first title',legacyCompletion.success&&customObjective.status==='completed'&&customObjective.legacyAwarded&&g.legacy.completedObjectives===1&&g.legacy.renown===10&&g.legacy.titles.includes('Oathkeeper'));
   sr20AdvanceAdventure('I locate the hidden cistern','campaign',true);
@@ -327,6 +329,7 @@ function sr20RunTests(){
   const legacyMilestones=['amber lantern','cobalt compass','crimson banner','ivory key','jade crown','ochre map','violet standard','silver bell','bronze mirror','golden chalice','scarlet rose','azure tower','verdant blade','obsidian gate','pearl crown','copper gryphon','indigo flame','emerald bridge','sapphire star'];
   for(const marker of legacyMilestones){const title='Complete '+marker;sr20SetObjective(title,'Complete the '+marker+' legacy milestone.');sr20AdvanceAdventure('I complete '+marker,'campaign',true);}
   ok('Legacy titles unlock at 1, 5, 10 and 20 completed objectives',g.legacy.completedObjectives===20&&g.legacy.renown===200&&['Oathkeeper','Seasoned Hero','Worldshaper','Legend of the Realms'].every(t=>g.legacy.titles.includes(t))&&g.legacy.milestones.length===20);
+  ok('Long campaigns retain unfinished objectives ahead of completed history',g.objectives.some(o=>o.type==='main'&&o.status==='active')&&sr20GameplayPanel().includes('Find the lost map'));
   const chosenCheck=sr20ResolvePlayerAction('I analyze the arcane seal with old lore',{mode:'campaign',skill:'Arcana',challenge:'difficult',roll:20,dc:12});
   ok('Explicit skill and challenge selections reach the action resolver',chosenCheck.skill==='Arcana'&&chosenCheck.challenge==='difficult'&&chosenCheck.dc===17&&chosenCheck.success);
   g.archive=Array.from({length:1000},(_,i)=>({id:'old-'+i,day:1,mode:'campaign',action:'old archive action '+i,success:true,skill:'Investigation',total:15,dc:12,createdAt:'2026-01-01T00:00:00.000Z'}));
@@ -334,7 +337,7 @@ function sr20RunTests(){
   sr20ResolvePlayerAction('I inspect the ancient stone arch',{mode:'campaign',roll:20,dc:5});
   const archiveContext=srAIContext().campaign.gameplayV20.archive;
   ok('Long-session history keeps 40 recent records and caps the archive at 1,000',g.records.length===40&&g.records[0].id==='live-1'&&g.archive.length===1000&&g.archive[0].id==='old-1'&&g.archive[999].id==='live-0'&&archiveContext.length===20&&archiveContext[19].id==='live-0');
-  const panel=sr20GameplayPanel();ok('Players can add persistent campaign objectives from the Adventure panel',customObjective.title==='Locate the hidden cistern'&&panel.includes('sr20-objective-form')&&panel.includes('Locate the hidden cistern'));
+  const panel=sr20GameplayPanel();ok('Players can add persistent campaign objectives from the Adventure panel',customObjective.title==='Locate the hidden cistern'&&objectivePanel.includes('sr20-objective-form')&&objectivePanel.includes('Locate the hidden cistern'));
   ok('Adventure panel exposes challenge, skill, roll-state and legacy progression controls',panel.includes('sr20-challenge')&&panel.includes('sr20-skill')&&panel.includes('sr20-roll-state')&&panel.includes('Legacy renown'));
   ok('Beginner onboarding explains the first action loop and can be dismissed',panel.includes('Your first adventure')&&panel.includes('data-sr20-onboarding-dismiss'));
   ok('Adventure view exposes the integrated action composer and gameplay panels',panel.includes('sr20-action-form')&&panel.includes('Current objectives')&&panel.includes('Combat tactics'));
