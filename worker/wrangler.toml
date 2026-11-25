@@ -1,0 +1,18 @@
+name = "solo-realms-chronicler"
+main = "src/index.mjs"
+compatibility_date = "2026-11-25"
+
+[vars]
+AI_PROVIDER = "openai"
+AI_MODEL = "gpt-6.2-sol"
+ALLOWED_ORIGINS = "https://daltonjk2001-hub.github.io"
+DM_DISPLAY_NAME = "The Chronicler"
+DM_CUSTOM_DIRECTIVES = "Make every session feel like a continuous tabletop campaign. Keep a balanced mix of discovery, social play, tactical danger, travel, and consequential choices. Respect player agency and campaign continuity."
+
+[[durable_objects.bindings]]
+name = "RATE_LIMITER"
+class_name = "RateLimiter"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RateLimiter"]

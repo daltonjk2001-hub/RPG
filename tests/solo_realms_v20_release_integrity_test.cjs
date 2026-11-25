@@ -40,6 +40,10 @@ pass('V22 bounded save guard and permanent legacy ledger are assembled into ever
   mainScripts[0].includes('const SR22SaveGuard = (() => {') &&
   mainScripts[0].includes('const SR22LegacyLedger = (() => {') &&
   pwaScripts[0] === mainScripts[0] && docsScripts[0] === mainScripts[0]);
+pass('V24 custom AI Dungeon Master is assembled into standalone, PWA and Pages runtimes',
+  mainScripts[0].includes("const SR24_VERSION = '24.0.0';") &&
+  pwaScripts[0].includes("const SR24_VERSION = '24.0.0';") &&
+  docsScripts[0].includes("const SR24_VERSION = '24.0.0';"));
 pass('V21 player-stage hardening is assembled into standalone, PWA and Pages runtimes',
   mainScripts[0].includes("const SR21_VERSION='21.0.0';") && pwaScripts[0] === mainScripts[0] && docsScripts[0] === mainScripts[0]);
 for (const [label, marker] of [
@@ -72,7 +76,7 @@ for (const relative of pwaFiles) {
 }
 
 const serviceWorker = fs.readFileSync(path.join(pwaDir, 'sw.js'), 'utf8');
-pass('Service worker cache namespace is content-versioned for the V23 Director-first build', /^const CACHE_NAME = 'solo-realms-systems-v23-[0-9a-f]{16}';$/m.test(serviceWorker));
+pass('Service worker cache namespace is content-versioned for the V23 Director-first build', /^const CACHE_NAME = 'solo-realms-systems-v24-[0-9a-f]{16}';$/m.test(serviceWorker));
 for (const [name, dimension] of [['icon-192.png', 192], ['icon-512.png', 512]]) {
   const icon = fs.readFileSync(path.join(pwaDir, 'icons', name));
   pass(name + ' has the expected square PNG dimensions',
