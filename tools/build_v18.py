@@ -114,8 +114,8 @@ def build_runtime() -> str:
     required_contracts = {
         "six four-hour watches per calendar day": "const SR18_WATCHES_PER_DAY=6;",
         "V21 four-hour watch integration": "const SR21_WORLD_CLOCK_CONTRACT='four-hour-watches-v1';",
-        "const SR22SaveGuard = (() => {",
-        "const SR22LegacyLedger = (() => {",
+        "namespaced save validation module": "const SR22SaveGuard = (() => {",
+        "namespaced legacy reward ledger": "const SR22LegacyLedger = (() => {",
     }
     missing = [label for label, marker in required_contracts.items() if marker not in combined]
     if missing:
@@ -124,7 +124,7 @@ def build_runtime() -> str:
 
 
 def main() -> None:
-    for path in (SRC, LAYER, STUDIO, BEHAVIOR, GAMEPLAY, SCREEN_LAYOUT, PLAYTEST_HARDENING, THEME_CSS, BASE_HTML, MANIFEST, SERVICE_WORKER):
+    for path in (SRC, SAVE_GUARD, LEGACY_LEDGER, LAYER, STUDIO, BEHAVIOR, GAMEPLAY, SCREEN_LAYOUT, PLAYTEST_HARDENING, THEME_CSS, BASE_HTML, MANIFEST, SERVICE_WORKER):
         require_file(path)
 
     combined = build_runtime()
