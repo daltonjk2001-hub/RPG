@@ -262,8 +262,11 @@ function sr20RunTests(){
   const g=sr20EnsureCampaign();ok('Gameplay schema initializes without replacing V18 campaign fields',g.version===SR20_GAMEPLAY_VERSION&&state.campaign.mainQuest.title==='Find the lost map');
   ok('Talking about a guard is classified as social, not tactical',sr20InferMode('I talk to the guard about the missing cart')==='social');
   ok('Asking a guard for directions remains a social action',sr20InferMode('I ask the guard where the road leads')==='social');
+  ok('When social and tactical intent coexist, the first expressed intent wins',sr20InferMode('I attack first, then speak to the guard')==='tactical'&&sr20InferMode('I speak to the guard, then attack')==='social');
   const expertBonus=sr20SkillBonus({level:5,classId:'Wizard',stats:{INT:14},proficiencies:['Investigation'],expertise:['Investigation']},'Investigation');
   ok('Expertise doubles proficiency in the V20 check calculation',expertBonus.expertise&&expertBonus.total===9);
+  const expertiseOnlyBonus=sr20SkillBonus({level:5,classId:'Wizard',stats:{INT:14},expertise:['Investigation']},'Investigation');
+  ok('Expertise alone also grants the underlying proficiency bonus',expertiseOnlyBonus.expertise&&expertiseOnlyBonus.trained&&expertiseOnlyBonus.total===9);
   ok('Routine through legendary challenge tiers apply predictable DC offsets',sr20ChallengeDC(12,'routine')===7&&sr20ChallengeDC(12,'standard')===12&&sr20ChallengeDC(12,'difficult')===17&&sr20ChallengeDC(12,'expert')===22&&sr20ChallengeDC(12,'legendary')===27);
   ok('Objective matching requires meaningful overlap instead of one incidental word',!sr20TokenMatch('I rest near the old watchtower','Find the lost map')&&sr20TokenMatch('I recover the lost map','Find the lost map'));
   ok('Main campaign objective is exposed in the gameplay ledger',g.objectives.length===1&&g.objectives[0].type==='main');
@@ -304,8 +307,9 @@ function sr20RunTests(){
   const rationStack=state.character.inventory.find(x=>x.name==='Rations'),waterStack=state.character.inventory.find(x=>x.name==='Waterskin');
   ok('Travel decrements one unit from stacked food and water supplies',rationStack?.count===2&&waterStack?.count===1&&g.clock.watch===2);
   g.survival.fatigue=2;const foodShortagesBefore=g.survival.foodShortages,waterShortagesBefore=g.survival.waterShortages,consequencesBeforeRest=g.consequences.length;
+  const objectiveProgressBeforeRest=(g.objectives.find(o=>o.status==='active')||{}).progress,momentumBeforeRest=g.momentum;
   const autoRest=sr20ResolvePlayerAction('We make camp and rest for the night',{mode:'auto',roll:20});
-  ok('Auto-routed rest reduces fatigue, advances two watches and avoids travel shortages',autoRest.mode==='survival'&&autoRest.noRoll&&g.survival.fatigue===0&&g.clock.watch===4&&g.survival.foodShortages===foodShortagesBefore&&g.survival.waterShortages===waterShortagesBefore&&state.character.inventory.find(x=>x.name==='Waterskin')?.count===1&&g.consequences.length===consequencesBeforeRest);
+  ok('Auto-routed rest reduces fatigue, advances two watches and avoids travel shortages',autoRest.mode==='survival'&&autoRest.noRoll&&g.survival.fatigue===0&&g.clock.watch===4&&g.survival.foodShortages===foodShortagesBefore&&g.survival.waterShortages===waterShortagesBefore&&state.character.inventory.find(x=>x.name==='Waterskin')?.count===1&&g.consequences.length===consequencesBeforeRest&&g.momentum===momentumBeforeRest&&(g.objectives.find(o=>o.status==='active')||{}).progress===objectiveProgressBeforeRest);
   const forage=sr20ResolvePlayerAction('I forage for berries and collect water from the stream',{mode:'auto',roll:20,dc:10});
   const gainedRations=state.character.inventory.find(x=>x?.name==='Rations'),gainedWater=state.character.inventory.find(x=>x?.name==='Waterskin');
   ok('Successful survival checks add proper stackable inventory records',forage.success&&gainedRations?.type==='supply'&&gainedRations.count===2&&gainedWater?.type==='supply'&&gainedWater.count===2);
@@ -316,12 +320,26 @@ function sr20RunTests(){
   ok('Action outcomes persist in campaign history and the game journal',g.records.length===11&&state.log.length>=g.records.length);
   const context=srAIContext();ok('Director context receives all seven gameplay system states',!!context.campaign.gameplayV20&&context.campaign.gameplayV20.objectives.length===1&&context.campaign.gameplayV20.leads.length>0&&context.campaign.gameplayV20.tactical.stance==='cover');
   const customObjective=sr20SetObjective('Locate the hidden cistern','Search the ruined watchtower for a concealed water source.');
+  const legacyCompletion=sr20ResolvePlayerAction('I locate the hidden cistern',{mode:'campaign',roll:20,dc:5});
+  ok('Completing an objective grants 10 legacy renown and the first title',legacyCompletion.success&&customObjective.status==='completed'&&customObjective.legacyAwarded&&g.legacy.completedObjectives===1&&g.legacy.renown===10&&g.legacy.titles.includes('Oathkeeper'));
+  sr20AdvanceAdventure('I locate the hidden cistern','campaign',true);
+  ok('A completed objective cannot award legacy renown more than once',g.legacy.completedObjectives===1&&g.legacy.renown===10&&g.legacy.milestones.length===1);
+  const legacyMilestones=['amber lantern','cobalt compass','crimson banner','ivory key','jade crown','ochre map','violet standard','silver bell','bronze mirror','golden chalice','scarlet rose','azure tower','verdant blade','obsidian gate','pearl crown','copper gryphon','indigo flame','emerald bridge','sapphire star'];
+  for(const marker of legacyMilestones){const title='Complete '+marker;sr20SetObjective(title,'Complete the '+marker+' legacy milestone.');sr20AdvanceAdventure('I complete '+marker,'campaign',true);}
+  ok('Legacy titles unlock at 1, 5, 10 and 20 completed objectives',g.legacy.completedObjectives===20&&g.legacy.renown===200&&['Oathkeeper','Seasoned Hero','Worldshaper','Legend of the Realms'].every(t=>g.legacy.titles.includes(t))&&g.legacy.milestones.length===20);
+  const chosenCheck=sr20ResolvePlayerAction('I analyze the arcane seal with old lore',{mode:'campaign',skill:'Arcana',challenge:'difficult',roll:20,dc:12});
+  ok('Explicit skill and challenge selections reach the action resolver',chosenCheck.skill==='Arcana'&&chosenCheck.challenge==='difficult'&&chosenCheck.dc===17&&chosenCheck.success);
+  g.archive=Array.from({length:1000},(_,i)=>({id:'old-'+i,day:1,mode:'campaign',action:'old archive action '+i,success:true,skill:'Investigation',total:15,dc:12,createdAt:'2026-01-01T00:00:00.000Z'}));
+  g.records=Array.from({length:40},(_,i)=>({id:'live-'+i,day:1,mode:'campaign',action:'live event '+i,success:true,skill:'Investigation',total:15,dc:12,createdAt:'2026-01-01T00:00:00.000Z'}));
+  sr20ResolvePlayerAction('I inspect the ancient stone arch',{mode:'campaign',roll:20,dc:5});
+  const archiveContext=srAIContext().campaign.gameplayV20.archive;
+  ok('Long-session history keeps 40 recent records and caps the archive at 1,000',g.records.length===40&&g.records[0].id==='live-1'&&g.archive.length===1000&&g.archive[0].id==='old-1'&&g.archive[999].id==='live-0'&&archiveContext.length===20&&archiveContext[19].id==='live-0');
   const panel=sr20GameplayPanel();ok('Players can add persistent campaign objectives from the Adventure panel',customObjective.title==='Locate the hidden cistern'&&panel.includes('sr20-objective-form')&&panel.includes('Locate the hidden cistern'));
   ok('Adventure panel exposes challenge, skill, roll-state and legacy progression controls',panel.includes('sr20-challenge')&&panel.includes('sr20-skill')&&panel.includes('sr20-roll-state')&&panel.includes('Legacy renown'));
   ok('Beginner onboarding explains the first action loop and can be dismissed',panel.includes('Your first adventure')&&panel.includes('data-sr20-onboarding-dismiss'));
   ok('Adventure view exposes the integrated action composer and gameplay panels',panel.includes('sr20-action-form')&&panel.includes('Current objectives')&&panel.includes('Combat tactics'));
   const snapshot=sr18Snapshot('V20 persistence regression'),validated=sr18ValidateSave(JSON.parse(JSON.stringify(snapshot)));
-  ok('V20 gameplay state survives the existing Save Center snapshot and validation path',validated.ok&&validated.state.campaign.sr20.version===SR20_GAMEPLAY_VERSION&&validated.state.campaign.sr20.records.length===g.records.length&&validated.state.campaign.sr20.objectives.some(x=>x.title==='Locate the hidden cistern'));
+  ok('V20 gameplay state survives the existing Save Center snapshot and validation path',validated.ok&&validated.state.campaign.sr20.version===SR20_GAMEPLAY_VERSION&&validated.state.campaign.sr20.records.length===g.records.length&&validated.state.campaign.sr20.objectives.some(x=>x.title==='Locate the hidden cistern')&&validated.state.campaign.sr20.legacy.renown===g.legacy.renown&&validated.state.campaign.sr20.legacy.completedObjectives===20&&validated.state.campaign.sr20.archive.length===1000);
  }catch(e){ok('V20 seven-system gameplay tests execute without runtime errors',false,String(e?.stack||e));}
  state=old;return results;
 }
