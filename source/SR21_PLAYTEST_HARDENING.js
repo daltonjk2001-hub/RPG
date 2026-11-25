@@ -123,7 +123,7 @@ function sr21FindObjective(action,options,g){
  return g.objectives.find(o=>o.status==='active'&&relevant(o))||null;
 }
 function sr21AdvanceAdventure(text,mode,success){
- const c=state?.campaign,g=sr21EnsureCampaign();if(!c||!g)return;
+ const c=state?.campaign,g=sr20EnsureCampaign(),v=sr21EnsureCampaign();if(!c||!g||!v)return;
  const options=SR21_CURRENT_OPTIONS||{};
  if(!success){
   if(!(mode==='survival'&&/\b(rest|camp|sleep)\b/i.test(text)))sr20AddConsequence('The failed approach leaves an unresolved complication: '+String(text||'the party’s plan').slice(0,140)+'.',mode);
