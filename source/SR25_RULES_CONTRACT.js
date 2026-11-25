@@ -362,13 +362,17 @@ if (typeof sr21EnsureCampaign === 'function') {
 }
 if (typeof sr21SkillBonus === 'function') {
   sr21SkillBonus = function(character, skill) {
-    const profile = sr25EnsureCampaignRules(state?.campaign);
+    const profile = state?.campaign
+      ? sr25EnsureCampaignRules(state.campaign)
+      : sr25ProfileDefaults('dnd-2024-srd-5.2.1');
     return sr25SkillBonus(character, skill, { houseRules: profile.houseRules });
   };
 }
 if (typeof sr20SkillBonus === 'function') {
   sr20SkillBonus = function(character, skill) {
-    const profile = sr25EnsureCampaignRules(state?.campaign);
+    const profile = state?.campaign
+      ? sr25EnsureCampaignRules(state.campaign)
+      : sr25ProfileDefaults('dnd-2024-srd-5.2.1');
     return sr25SkillBonus(character, skill, { houseRules: profile.houseRules });
   };
 }
