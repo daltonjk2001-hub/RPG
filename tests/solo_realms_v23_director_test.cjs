@@ -172,6 +172,7 @@ try {
   const skillIndex = panel.indexOf('id="sr21-skill"');
   const actionIndex = panel.indexOf('id="sr20-action-text"');
   assert('Player-facing action panel uses an ask-the-Director submit action', panel.includes('>Ask the Director</button>'));
+  assert('Beginner onboarding no longer asks players to choose their own approach', !panel.includes('Choose an approach, or let the Director decide.') && panel.includes('Tell the Director what you want to do.'));
   assert('Manual mechanics controls are preserved inside collapsed advanced settings', detailsStart >= 0 && detailsEnd > detailsStart && modeIndex > detailsStart && modeIndex < detailsEnd && skillIndex > detailsStart && skillIndex < detailsEnd);
   assert('The free-form action description is the primary visible interaction', actionIndex > detailsEnd && panel.includes('Tell the Director what your character is trying to do.'));
   assert('Legacy manual controls are not duplicated in the primary action form', (panel.match(/id="sr21-skill"/g) || []).length === 1 && (panel.match(/id="sr20-action-mode"/g) || []).length === 1);
