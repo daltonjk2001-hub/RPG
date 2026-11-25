@@ -132,7 +132,8 @@ try{
  assert('Enhanced profile applies the legacy +2 AC cover benefit',T20.coverActive()===true);
 
  assert('Custom DC presets are disabled under the 2024 core profile',T25.explicitDifficulty('routine')===null&&T25.challengeDC(12,'hard')===12);
- assert('Custom DC presets remain available under the Enhanced profile',T25.explicitDifficulty('routine')===8&&T25.challengeDC(12,'hard')===17);
+ assert('Core profile fallback uses typical DC guidance for standard, risky and simple actions',T25.situationDC('I inspect the watchtower','exploration',null)===15&&T25.situationDC('I cross the collapsing bridge while pursued','exploration',null)===20&&T25.situationDC('I open the obvious unlocked door','exploration',null)===10);
+ assert('Custom DC presets remain available under the Enhanced profile',T25.explicitDifficulty('routine')===8&&T25.challengeDC(12,'hard')===17&&T25.situationDC('I inspect the watchtower','exploration',null)===12);
  T25.setProfile(T21.state.campaign,'dnd-2024-srd-5.2.1');
  assert('Core-profile Adventure UI presents the Director DC option without custom preset values',T25.difficultyOptions().includes('2024 typical DC')&&!T25.difficultyOptions().includes('Routine'));
  T25.setProfile(T21.state.campaign,'solo-realms-v24-enhanced');
