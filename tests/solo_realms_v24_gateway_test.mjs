@@ -54,7 +54,7 @@ try {
     upstream.body.input[1].role === 'user' &&
     upstream.body.input[1].content.includes('I persuade the gate guard'));
   assert('Client cannot choose a different provider or model',
-    upstream.body.model === 'gpt-6.2-sol' && upstream.body.input[0].content.includes('mechanical state'));
+    upstream.body.model === 'gpt-6.2-sol' && upstream.body.input[0].content.includes('MECHANICAL AUTHORITY') && !('model' in upstream.body.input[1]));
 
   response = await call('/api/director', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
