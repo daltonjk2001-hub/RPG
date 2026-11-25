@@ -4,7 +4,7 @@
 
 V26 routes the 13 active V17 attack-vs-AC comparisons that consume the shared `sr11RollAttack` result into the V25 typed attack resolver. The build keeps the legacy roll producer responsible for choosing the d20 result and applying existing attack modifiers, advantage/disadvantage, and feature bonuses. V25 now owns the final attack success / natural-1 miss / natural-20 critical decision against the AC already calculated by the caller.
 
-The conversion is performed by the reproducible builder after it removes the V17 IIFE wrapper. Each legacy comparison has an exact expected occurrence count; the build fails closed if the call-site inventory changes without an audit update. The V18 `sr18ResolveMonsterAction` attack path also now consumes the same typed attack-record result directly, with no duplicate legacy hit fallback.
+The conversion is performed by the reproducible builder after it removes the V17 IIFE wrapper. Each legacy comparison has an exact expected occurrence count; the build fails closed if the call-site inventory changes without an audit update. The V18 `sr18ResolveMonsterAction` attack path also now consumes the same typed attack-record result directly, with no duplicate legacy hit fallback. A second exact-count builder migration covers ten direct-die companion/class-feature attacks that previously compared their precomputed total to AC without natural-1/20 handling.
 
 ## Migrated active call sites
 
@@ -24,6 +24,22 @@ The conversion is performed by the reproducible builder after it removes the V17
 | `sr14PledgeButtonHtml` | Monster Multiattack against a player | Hero AC, buffs and cover | Uses typed attack result |
 
 The builder migrates 13 comparisons across five exact legacy expression shapes. The V25 adapter derives the attack modifier from the legacy roll record's `total - r`, so the selected d20 result and caller-applied bonuses remain intact. The caller continues to own damage, critical extra dice, resources, target selection, and state mutation.
+
+## Direct-total companion and class-feature call sites
+
+| Owner | Attack path | V26 change |
+|---|---|---|
+| `enemyTurn` | Companion attacks during the legacy enemy phase | Companion total is decomposed into d20 plus its recorded attack modifier and passed to V25 |
+| `sr3EnemyStrike` | Companion attacks in the early combat loop | Uses the typed total adapter |
+| `sr3DeathSave` | Companion attacks while the hero is downed | Uses the typed total adapter |
+| `sr4EnemyPhase` | Ally attacks during the enemy phase | Uses the typed total adapter |
+| `sr5TacticalAction` | Companion attack including a queued bonus | Uses the typed total adapter with the queued bonus preserved |
+| `sr6PlayerAttack` | Companion follow-up attacks after player weapon actions | Uses the typed total adapter |
+| `sr7EnemyTurn` | Non-temporary companion attacks | Uses the typed total adapter; missing bonus data fails closed |
+| `sr9EnemyPhase` | Companion attacks and Monk Focus strikes | Uses the typed total adapter |
+| `sr10CompanionTurn` | Explicit companion command | Uses the typed total adapter |
+
+The ten direct-total comparisons are guarded by exact expression counts in the build. Natural 20 now succeeds as an attack and natural 1 misses even when the modified total would otherwise meet AC. Existing damage rolls and action sequencing remain in their owner functions; companion critical bonus-damage dice are still an open rules item.
 
 ## Regression coverage
 
