@@ -243,16 +243,18 @@ function sr21ResolvePlayerAction(text,options={}){
  }
  const rollText=noRoll?'No check required':'d20 '+die+' '+(check.bonus>=0?'+':'')+check.bonus+(fatiguePenalty?' '+fatiguePenalty:'')+' = '+total+' vs DC '+dc;
  outcome.narrative+=' '+rollText+(outcome.bonus?.edge?' · class edge +1':'')+'.';
- g.lastOutcome=outcome;g.records.push(outcome);g.records=g.records.slice(-40);
+ g.lastOutcome=outcome;g.records.push(outcome);
+ while(g.records.length>40){const archived=g.records.shift();g.archive.unshift(archived);}
+ g.archive=g.archive.slice(0,1000);
  if(!Array.isArray(state.log))state.log=[];state.log.push({day:outcome.day,msg:(success?'Success':'Complication')+' · '+mode+': '+action+' — '+rollText+'.'});if(state.log.length>300)state.log=state.log.slice(-300);
  sr21RecordTutorial(mode);try{save();}catch(e){}return outcome;
 }
-function sr21SetObjective(title,detail='',goal=2){
+function sr21SetObjective(title,detail='',goal=1){
  const v=sr21EnsureCampaign(),g=sr20EnsureCampaign();if(!v||!g)throw new Error('No active campaign.');
  const clean=String(title||'').trim().slice(0,100);if(!clean)throw new Error('Give the objective a title.');
- const n=Math.max(1,Math.min(10,Math.floor(Number(goal)||2)));
+ const n=Math.max(1,Math.min(10,Math.floor(Number(goal)||1)));
  const active=g.objectives.filter(x=>x.status==='active').length;
- if(active>=10)throw new Error('Complete or resolve an active objective before adding another.');
+ if(active>=20)throw new Error('The objective journal is full. Complete or resolve an active objective before adding another.');
  const objective={id:sr20Id(),type:'player',title:clean,detail:String(detail||'').trim().slice(0,240),progress:0,goal:n,status:'active',progressKeys:[]};
  g.objectives.unshift(objective);
  while(g.objectives.length>20){const i=g.objectives.findIndex(x=>x.status==='completed');if(i<0)throw new Error('The objective journal is full. Complete an objective before adding another.');g.objectives.splice(i,1);}
@@ -310,7 +312,7 @@ sr20InferMode=sr21InferMode;
 sr20SkillFor=function(mode,text,decision){return sr21SkillFor(mode,text,decision,null);};
 sr20AdvanceAdventure=sr21AdvanceAdventure;
 sr20ResolvePlayerAction=function(text,options={}){return sr21ResolvePlayerAction(text,sr21ResolveOptions(options));};
-sr20SetObjective=function(title,detail='',goal){const field=$('sr21-objective-goal');return sr21SetObjective(title,detail,goal??field?.value??2);};
+sr20SetObjective=function(title,detail='',goal){const field=$('sr21-objective-goal');return sr21SetObjective(title,detail,goal??(field?.value!==undefined&&field?.value!==''?field.value:1));};
 sr20GameplayPanel=sr21GameplayPanel;
 const sr21AdventureBase=adventurePage;
 adventurePage=function(){return sr21TutorialPanel()+sr21AdventureBase()+sr21LegacyPanel();};
