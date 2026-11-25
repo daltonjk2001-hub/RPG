@@ -853,6 +853,1306 @@ body {
     transition-duration: .01ms !important;
   }
 }
+
+
+/* -------------------------------------------------------------------------
+   Screen-by-screen layouts. The main screen is tagged with data-screen by
+   SR20_SCREEN_LAYOUT.js; these rules change presentation only.
+   ------------------------------------------------------------------------- */
+
+#app .main[data-layout-version="20"] {
+  --screen-gap: clamp(13px, 1.5vw, 19px);
+  min-width: 0;
+  padding-bottom: 24px;
+}
+#app .main[data-layout-version="20"] .page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 2px 0 17px;
+  padding: 5px 3px 15px;
+  border-bottom: 1px solid var(--sr-line);
+}
+#app .main[data-layout-version="20"] .page-head > div:first-child {
+  min-width: 0;
+}
+#app .main[data-layout-version="20"] .page-head h2 {
+  margin: 0 0 6px;
+  font-size: clamp(1.65rem, 2.7vw, 2.25rem);
+}
+#app .main[data-layout-version="20"] .page-head p {
+  margin: 0;
+  max-width: 66ch;
+  color: #b6b2a8;
+}
+#app .main[data-layout-version="20"] > .grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(260px, .85fr);
+  gap: var(--screen-gap);
+  align-items: start;
+}
+#app .main[data-layout-version="20"] > .grid > div {
+  min-width: 0;
+}
+#app .main[data-layout-version="20"] > .grid > div > .card:first-child {
+  margin-top: 0;
+}
+#app .main[data-layout-version="20"] .card > h3:first-child {
+  margin-top: 0;
+}
+#app .main[data-layout-version="20"] .empty {
+  padding: 18px 15px;
+  color: #aaa99f;
+  background: rgba(8, 14, 19, .22);
+  border: 1px dashed rgba(198, 160, 99, .22);
+  border-radius: 12px;
+  text-align: center;
+}
+
+/* Adventure — a narrative stage, an obvious action point, and a quiet sidebar. */
+#app .main[data-screen="adventure"] > #sr20-gameplay {
+  margin-bottom: 17px;
+}
+#app .main[data-screen="adventure"] > .grid {
+  grid-template-columns: minmax(0, 1.42fr) minmax(255px, .78fr);
+}
+#app .main[data-screen="adventure"] .hero-card {
+  padding: clamp(18px, 2.2vw, 29px);
+  background:
+    radial-gradient(ellipse at 95% 0%, rgba(140, 185, 173, .13), transparent 23rem),
+    linear-gradient(145deg, #22343d, #16242d 76%);
+  border-color: rgba(140, 185, 173, .3);
+}
+#app .main[data-screen="adventure"] .hero-card > .eyebrow {
+  color: #a9cbbd;
+}
+#app .main[data-screen="adventure"] .hero-card > h3 {
+  font-size: clamp(1.35rem, 2.2vw, 1.78rem);
+}
+#app .main[data-screen="adventure"] .hero-card > p {
+  max-width: 72ch;
+  font-size: 1.04rem;
+  line-height: 1.78;
+}
+#app .main[data-screen="adventure"] .choice-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 17px;
+}
+#app .main[data-screen="adventure"] .choice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  min-height: 58px;
+  padding: 12px 15px;
+  color: #eee5d4;
+  background: linear-gradient(100deg, rgba(10, 18, 23, .53), rgba(10, 18, 23, .23));
+  border: 1px solid rgba(198, 160, 99, .2);
+  border-radius: 12px;
+  text-align: left;
+  transition: background .16s ease, border-color .16s ease, transform .16s ease;
+}
+#app .main[data-screen="adventure"] .choice:hover {
+  background: rgba(198, 160, 99, .1);
+  border-color: var(--sr-line-strong);
+  transform: translateY(-1px);
+}
+#app .main[data-screen="adventure"] .choice small {
+  display: block;
+  margin-top: 3px;
+  color: #aaa99f;
+  font-size: .8rem;
+}
+#app .main[data-screen="adventure"] .choice .arr {
+  color: var(--sr-brass-bright);
+  font-size: 1.35rem;
+}
+#app .main[data-screen="adventure"] #customActionForm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+#app .main[data-screen="adventure"] #customActionForm .field { margin: 0; }
+#app .main[data-screen="adventure"] #customActionForm input { min-height: 48px; }
+#app .main[data-screen="adventure"] .dice-panel {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+}
+#app .main[data-screen="adventure"] .dice-panel .btn {
+  min-width: 0;
+  padding-inline: 7px;
+}
+#app .main[data-screen="adventure"] .main-quest-card,
+#app .main[data-screen="adventure"] .quest-card {
+  border-color: var(--sr-line-strong);
+}
+
+/* Character — identity first, then abilities, training, and progression. */
+#app .main[data-screen="character"] > .grid {
+  grid-template-columns: minmax(0, 1.34fr) minmax(255px, .76fr);
+}
+#app .main[data-screen="character"] .hero-card {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(19px, 2.2vw, 28px);
+  background:
+    radial-gradient(ellipse at 88% 0%, rgba(198, 160, 99, .18), transparent 22rem),
+    linear-gradient(145deg, #26343b, #17232b 78%);
+  border-color: var(--sr-line-strong);
+}
+#app .main[data-screen="character"] .hero-card::after {
+  position: absolute;
+  top: 13px;
+  right: 19px;
+  color: rgba(224, 189, 124, .16);
+  content: "✦";
+  font-size: 4.2rem;
+  line-height: 1;
+  pointer-events: none;
+}
+#app .main[data-screen="character"] .hero-card h3 {
+  font-size: clamp(1.6rem, 2.5vw, 2.15rem);
+}
+#app .main[data-screen="character"] .ability-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+#app .main[data-screen="character"] .ability {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 11px 5px;
+  background: linear-gradient(180deg, rgba(198, 160, 99, .1), rgba(8, 14, 19, .23));
+  border: 1px solid rgba(198, 160, 99, .22);
+  border-radius: 12px;
+  text-align: center;
+}
+#app .main[data-screen="character"] .ability b {
+  color: var(--sr-brass);
+  font-size: .72rem;
+  letter-spacing: .09em;
+}
+#app .main[data-screen="character"] .ability strong {
+  color: var(--sr-parchment);
+  font-size: clamp(1.2rem, 1.8vw, 1.55rem);
+  line-height: 1.2;
+}
+#app .main[data-screen="character"] .ability small {
+  color: var(--sr-teal);
+  font-size: .78rem;
+  font-weight: 700;
+}
+#app .main[data-screen="character"] .skill-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px 10px;
+}
+#app .main[data-screen="character"] .skill-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  padding: 7px 9px;
+  background: rgba(8, 14, 19, .22);
+  border: 1px solid rgba(198, 160, 99, .1);
+  border-radius: 8px;
+}
+#app .main[data-screen="character"] .skill-row b {
+  color: var(--sr-teal);
+  font-variant-numeric: tabular-nums;
+}
+#app .main[data-screen="character"] .bar {
+  height: 8px;
+  overflow: hidden;
+  background: #091118;
+  border-radius: 999px;
+}
+#app .main[data-screen="character"] .bar i {
+  border-radius: inherit;
+}
+
+/* Pack — make the carried gear list the primary surface and gear stats glanceable. */
+#app .main[data-screen="inventory"] > .grid {
+  grid-template-columns: minmax(0, 1.38fr) minmax(245px, .72fr);
+}
+#app .main[data-screen="inventory"] > .grid > div:first-child > .card:first-child {
+  border-color: var(--sr-line-strong);
+}
+#app .main[data-screen="inventory"] .item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 13px;
+  padding: 13px 14px;
+}
+#app .main[data-screen="inventory"] .item-row > div:first-child {
+  min-width: 0;
+}
+#app .main[data-screen="inventory"] .item-row p {
+  margin: 4px 0 0;
+  color: var(--sr-muted);
+  font-size: .84rem;
+}
+#app .main[data-screen="inventory"] .item-actions {
+  flex: 0 0 auto;
+  margin: 0;
+}
+#app .main[data-screen="inventory"] .item-actions .btn {
+  min-width: 68px;
+}
+#app .main[data-screen="inventory"] > .grid > div:last-child .item-row {
+  min-height: 47px;
+}
+
+/* Journal — make progress, active work, and the chronicle easy to scan. */
+#app .main[data-screen="journal"] > .grid {
+  grid-template-columns: minmax(0, 1.12fr) minmax(260px, .88fr);
+}
+#app .main[data-screen="journal"] > .grid > div:first-child > .card:first-child {
+  border-color: var(--sr-line-strong);
+  background: linear-gradient(145deg, #26343b, #17232b 78%);
+}
+#app .main[data-screen="journal"] .questline {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: rgba(8, 14, 19, .27);
+  border-left: 2px solid var(--sr-brass);
+  border-radius: 0 10px 10px 0;
+}
+#app .main[data-screen="journal"] .feed {
+  display: grid;
+  gap: 7px;
+  max-height: 660px;
+  overflow: auto;
+  padding-right: 3px;
+}
+#app .main[data-screen="journal"] .feed-entry {
+  padding: 11px 12px;
+  line-height: 1.5;
+}
+#app .main[data-screen="journal"] .feed-entry strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--sr-brass);
+  font-size: .74rem;
+  letter-spacing: .04em;
+}
+
+/* Combat — enemies and immediate actions dominate; party status stays secondary. */
+#app .main[data-screen="combat"] > .grid {
+  grid-template-columns: minmax(0, 1.34fr) minmax(245px, .76fr);
+}
+#app .main[data-screen="combat"] .combat-enemy {
+  margin: 10px 0;
+  padding: 14px;
+  background: linear-gradient(145deg, rgba(68, 38, 43, .42), rgba(13, 19, 25, .72));
+  border: 1px solid rgba(207, 136, 124, .28);
+  border-radius: 13px;
+}
+#app .main[data-screen="combat"] .enemy-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+#app .main[data-screen="combat"] .enemy-hp {
+  height: 8px;
+  margin: 10px 0 5px;
+  overflow: hidden;
+  background: #0a1116;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 999px;
+}
+#app .main[data-screen="combat"] .enemy-hp i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #8e4e4a, #cf887c);
+  border-radius: inherit;
+}
+#app .main[data-screen="combat"] .combat-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 17px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(207, 136, 124, .2);
+}
+#app .main[data-screen="combat"] .combat-actions .btn {
+  width: 100%;
+  min-height: 46px;
+  padding-inline: 8px;
+}
+#app .main[data-screen="combat"] .feed {
+  display: grid;
+  gap: 7px;
+  max-height: 450px;
+  overflow: auto;
+}
+#app .main[data-screen="combat"] .feed-entry {
+  padding: 10px 12px;
+}
+
+/* Spellbook — readable spell entries, clear slot count, and compact casting guide. */
+#app .main[data-screen="spells"] > .grid {
+  grid-template-columns: minmax(0, 1.34fr) minmax(250px, .76fr);
+}
+#app .main[data-screen="spells"] > .grid > div:first-child > .card:first-child {
+  border-color: var(--sr-line-strong);
+}
+#app .main[data-screen="spells"] .item-row {
+  align-items: flex-start;
+  gap: 12px;
+  padding: 13px 14px;
+}
+#app .main[data-screen="spells"] .item-row p {
+  margin: 6px 0 0;
+  line-height: 1.55;
+}
+#app .main[data-screen="spells"] .item-row .item-actions {
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+
+/* World, map, factions — emphasize place cards, services, and useful travel actions. */
+#app .main[data-screen="world"] > .grid {
+  grid-template-columns: minmax(0, 1.15fr) minmax(255px, .85fr);
+}
+#app .main[data-screen="world"] .map-grid,
+#app .main[data-screen="worldmap"] .map-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+#app .main[data-screen="world"] .location-card,
+#app .main[data-screen="worldmap"] .location-card {
+  min-width: 0;
+  padding: 13px;
+  background: linear-gradient(145deg, rgba(33, 49, 58, .9), rgba(14, 23, 30, .94));
+  border: 1px solid rgba(140, 185, 173, .22);
+  border-radius: 12px;
+}
+#app .main[data-screen="world"] .location-card h4,
+#app .main[data-screen="worldmap"] .location-card h4 {
+  margin: 0 0 6px;
+  color: #e7d4ad;
+}
+#app .main[data-screen="world"] .location-card p,
+#app .main[data-screen="worldmap"] .location-card p {
+  font-size: .82rem;
+  line-height: 1.45;
+}
+#app .main[data-screen="world"] .rule-box {
+  min-height: 145px;
+  padding: 13px;
+  background: rgba(8, 14, 19, .25);
+  border: 1px solid rgba(198, 160, 99, .15);
+  border-radius: 12px;
+}
+#app .main[data-screen="worldmap"] > .card.hero-card {
+  border-color: var(--sr-line-strong);
+  background: linear-gradient(145deg, #22343d, #14222a);
+}
+#app .main[data-screen="factions7"] .rule-grid,
+#app .main[data-screen="exploration7"] .rule-grid,
+#app .main[data-screen="crafting7"] .rule-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+/* Crafting and downtime — emphasize choices and material requirements. */
+#app .main[data-screen="crafting"] .shop-grid,
+#app .main[data-screen="crafting7"] .shop-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+#app .main[data-screen="crafting"] .shop-item,
+#app .main[data-screen="crafting7"] .shop-item {
+  padding: 14px;
+  background: rgba(8, 14, 19, .27);
+  border: 1px solid rgba(198, 160, 99, .17);
+  border-radius: 12px;
+}
+#app .main[data-screen="downtime"] > .grid {
+  grid-template-columns: minmax(0, 1.1fr) minmax(250px, .9fr);
+}
+#app .main[data-screen="downtime"] .field {
+  padding: 12px;
+  background: rgba(8, 14, 19, .22);
+  border: 1px solid rgba(198, 160, 99, .13);
+  border-radius: 11px;
+}
+
+/* Party and social screens — roster entries become compact member panels. */
+#app .main[data-screen="party"] > .grid {
+  grid-template-columns: minmax(0, 1.2fr) minmax(250px, .8fr);
+}
+#app .main[data-screen="party"] .item-row,
+#app .main[data-screen="multiplayer"] .item-row {
+  align-items: center;
+  padding: 13px 14px;
+}
+#app .main[data-screen="party"] .bar,
+#app .main[data-screen="multiplayer"] .bar {
+  height: 7px;
+  margin-top: 7px;
+  overflow: hidden;
+  background: #091118;
+  border-radius: 999px;
+}
+#app .main[data-screen="party"] .bar i,
+#app .main[data-screen="multiplayer"] .bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+#app .main[data-screen="multiplayer"] .hero-card {
+  background:
+    radial-gradient(ellipse at 90% 0%, rgba(140, 185, 173, .13), transparent 25rem),
+    linear-gradient(145deg, #22343d, #16242d 76%);
+  border-color: rgba(140, 185, 173, .28);
+}
+#app .main[data-screen="multiplayer"] .room-code {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 150px;
+  padding: 11px 17px;
+  color: var(--sr-brass-bright);
+  background: rgba(6, 13, 18, .45);
+  border: 1px dashed var(--sr-line-strong);
+  border-radius: 11px;
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: .15em;
+}
+
+/* Rules, tactics, bestiary, codex, treasure, and Director tools. */
+#app .main[data-screen="rules"] .rule-grid,
+#app .main[data-screen="tactics"] .rule-grid,
+#app .main[data-screen="codex"] .rule-grid,
+#app .main[data-screen="bestiary"] .rule-grid,
+#app .main[data-screen="rules"] .rule-grid,
+#app .main[data-screen="gm"] .rule-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+#app .main[data-screen="rules"] .rule-box,
+#app .main[data-screen="tactics"] .rule-box,
+#app .main[data-screen="codex"] .rule-box,
+#app .main[data-screen="bestiary"] .rule-box,
+#app .main[data-screen="gm"] .rule-box {
+  padding: 14px;
+  background: rgba(8, 14, 19, .25);
+  border: 1px solid rgba(198, 160, 99, .15);
+  border-radius: 12px;
+}
+#app .main[data-screen="bestiary"] .feed,
+#app .main[data-screen="gm"] .feed,
+#app .main[data-screen="ai"] .feed {
+  display: grid;
+  gap: 7px;
+}
+#app .main[data-screen="ai"] > .grid {
+  grid-template-columns: minmax(0, 1.05fr) minmax(260px, .95fr);
+}
+#app .main[data-screen="ai"] .toggle-row {
+  padding: 11px 12px;
+  background: rgba(8, 14, 19, .23);
+  border: 1px solid rgba(198, 160, 99, .13);
+  border-radius: 10px;
+}
+#app .main[data-screen="stronghold"] .rule-grid,
+#app .main[data-screen="downtime5"] .rule-grid,
+#app .main[data-screen="treasure"] .rule-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+#app .main[data-screen="stronghold"] .rule-box,
+#app .main[data-screen="downtime5"] .rule-box,
+#app .main[data-screen="treasure"] .rule-box {
+  padding: 14px;
+  background: rgba(8, 14, 19, .25);
+  border: 1px solid rgba(198, 160, 99, .15);
+  border-radius: 12px;
+}
+
+/* Narrow devices get simpler forms without changing the desktop information order. */
+@media (max-width: 760px) {
+  #app .main[data-layout-version="20"] {
+    padding-bottom: 14px;
+  }
+  #app .main[data-layout-version="20"] .page-head {
+    align-items: flex-start;
+    margin: 0 0 12px;
+    padding: 4px 2px 12px;
+  }
+  #app .main[data-layout-version="20"] .page-head h2 {
+    font-size: 1.55rem;
+  }
+  #app .main[data-layout-version="20"] > .grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  #app .main[data-screen="character"] .ability-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  #app .main[data-screen="character"] .skill-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px 7px;
+  }
+  #app .main[data-screen="inventory"] .item-row,
+  #app .main[data-screen="spells"] .item-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  #app .main[data-screen="inventory"] .item-actions,
+  #app .main[data-screen="spells"] .item-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  #app .main[data-screen="adventure"] #customActionForm {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #app .main[data-screen="adventure"] #customActionForm button {
+    width: 100%;
+  }
+  #app .main[data-screen="adventure"] .dice-panel {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  #app .main[data-screen="combat"] .combat-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #app .main[data-screen="world"] .map-grid,
+  #app .main[data-screen="worldmap"] .map-grid,
+  #app .main[data-screen="crafting"] .shop-grid,
+  #app .main[data-screen="crafting7"] .shop-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #app .main[data-screen="rules"] .rule-grid,
+  #app .main[data-screen="tactics"] .rule-grid,
+  #app .main[data-screen="codex"] .rule-grid,
+  #app .main[data-screen="bestiary"] .rule-grid,
+  #app .main[data-screen="gm"] .rule-grid,
+  #app .main[data-screen="stronghold"] .rule-grid,
+  #app .main[data-screen="downtime5"] .rule-grid,
+  #app .main[data-screen="treasure"] .rule-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1040px) {
+  #app .main[data-layout-version="20"] > .grid {
+    grid-template-columns: minmax(0, 1.05fr) minmax(220px, .95fr);
+  }
+  #app .main[data-screen="character"] .ability-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  #app .main[data-screen="combat"] .combat-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #app .main[data-screen="world"] .map-grid,
+  #app .main[data-screen="worldmap"] .map-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+
+/* The player-facing Adventure is composed from the SR8 simple-play components. */
+#app .main[data-screen="adventure"] .simple-play.sr8-play {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 13px;
+}
+#app .main[data-screen="adventure"] .simple-location {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  color: #d5d0c3;
+  background: linear-gradient(100deg, rgba(39, 58, 65, .76), rgba(17, 28, 36, .74));
+  border: 1px solid rgba(140, 185, 173, .2);
+  border-radius: 11px;
+  font-size: .82rem;
+}
+#app .main[data-screen="adventure"] .sr8-scene {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(19px, 2.5vw, 31px);
+  background:
+    radial-gradient(ellipse at 92% 0%, rgba(140, 185, 173, .16), transparent 25rem),
+    linear-gradient(145deg, #263b43, #17262e 78%);
+  border: 1px solid rgba(140, 185, 173, .34);
+  border-radius: 18px;
+  box-shadow: 0 16px 36px rgba(0,0,0,.2), inset 0 1px rgba(255,255,255,.045);
+}
+#app .main[data-screen="adventure"] .sr8-scene::after {
+  position: absolute;
+  top: 7px;
+  right: 18px;
+  color: rgba(224, 189, 124, .14);
+  content: "✦";
+  font-size: 4.5rem;
+  line-height: 1;
+  pointer-events: none;
+}
+#app .main[data-screen="adventure"] .sr8-scene .eyebrow {
+  color: #a9cbbd;
+}
+#app .main[data-screen="adventure"] .sr8-scene h2,
+#app .main[data-screen="adventure"] .sr8-scene h3 {
+  position: relative;
+  z-index: 1;
+  margin: 2px 0 10px;
+  color: #f0dfbd;
+  font-size: clamp(1.5rem, 2.5vw, 2.15rem);
+}
+#app .main[data-screen="adventure"] .sr8-scene .story-copy,
+#app .main[data-screen="adventure"] .sr8-scene p {
+  max-width: 76ch;
+  color: #dedbd0;
+  font-size: 1.04rem;
+  line-height: 1.8;
+}
+#app .main[data-screen="adventure"] .sr8-scene .choice-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+}
+#app .main[data-screen="adventure"] .sr8-scene .choice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 15px;
+  color: #eee5d4;
+  background: rgba(7, 15, 20, .43);
+  border: 1px solid rgba(198, 160, 99, .2);
+  border-radius: 11px;
+  text-align: left;
+  cursor: pointer;
+  transition: background .16s ease, border-color .16s ease, transform .16s ease;
+}
+#app .main[data-screen="adventure"] .sr8-scene .choice:hover {
+  background: rgba(198, 160, 99, .1);
+  border-color: var(--sr-line-strong);
+  transform: translateY(-1px);
+}
+#app .main[data-screen="adventure"] .sr8-scene .choice .arr {
+  color: var(--sr-brass-bright);
+  font-size: 1.35rem;
+}
+#app .main[data-screen="adventure"] .sr8-action-card {
+  padding: clamp(15px, 1.8vw, 22px);
+  background: linear-gradient(145deg, #1d3038, #12212a);
+  border-color: rgba(140, 185, 173, .32);
+}
+#app .main[data-screen="adventure"] .sr8-action-form {
+  display: grid;
+  gap: 9px;
+}
+#app .main[data-screen="adventure"] .sr8-action-form > label {
+  color: #e7d6b5;
+  font-family: Georgia, "Palatino Linotype", serif;
+  font-size: 1.12rem;
+}
+#app .main[data-screen="adventure"] .sr8-action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+}
+#app .main[data-screen="adventure"] .sr8-action-row input {
+  min-height: 48px;
+}
+#app .main[data-screen="adventure"] .sr8-action-form > small {
+  color: #a9b3ae;
+}
+#app .main[data-screen="adventure"] .sr8-quest,
+#app .main[data-screen="adventure"] .sr8-extras {
+  margin: 0;
+  padding: 12px 14px;
+  background: rgba(13, 22, 29, .75);
+  border: 1px solid var(--sr-line);
+  border-radius: 12px;
+}
+#app .main[data-screen="adventure"] .sr8-quest summary,
+#app .main[data-screen="adventure"] .sr8-extras summary {
+  color: #e3c68f;
+  font-size: .88rem;
+}
+#app .main[data-screen="adventure"] .sr8-quest .bar {
+  height: 7px;
+  margin: 9px 0 5px;
+  overflow: hidden;
+  background: #081117;
+  border-radius: 999px;
+}
+#app .main[data-screen="adventure"] .sr8-quest .bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #718e7e, #c5b07e);
+  border-radius: inherit;
+}
+#app .main[data-screen="adventure"] .sr8-extra-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+}
+#app .main[data-screen="adventure"] .sr8-extra-actions .btn {
+  flex: 1 1 120px;
+}
+@media (max-width: 760px) {
+  #app .main[data-screen="adventure"] .sr8-scene {
+    padding: 17px 14px;
+    border-radius: 14px;
+  }
+  #app .main[data-screen="adventure"] .sr8-action-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #app .main[data-screen="adventure"] .sr8-action-row button {
+    width: 100%;
+  }
+  #app .main[data-screen="adventure"] .sr8-extra-actions .btn {
+    flex-basis: 42%;
+  }
+}
+
+
+/* Final screen compositions use the current player-facing V18/V20 markup. */
+#app .main[data-screen="character"] > .grid {
+  grid-template-columns: minmax(0, 1.32fr) minmax(255px, .78fr);
+}
+#app .main[data-screen="character"] .hero-card {
+  padding: clamp(19px, 2.2vw, 28px);
+  background:
+    radial-gradient(ellipse at 90% 0%, rgba(198, 160, 99, .18), transparent 23rem),
+    linear-gradient(145deg, #26343b, #17232b 78%);
+  border-color: var(--sr-line-strong);
+}
+#app .main[data-screen="character"] .hero-card h3 {
+  font-size: clamp(1.65rem, 2.6vw, 2.25rem);
+}
+#app .main[data-screen="character"] .ability-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+#app .main[data-screen="character"] .ability {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 11px 5px;
+  background: linear-gradient(180deg, rgba(198, 160, 99, .11), rgba(8, 14, 19, .25));
+  border: 1px solid rgba(198, 160, 99, .22);
+  border-radius: 12px;
+  text-align: center;
+}
+#app .main[data-screen="character"] .ability b {
+  color: var(--sr-brass);
+  font-size: .72rem;
+  letter-spacing: .09em;
+}
+#app .main[data-screen="character"] .ability strong {
+  color: var(--sr-parchment);
+  font-size: clamp(1.2rem, 1.8vw, 1.55rem);
+  line-height: 1.2;
+}
+#app .main[data-screen="character"] .ability small {
+  color: var(--sr-teal);
+  font-size: .78rem;
+  font-weight: 700;
+}
+#app .main[data-screen="character"] .skill-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px 10px;
+}
+#app .main[data-screen="character"] .skill-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  padding: 7px 9px;
+  background: rgba(8, 14, 19, .22);
+  border: 1px solid rgba(198, 160, 99, .1);
+  border-radius: 8px;
+}
+#app .main[data-screen="character"] .skill-row b { color: var(--sr-teal); }
+
+/* Combat — the current tactical arena uses SR8/SR9 battlefield elements. */
+#app .main[data-screen="combat"] .simple-combat {
+  display: grid;
+  gap: 13px;
+}
+#app .main[data-screen="combat"] .simple-combat-intro {
+  padding: clamp(15px, 1.8vw, 22px);
+  background:
+    radial-gradient(ellipse at 90% 0%, rgba(207, 136, 124, .13), transparent 23rem),
+    linear-gradient(145deg, #39272d, #1a2028 78%);
+  border: 1px solid rgba(207, 136, 124, .34);
+  border-radius: 15px;
+}
+#app .main[data-screen="combat"] .simple-combat-intro h2,
+#app .main[data-screen="combat"] .simple-combat-intro h3 {
+  color: #f0d6cb;
+}
+#app .main[data-screen="combat"] .sr10-turn {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 9px 12px;
+  background: rgba(8, 14, 19, .42);
+  border: 1px solid rgba(207, 136, 124, .2);
+  border-radius: 10px;
+}
+#app .main[data-screen="combat"] .sr9-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 7px;
+  padding: 12px;
+  background: rgba(7, 13, 18, .52);
+  border: 1px solid rgba(140, 185, 173, .22);
+  border-radius: 14px;
+}
+#app .main[data-screen="combat"] .sr9-cell {
+  min-width: 0;
+  min-height: 53px;
+  border: 1px solid rgba(198, 160, 99, .12);
+  border-radius: 8px;
+}
+#app .main[data-screen="combat"] .sr9-cell.enemy {
+  background: rgba(151, 73, 68, .3);
+  border-color: rgba(207, 136, 124, .35);
+}
+#app .main[data-screen="combat"] .sr9-cell.hero {
+  background: rgba(85, 133, 113, .28);
+  border-color: rgba(140, 185, 173, .35);
+}
+#app .main[data-screen="combat"] .sr9-order {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+#app .main[data-screen="combat"] .simple-enemies {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+#app .main[data-screen="combat"] .simple-enemy {
+  min-width: 0;
+  padding: 13px;
+  background: linear-gradient(145deg, rgba(68, 38, 43, .45), rgba(13, 19, 25, .82));
+  border: 1px solid rgba(207, 136, 124, .28);
+  border-radius: 12px;
+}
+#app .main[data-screen="combat"] .simple-enemy.selected {
+  border-color: #d9a06f;
+  box-shadow: 0 0 0 2px rgba(198, 160, 99, .15), 0 10px 22px rgba(0,0,0,.18);
+}
+#app .main[data-screen="combat"] .enemy-name { color: #f0d6cb; font-weight: 750; }
+#app .main[data-screen="combat"] .enemy-meta { color: #b6a7a0; font-size: .8rem; }
+#app .main[data-screen="combat"] .enemy-hp {
+  height: 8px;
+  margin: 9px 0 5px;
+  overflow: hidden;
+  background: #091118;
+  border-radius: 999px;
+}
+#app .main[data-screen="combat"] .enemy-hp i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #8e4e4a, #cf887c);
+  border-radius: inherit;
+}
+#app .main[data-screen="combat"] .simple-combat-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 13px;
+  background: rgba(8, 14, 19, .34);
+  border: 1px solid rgba(207, 136, 124, .2);
+  border-radius: 13px;
+}
+#app .main[data-screen="combat"] .simple-combat-controls .btn { width: 100%; min-height: 44px; }
+#app .main[data-screen="combat"] .simple-combat-extra {
+  padding: 11px 13px;
+  background: rgba(9, 16, 22, .48);
+  border: 1px solid rgba(198, 160, 99, .18);
+  border-radius: 11px;
+}
+#app .main[data-screen="combat"] .simple-chronicle .feed {
+  display: grid;
+  gap: 7px;
+  max-height: 360px;
+  overflow: auto;
+}
+
+/* The remaining destinations have different information density and should not
+   all inherit the same generic two-column template. */
+#app .main[data-screen="spells"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1.28fr) minmax(245px, .72fr);
+  gap: var(--screen-gap);
+  align-items: start;
+}
+#app .main[data-screen="spells"] > .page-head { grid-column: 1 / -1; }
+#app .main[data-screen="spells"] > .card:first-of-type {
+  grid-column: 1;
+  grid-row: 2 / span 3;
+  border-color: var(--sr-line-strong);
+}
+#app .main[data-screen="spells"] > .card:not(:first-of-type) { grid-column: 2; }
+#app .main[data-screen="spells"] .rule-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+#app .main[data-screen="spells"] .item-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px;
+}
+#app .main[data-screen="spells"] .item-row p { margin: 5px 0 0; line-height: 1.55; }
+#app .main[data-screen="spells"] .item-actions { flex: 0 0 auto; margin: 0; }
+
+#app .main[data-screen="inventory"] > .grid {
+  grid-template-columns: minmax(0, 1.38fr) minmax(245px, .72fr);
+}
+#app .main[data-screen="inventory"] > .grid > div:first-child > .card:first-child {
+  border-color: var(--sr-line-strong);
+}
+#app .main[data-screen="inventory"] > .grid > div:last-child .item-row {
+  min-height: 46px;
+}
+#app .main[data-screen="journal"] > .grid {
+  grid-template-columns: minmax(0, 1.12fr) minmax(260px, .88fr);
+}
+#app .main[data-screen="journal"] > .grid > div:first-child > .card:first-child {
+  border-color: var(--sr-line-strong);
+  background: linear-gradient(145deg, #26343b, #17232b 78%);
+}
+#app .main[data-screen="journal"] .questline {
+  margin-top: 11px;
+  padding: 12px 14px;
+  background: rgba(8, 14, 19, .27);
+  border-left: 2px solid var(--sr-brass);
+  border-radius: 0 10px 10px 0;
+}
+#app .main[data-screen="journal"] .feed {
+  display: grid;
+  gap: 7px;
+  max-height: 640px;
+  overflow: auto;
+}
+#app .main[data-screen="journal"] .feed-entry { padding: 11px 12px; line-height: 1.5; }
+
+#app .main[data-screen="bestiary"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(270px, .85fr);
+  gap: var(--screen-gap);
+}
+#app .main[data-screen="bestiary"] > .page-head { grid-column: 1 / -1; }
+#app .main[data-screen="bestiary"] > .card:first-of-type {
+  grid-column: 1 / -1;
+  border-color: var(--sr-line-strong);
+}
+#app .main[data-screen="bestiary"] .feed { display: grid; gap: 7px; }
+
+#app .main[data-screen="party"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(250px, .85fr);
+  gap: var(--screen-gap);
+}
+#app .main[data-screen="party"] > .page-head { grid-column: 1 / -1; }
+#app .main[data-screen="party"] > .card:first-of-type {
+  grid-column: 1 / -1;
+  background: linear-gradient(145deg, #22343d, #15232b 78%);
+  border-color: rgba(140, 185, 173, .25);
+}
+
+#app .main[data-screen="worldmap"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(255px, .85fr);
+  gap: var(--screen-gap);
+}
+#app .main[data-screen="worldmap"] > .page-head { grid-column: 1 / -1; }
+#app .main[data-screen="worldmap"] > .card:first-of-type { grid-column: 1 / -1; border-color: var(--sr-line-strong); }
+#app .main[data-screen="worldmap"] .map-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+#app .main[data-screen="worldmap"] .location-card {
+  min-width: 0;
+  padding: 13px;
+  background: linear-gradient(145deg, rgba(33, 49, 58, .9), rgba(14, 23, 30, .94));
+  border: 1px solid rgba(140, 185, 173, .22);
+  border-radius: 12px;
+}
+
+#app .main[data-screen="rules"],
+#app .main[data-screen="tactics"],
+#app .main[data-screen="codex"],
+#app .main[data-screen="treasure"],
+#app .main[data-screen="factions7"],
+#app .main[data-screen="exploration7"],
+#app .main[data-screen="crafting7"],
+#app .main[data-screen="downtime5"] {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--screen-gap);
+  align-items: start;
+}
+#app .main[data-screen="rules"] > .page-head,
+#app .main[data-screen="tactics"] > .page-head,
+#app .main[data-screen="codex"] > .page-head,
+#app .main[data-screen="treasure"] > .page-head,
+#app .main[data-screen="factions7"] > .page-head,
+#app .main[data-screen="exploration7"] > .page-head,
+#app .main[data-screen="crafting7"] > .page-head,
+#app .main[data-screen="downtime5"] > .page-head { grid-column: 1 / -1; }
+#app .main[data-screen="rules"] > .card:first-of-type,
+#app .main[data-screen="codex"] > .card:first-of-type,
+#app .main[data-screen="tactics"] > .card:first-of-type,
+#app .main[data-screen="factions7"] > .card:first-of-type,
+#app .main[data-screen="exploration7"] > .card:first-of-type,
+#app .main[data-screen="downtime5"] > .card:first-of-type { grid-column: 1 / -1; }
+#app .main[data-screen="rules"] .rule-grid,
+#app .main[data-screen="tactics"] .rule-grid,
+#app .main[data-screen="codex"] .rule-grid,
+#app .main[data-screen="treasure"] .rule-grid,
+#app .main[data-screen="factions7"] .rule-grid,
+#app .main[data-screen="exploration7"] .rule-grid,
+#app .main[data-screen="crafting7"] .rule-grid,
+#app .main[data-screen="downtime5"] .rule-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+#app .main[data-screen="rules"] .rule-box,
+#app .main[data-screen="tactics"] .rule-box,
+#app .main[data-screen="codex"] .rule-box,
+#app .main[data-screen="treasure"] .rule-box,
+#app .main[data-screen="factions7"] .rule-box,
+#app .main[data-screen="exploration7"] .rule-box,
+#app .main[data-screen="crafting7"] .rule-box,
+#app .main[data-screen="downtime5"] .rule-box {
+  padding: 14px;
+  background: rgba(8, 14, 19, .25);
+  border: 1px solid rgba(198, 160, 99, .15);
+  border-radius: 12px;
+}
+#app .main[data-screen="rules"] > .card,
+#app .main[data-screen="codex"] > .card,
+#app .main[data-screen="tactics"] > .card,
+#app .main[data-screen="treasure"] > .card,
+#app .main[data-screen="factions7"] > .card,
+#app .main[data-screen="exploration7"] > .card,
+#app .main[data-screen="crafting7"] > .card,
+#app .main[data-screen="downtime5"] > .card {
+  min-width: 0;
+}
+
+#app .main[data-screen="stronghold"],
+#app .main[data-screen="consequences"] {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--screen-gap);
+}
+#app .main[data-screen="stronghold"] > .page-head,
+#app .main[data-screen="consequences"] > .page-head { grid-column: 1 / -1; }
+#app .main[data-screen="stronghold"] > .card:first-of-type,
+#app .main[data-screen="consequences"] > .card:first-of-type {
+  grid-column: 1 / -1;
+  border-color: var(--sr-line-strong);
+}
+#app .main[data-screen="consequences"] .empty { text-align: left; }
+
+#app .main[data-screen="world"] > .card:first-of-type {
+  border-color: rgba(140, 185, 173, .3);
+  background: linear-gradient(145deg, #22343d, #14222a 78%);
+}
+#app .main[data-screen="world"] .map-grid,
+#app .main[data-screen="worldmap"] .map-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+#app .main[data-screen="world"] .location-card h4,
+#app .main[data-screen="worldmap"] .location-card h4 {
+  margin: 0 0 6px;
+  color: #e7d4ad;
+}
+#app .main[data-screen="world"] .location-card p,
+#app .main[data-screen="worldmap"] .location-card p { font-size: .82rem; line-height: 1.45; }
+
+#app .main[data-screen="crafting"] > .grid {
+  grid-template-columns: minmax(0, 1.3fr) minmax(245px, .7fr);
+}
+#app .main[data-screen="crafting"] .shop-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+#app .main[data-screen="crafting"] .shop-item {
+  padding: 14px;
+  background: rgba(8, 14, 19, .27);
+  border: 1px solid rgba(198, 160, 99, .17);
+  border-radius: 12px;
+}
+#app .main[data-screen="downtime"] > .grid {
+  grid-template-columns: minmax(0, 1.1fr) minmax(250px, .9fr);
+}
+#app .main[data-screen="downtime"] .field {
+  padding: 12px;
+  background: rgba(8, 14, 19, .22);
+  border: 1px solid rgba(198, 160, 99, .13);
+  border-radius: 11px;
+}
+#app .main[data-screen="gm"] > .grid {
+  grid-template-columns: minmax(0, 1.1fr) minmax(250px, .9fr);
+}
+#app .main[data-screen="gm"] .shop-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+#app .main[data-screen="multiplayer"] > .grid {
+  grid-template-columns: minmax(0, 1.15fr) minmax(255px, .85fr);
+}
+#app .main[data-screen="multiplayer"] .hero-card {
+  background: linear-gradient(145deg, #22343d, #16242d 76%);
+  border-color: rgba(140, 185, 173, .28);
+}
+#app .main[data-screen="ai"] > .grid {
+  grid-template-columns: minmax(0, 1.05fr) minmax(260px, .95fr);
+}
+#app .main[data-screen="ai"] .hero-card {
+  background: linear-gradient(145deg, #22343d, #16242d 76%);
+  border-color: rgba(140, 185, 173, .28);
+}
+#app .main[data-screen="ai"] .toggle-row {
+  padding: 11px 12px;
+  background: rgba(8, 14, 19, .23);
+  border: 1px solid rgba(198, 160, 99, .13);
+  border-radius: 10px;
+}
+#app .main[data-screen="ai"] .feed { display: grid; gap: 7px; }
+
+@media (max-width: 760px) {
+  #app .main[data-layout-version="20"] > .grid { grid-template-columns: minmax(0, 1fr); }
+  #app .main[data-screen="character"] .ability-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #app .main[data-screen="character"] .skill-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #app .main[data-screen="combat"] .sr9-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; padding: 7px; }
+  #app .main[data-screen="combat"] .sr9-cell { min-height: 41px; }
+  #app .main[data-screen="combat"] .simple-enemies { grid-template-columns: minmax(0, 1fr); }
+  #app .main[data-screen="combat"] .simple-combat-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #app .main[data-screen="spells"],
+  #app .main[data-screen="bestiary"],
+  #app .main[data-screen="party"],
+  #app .main[data-screen="worldmap"],
+  #app .main[data-screen="rules"],
+  #app .main[data-screen="tactics"],
+  #app .main[data-screen="codex"],
+  #app .main[data-screen="treasure"],
+  #app .main[data-screen="factions7"],
+  #app .main[data-screen="exploration7"],
+  #app .main[data-screen="crafting7"],
+  #app .main[data-screen="downtime5"],
+  #app .main[data-screen="stronghold"],
+  #app .main[data-screen="consequences"] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #app .main[data-screen="spells"] > .card,
+  #app .main[data-screen="spells"] > .card:first-of-type,
+  #app .main[data-screen="bestiary"] > .card:first-of-type,
+  #app .main[data-screen="party"] > .card:first-of-type,
+  #app .main[data-screen="worldmap"] > .card:first-of-type,
+  #app .main[data-screen="rules"] > .card:first-of-type,
+  #app .main[data-screen="codex"] > .card:first-of-type,
+  #app .main[data-screen="tactics"] > .card:first-of-type,
+  #app .main[data-screen="factions7"] > .card:first-of-type,
+  #app .main[data-screen="exploration7"] > .card:first-of-type,
+  #app .main[data-screen="downtime5"] > .card:first-of-type,
+  #app .main[data-screen="stronghold"] > .card:first-of-type,
+  #app .main[data-screen="consequences"] > .card:first-of-type {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  #app .main[data-screen="rules"] .rule-grid,
+  #app .main[data-screen="tactics"] .rule-grid,
+  #app .main[data-screen="codex"] .rule-grid,
+  #app .main[data-screen="treasure"] .rule-grid,
+  #app .main[data-screen="factions7"] .rule-grid,
+  #app .main[data-screen="exploration7"] .rule-grid,
+  #app .main[data-screen="crafting7"] .rule-grid,
+  #app .main[data-screen="downtime5"] .rule-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #app .main[data-screen="world"] .map-grid,
+  #app .main[data-screen="worldmap"] .map-grid,
+  #app .main[data-screen="crafting"] .shop-grid,
+  #app .main[data-screen="gm"] .shop-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #app .main[data-screen="spells"] > .page-head,
+  #app .main[data-screen="rules"] > .page-head,
+  #app .main[data-screen="tactics"] > .page-head,
+  #app .main[data-screen="codex"] > .page-head,
+  #app .main[data-screen="treasure"] > .page-head,
+  #app .main[data-screen="factions7"] > .page-head,
+  #app .main[data-screen="exploration7"] > .page-head,
+  #app .main[data-screen="crafting7"] > .page-head,
+  #app .main[data-screen="downtime5"] > .page-head,
+  #app .main[data-screen="stronghold"] > .page-head,
+  #app .main[data-screen="consequences"] > .page-head { grid-column: 1; }
+}
+
+
+/* Campaign dossier and roadmap are a first-class player destination. */
+#app .main[data-screen="campaign"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(255px, .82fr);
+  gap: var(--screen-gap);
+  align-items: start;
+}
+#app .main[data-screen="campaign"] > .page-head { grid-column: 1 / -1; }
+#app .main[data-screen="campaign"] > .card:first-of-type {
+  grid-column: 1 / -1;
+  border-color: var(--sr-line-strong);
+  background: linear-gradient(145deg, #22343d, #15232b 78%);
+}
+#app .main[data-screen="campaign"] .questline,
+#app .main[data-screen="campaign"] .rule-box {
+  padding: 12px 14px;
+  background: rgba(8, 14, 19, .25);
+  border: 1px solid rgba(198, 160, 99, .15);
+  border-radius: 11px;
+}
+@media (max-width: 760px) {
+  #app .main[data-screen="campaign"] { grid-template-columns: minmax(0, 1fr); }
+  #app .main[data-screen="campaign"] > .card:first-of-type { grid-column: 1; }
+}
 </style>
 </head>
 <body>
@@ -9316,6 +10616,44 @@ function sr20RunTests(){
  state=old;return results;
 }
 globalThis.__SR20_TEST={version:SR20_GAMEPLAY_VERSION,ensure:sr20EnsureCampaign,classIdentity:sr20ClassIdentity,classEdge:sr20ClassEdge,inferMode:sr20InferMode,resolve:sr20ResolvePlayerAction,setObjective:sr20SetObjective,closeItem:sr20CloseItem,context:srAIContext,panel:sr20GameplayPanel,coverActive:sr20CoverIsActive,tests:sr20RunTests,get state(){return state;},set state(v){state=v;}};
+
+/* Solo Realms V20 — screen-aware layout metadata.
+ * This layer only annotates the already-rendered main screen. It never mutates
+ * campaign state, rules, character data, or save records.
+ */
+function sr20ApplyScreenLayout(){
+ if(!state?.character)return;
+ const main=document.querySelector('#app .layout > .main');
+ if(!main)return;
+ const screen=state.combat?'combat':String(state.view||'adventure');
+ main.dataset.screen=screen.toLowerCase().replace(/[^a-z0-9_-]/g,'');
+ main.dataset.layoutVersion='20';
+}
+const sr20ScreenRenderBase=render;
+render=function(){
+ const result=sr20ScreenRenderBase();
+ try{sr20ApplyScreenLayout();}
+ catch(error){console.warn('Screen layout metadata could not be applied:',error);}
+ return result;
+};
+
+// V18 exposes a render function through its regression bridge. Keep that
+// reference in sync with the live renderer so test renders receive the same
+// screen metadata as actual browser renders.
+try{
+ const bridge=globalThis.__SR18_TEST;
+ if(bridge&&typeof bridge.render==='function'){
+  const bridgeRender=bridge.render;
+  bridge.render=function(){
+   const result=bridgeRender();
+   try{sr20ApplyScreenLayout();}
+   catch(error){console.warn('Screen layout metadata bridge could not be applied:',error);}
+   return result;
+  };
+ }
+}catch(error){
+ console.warn('Screen layout test bridge was not available:',error);
+}
 
 })();
 
