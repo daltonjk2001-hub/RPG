@@ -45,9 +45,10 @@ function sr20InferMode(text){
  const t=String(text||'').toLowerCase();
  if(/\b(attack|fight|combat|ambush|flank|cover|guard|parry|disarm|withdraw|retreat|enemy|opponent)\b/.test(t))return 'tactical';
  if(/\b(talk|ask|convince|persuade|negotiate|lie|deceive|threaten|intimidate|befriend|bargain|interrogate|charm|apologize)\b/.test(t))return 'social';
- if(/\b(travel|journey|march|hike|cross|sail|ride|camp|rest|sleep|watch|ration|water|survive)\b/.test(t))return 'travel';
+ if(/\b(camp|make camp|rest|sleep|take a rest|short rest|long rest)\b/.test(t))return 'survival';
+ if(/\b(cook|craft|repair|build|forage|hunt|fish|gather|harvest|treat|medicine|prepare|weather|cold|heat|hunger|thirst|refill|purify|collect|boil|survive)\b/.test(t))return 'survival';
+ if(/\b(travel|journey|march|hike|cross|sail|ride|watch|set out|move camp)\b/.test(t))return 'travel';
  if(/\b(search|explore|scout|track|inspect|investigate|discover|clue|examine|map|survey|listen|look around|find)\b/.test(t))return 'exploration';
- if(/\b(cook|craft|repair|build|forage|harvest|treat|medicine|prepare|weather|cold|heat|hunger|thirst|refill|purify|collect)\b/.test(t))return 'survival';
  return 'campaign';
 }
 function sr20SkillFor(mode,text,decision){
@@ -85,6 +86,14 @@ function sr20ConsumeSupply(pattern){
   const key=Number.isFinite(Number(item.quantity))?'quantity':Number.isFinite(Number(item.count))?'count':null;
   if(key&&Number(item[key])>1)item[key]=Number(item[key])-1;else inv.splice(i,1);
  }else inv.splice(i,1);return true;
+}
+function sr20AddSupply(name,description){
+ const inv=state?.character?.inventory;if(!Array.isArray(inv))return false;
+ const item={name,type:'supply',count:1,desc:String(description||'')};
+ if(typeof addItem==='function'){addItem(item);return true;}
+ const existing=inv.find(x=>x&&typeof x==='object'&&x.name===name&&x.type==='supply');
+ if(existing)existing.count=(Number(existing.count)||0)+1;else inv.push(item);
+ return true;
 }
 function sr20AddLead(text,kind='discovery'){
  const g=sr20EnsureCampaign();if(!g)return null;
@@ -147,9 +156,8 @@ function sr20ResolvePlayerAction(text,options={}){
   try{if(typeof sr18AdvanceWorld==='function')sr18AdvanceWorld('long_rest',1);}catch(e){}
  }else{try{if(typeof sr18AdvanceWorld==='function')sr18AdvanceWorld('action',0);}catch(e){}}
  if(mode==='survival'&&success&&/\b(forage|hunt|fish|gather|refill|collect|purify|boil)\b/i.test(action)){
-  const inv=Array.isArray(ch.inventory)?ch.inventory:(ch.inventory=[]);
-  if(/\b(water|stream|river|spring|waterskin|canteen)\b/i.test(action))inv.push('Waterskin');
-  if(/\b(food|berry|berries|hunt|fish|forage|ration|mushroom|root)\b/i.test(action))inv.push('Rations');
+  if(/\b(water|stream|river|spring|waterskin|canteen)\b/i.test(action))sr20AddSupply('Waterskin','A filled waterskin.');
+  if(/\b(food|berry|berries|hunt|fish|forage|ration|mushroom|root)\b/i.test(action))sr20AddSupply('Rations',"A day's worth of gathered food.");
  }
  if(mode==='social'&&target){
   target.sr20=target.sr20&&typeof target.sr20==='object'?target.sr20:{};
@@ -227,34 +235,62 @@ srAIContext=function(){
 function sr20RunTests(){
  const old=state,results=[],ok=(name,pass,detail='')=>results.push({name,pass:!!pass,detail});
  try{
-  state={character:{name:'Test Adventurer',classId:'Rogue',level:5,stats:{STR:10,DEX:16,CON:12,INT:14,WIS:12,CHA:10},proficiencies:['Stealth','Investigation','Deception'],inventory:['Rations','Waterskin']},campaign:{day:2,region:'Ashen Vale',location:'Old Road',npcs:[{name:'Mara Venn',faction:'Free Traders'}],companions:[],sideQuests:[],mainQuest:{title:'Find the lost map',goal:'Recover the map from the ruined watchtower',progress:0,target:2}},log:[],combat:null,view:'adventure'};
+  state={character:{name:'Test Adventurer',classId:'Rogue',ancestry:'Human',level:5,hp:24,maxHp:24,armor:'Leather armor',stats:{STR:10,DEX:16,CON:12,INT:14,WIS:12,CHA:10},proficiencies:['Stealth','Investigation','Deception'],inventory:[{name:'Rations',type:'supply',count:1,desc:'A day of food.'},{name:'Waterskin',type:'supply',count:1,desc:'A filled waterskin.'}]},campaign:{day:2,region:'Ashen Vale',location:'Old Road',npcs:[{name:'Mara Venn',faction:'Free Traders'}],companions:[],sideQuests:[],mainQuest:{title:'Find the lost map',goal:'Recover the map from the ruined watchtower',progress:0,target:2}},log:[],combat:null,view:'adventure'};
   const g=sr20EnsureCampaign();ok('Gameplay schema initializes without replacing V18 campaign fields',g.version===SR20_GAMEPLAY_VERSION&&state.campaign.mainQuest.title==='Find the lost map');
   ok('Main campaign objective is exposed in the gameplay ledger',g.objectives.length===1&&g.objectives[0].type==='main');
   ok('Character class identity supplies distinct capabilities',sr20ClassIdentity().edges.includes('stealth')&&sr20ClassIdentity().className==='rogue');
   const edge=sr20SkillBonus(state.character,'Stealth');ok('Class identity and proficiency both affect a relevant skill check',edge.total===7&&edge.edge&&edge.trained);
   ok('Free-form player intent is routed into exploration',sr20InferMode('I follow the muddy tracks and scout the ridge')==='exploration');
-  const leadAction=sr20ResolvePlayerAction('I inspect the broken stonework for concealed tracks',{mode:'exploration',roll:17});
+  ok('Auto mode classifies making camp and resting as survival',sr20InferMode('We make camp and rest for the night')==='survival');
+  ok('Auto mode classifies gathering and purifying water as survival',sr20InferMode('I collect and purify water from the stream')==='survival');
+  const leadAction=sr20ResolvePlayerAction('I inspect the broken stonework for concealed tracks',{mode:'exploration',roll:17,secondRoll:5,advantage:true});
+  ok('Advantage selects the higher of two d20 results',leadAction.die===17&&leadAction.die2===5&&leadAction.advantage&&!leadAction.disadvantage);
+  const disadvantage=sr20ResolvePlayerAction('I attempt a difficult deduction',{mode:'campaign',roll:3,secondRoll:17,disadvantage:true,dc:30});
+  ok('Disadvantage selects the lower of two d20 results',disadvantage.die===3&&disadvantage.die2===17&&disadvantage.disadvantage&&!disadvantage.success);
   ok('Exploration resolves a skill check and creates a persistent discovery',leadAction.success&&leadAction.skill==='Investigation'&&g.leads.length===1);
   const social=sr20ResolvePlayerAction('I persuade Mara Venn to tell me who hired the guards',{mode:'social',target:'Mara Venn',roll:18});
   ok('Social actions remember the NPC relationship and last exchange',social.success&&state.campaign.npcs[0].sr20.relationship===1&&g.social['Mara Venn'].relationship===1);
   sr20ResolvePlayerAction('I take cover behind the stone pillar and watch the enemy',{mode:'tactical',roll:16});
   state.combat={round:2,enemies:[{name:'Guard',hp:20,ac:13}]};sr20ResolvePlayerAction('I flank the nearest enemy',{mode:'tactical',roll:18});
   ok('Tactical flanking temporarily lowers the target enemy AC',state.combat.sr20Tactics.stance==='flank'&&state.combat.enemies[0].ac===11);
+  state.combat.round=3;sr20ExpireFlank();
+  ok('Flanking penalty expires after the next combat round',state.combat.enemies[0].ac===13&&!state.combat.enemies[0].sr20Flank);
   state.combat={round:2,enemies:[]};sr20ResolvePlayerAction('I take cover behind the stone wall',{mode:'tactical',roll:18});
   ok('Successful cover posture grants +2 AC for the current combat round',sr20CoverIsActive()===true);
+  const baseAC=computeAC(),hpBeforeCover=state.character.hp,oldAttackRoll=sr11RollAttack;
+  const dummy={name:'Training Dummy',attack:0,actions:[]},strike={name:'Test Strike',description:'Melee weapon attack',attack_bonus:0,damage:[]};
+  const target={player:{name:'Test Adventurer',character:state.character},pos:null};
+  sr11RollAttack=function(){return {r:10,total:baseAC+1,r1:10,r2:10,adv:false,dis:false};};
+  try{
+   state.combat.sr20Tactics=null;sr18ResolveMonsterAction(dummy,strike,target);
+   const unprotectedHit=state.character.hp<hpBeforeCover;state.character.hp=hpBeforeCover;
+   state.combat.sr20Tactics={...g.tactical};
+   sr18ResolveMonsterAction(dummy,strike,target);
+   ok('Cover is applied by the existing V18 monster attack resolver',unprotectedHit&&state.character.hp===hpBeforeCover);
+  }finally{sr11RollAttack=oldAttackRoll;}
   const travel=sr20ResolvePlayerAction('We travel onward for one watch',{mode:'travel',roll:12,dc:10});
   ok('Travel consumes carried provisions and advances exposure state',travel.success&&g.survival.exposure===1&&state.character.inventory.length===0);
-  g.survival.fatigue=2;const fatigueBefore=g.survival.fatigue;sr20ResolvePlayerAction('We make camp and rest',{mode:'survival',noRoll:true});
-  ok('Camping/rest reduces fatigue without a fabricated check',g.survival.fatigue<fatigueBefore);
-  const forage=sr20ResolvePlayerAction('I forage for berries and refill my waterskin at the stream',{mode:'survival',roll:20,dc:10});
-  ok('Successful survival checks can replenish food and water supplies',forage.success&&state.character.inventory.includes('Rations')&&state.character.inventory.includes('Waterskin'));
+  state.character.inventory=[{name:'Rations',type:'supply',count:3,desc:'A day of food.'},{name:'Waterskin',type:'supply',count:2,desc:'A filled waterskin.'}];
+  sr20ResolvePlayerAction('We travel onward along the pass for one watch',{mode:'travel',roll:12,dc:10});
+  const rationStack=state.character.inventory.find(x=>x.name==='Rations'),waterStack=state.character.inventory.find(x=>x.name==='Waterskin');
+  ok('Travel decrements one unit from stacked food and water supplies',rationStack?.count===2&&waterStack?.count===1);
+  g.survival.fatigue=2;const foodShortagesBefore=g.survival.foodShortages,waterShortagesBefore=g.survival.waterShortages;
+  const autoRest=sr20ResolvePlayerAction('We make camp and rest for the night',{mode:'auto',roll:20});
+  ok('Auto-routed rest reduces fatigue without consuming travel water or creating shortages',autoRest.mode==='survival'&&autoRest.noRoll&&g.survival.fatigue===0&&g.survival.foodShortages===foodShortagesBefore&&g.survival.waterShortages===waterShortagesBefore&&state.character.inventory.find(x=>x.name==='Waterskin')?.count===1);
+  const forage=sr20ResolvePlayerAction('I forage for berries and collect water from the stream',{mode:'auto',roll:20,dc:10});
+  const gainedRations=state.character.inventory.find(x=>x?.name==='Rations'),gainedWater=state.character.inventory.find(x=>x?.name==='Waterskin');
+  ok('Successful survival checks add proper stackable inventory records',forage.success&&gainedRations?.type==='supply'&&gainedRations.count===2&&gainedWater?.type==='supply'&&gainedWater.count===2);
+  const inventoryHTML=inventoryPage();
+  ok('Gathered supplies render correctly in the existing inventory view',inventoryHTML.includes('Rations')&&inventoryHTML.includes('Waterskin'));
   const failed=sr20ResolvePlayerAction('I threaten the captain without leverage',{mode:'social',target:'Mara Venn',roll:1,dc:25});
   ok('Failed actions create visible consequences',!failed.success&&g.consequences.length>0);
-  ok('Action outcomes persist in campaign history and the game journal',g.records.length===9&&state.log.length===9);
+  ok('Action outcomes persist in campaign history and the game journal',g.records.length===11&&state.log.length>=g.records.length);
   const context=srAIContext();ok('Director context receives all seven gameplay system states',!!context.campaign.gameplayV20&&context.campaign.gameplayV20.objectives.length===1&&context.campaign.gameplayV20.leads.length>0&&context.campaign.gameplayV20.tactical.stance==='cover');
   const customObjective=sr20SetObjective('Locate the hidden cistern','Search the ruined watchtower for a concealed water source.');
   const panel=sr20GameplayPanel();ok('Players can add persistent campaign objectives from the Adventure panel',customObjective.title==='Locate the hidden cistern'&&panel.includes('sr20-objective-form')&&panel.includes('Locate the hidden cistern'));
   ok('Adventure view exposes the integrated action composer and gameplay panels',panel.includes('sr20-action-form')&&panel.includes('Current objectives')&&panel.includes('Combat tactics'));
+  const snapshot=sr18Snapshot('V20 persistence regression'),validated=sr18ValidateSave(JSON.parse(JSON.stringify(snapshot)));
+  ok('V20 gameplay state survives the existing Save Center snapshot and validation path',validated.ok&&validated.state.campaign.sr20.version===SR20_GAMEPLAY_VERSION&&validated.state.campaign.sr20.records.length===g.records.length&&validated.state.campaign.sr20.objectives.some(x=>x.title==='Locate the hidden cistern'));
  }catch(e){ok('V20 seven-system gameplay tests execute without runtime errors',false,String(e?.stack||e));}
  state=old;return results;
 }
