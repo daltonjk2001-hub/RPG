@@ -244,8 +244,8 @@ function sr21ResolvePlayerAction(text,options={}){
  const rollText=noRoll?'No check required':'d20 '+die+' '+(check.bonus>=0?'+':'')+check.bonus+(fatiguePenalty?' '+fatiguePenalty:'')+' = '+total+' vs DC '+dc;
  outcome.narrative+=' '+rollText+(outcome.bonus?.edge?' · class edge +1':'')+'.';
  g.lastOutcome=outcome;g.records.push(outcome);
- while(g.records.length>40){const archived=g.records.shift();g.archive.unshift(archived);}
- g.archive=g.archive.slice(0,1000);
+ while(g.records.length>40){const archived=g.records.shift();g.archive.push(archived);}
+ g.archive=g.archive.slice(-1000);
  if(!Array.isArray(state.log))state.log=[];state.log.push({day:outcome.day,msg:(success?'Success':'Complication')+' · '+mode+': '+action+' — '+rollText+'.'});if(state.log.length>300)state.log=state.log.slice(-300);
  sr21RecordTutorial(mode);try{save();}catch(e){}return outcome;
 }
