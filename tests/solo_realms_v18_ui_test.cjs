@@ -33,7 +33,7 @@ assert('Rendered shell includes a visible Save Center entry' ,app.innerHTML.incl
 assert('Rendered shell includes game navigation and character state',app.innerHTML.includes('simple-topbar')&&app.innerHTML.includes('simple-sidebar')&&app.innerHTML.includes('Rowan Vale'));
 assert('No paid API settings are shown in the primary play shell',!app.innerHTML.includes('API key')&&!app.innerHTML.includes('OpenAI API'));
 assert('Active screen metadata is attached to the rendered Adventure screen',mainNode.dataset.screen==='adventure'&&mainNode.dataset.layoutVersion==='20');
-const screenViews=['adventure','character','inventory','journal','spells','world','rules','bestiary','crafting','downtime','party','gm','multiplayer','worldmap','consequences','ai','stronghold','downtime5','codex','tactics','treasure','factions7','exploration7','crafting7'];
+const screenViews=['adventure','character','inventory','journal','spells','world','campaign','rules','bestiary','crafting','downtime','party','gm','multiplayer','worldmap','consequences','ai','stronghold','downtime5','codex','tactics','treasure','factions7','exploration7','crafting7'];
 for(const view of screenViews){T.state.combat=null;T.state.view=view;context.__SR18_TEST.render();assert('Screen layout metadata follows '+view,mainNode.dataset.screen===view);}
 T.state.view='adventure';T.state.combat={round:1,target:0,boss:false,enemies:[{id:'g1',name:'Goblin',desc:'Raider',hp:7,maxHp:7,ac:12,attack:2,damage:'1d4',distance:5,speed:30,baseSpeed:30,conditions:[]}],initiative:10};context.__SR18_TEST.render();assert('Combat screen metadata overrides the Adventure tab while battle is active',mainNode.dataset.screen==='combat');
 T.state.combat=null;T.state.view='adventure';context.__SR18_TEST.render();
