@@ -18,6 +18,7 @@ LAYER = ROOT / "source" / "SR18_SYSTEMS_LAYER.js"
 STUDIO = ROOT / "source" / "SR19_DIRECTOR_STUDIO.js"
 BEHAVIOR = ROOT / "source" / "SR19_REACTIVE_WORLD.js"
 GAMEPLAY = ROOT / "source" / "SR20_GAMEPLAY_ENGINE.js"
+THEME_CSS = ROOT / "source" / "SR20_UI_THEME.css"
 BASE_HTML = ROOT / "build-inputs" / "Solo_Realms_V17_Main.html"
 MAIN_HTML = ROOT / "Solo_Realms_V18_Main.html"
 PWA_DIR = ROOT / "pwa"
@@ -41,6 +42,16 @@ def inject_single_app_script(template: str, combined: str, label: str) -> str:
             f"Expected exactly one script in the {label} HTML template; found {len(matches)}."
         )
     return SCRIPT_PATTERN.sub(lambda _match: "<script>\n" + combined + "\n</script>", template, count=1)
+
+
+def inject_ui_theme(template: str, css: str) -> str:
+    if 'id="sr20-ui-theme"' in template:
+        raise SystemExit("UI theme is already present in the HTML template.")
+    if "</head>" not in template.lower():
+        raise SystemExit("Could not inject UI theme: closing </head> not found.")
+    style = '\\n<style id="sr20-ui-theme">\\n' + css.rstrip() + "\\n</style>\\n"
+    match = re.search(r"</head>", template, re.IGNORECASE)
+    return template[:match.start()] + style + template[match.start():]
 
 
 def build_runtime() -> str:
@@ -94,7 +105,7 @@ def build_runtime() -> str:
 
 
 def main() -> None:
-    for path in (SRC, LAYER, STUDIO, BEHAVIOR, GAMEPLAY, BASE_HTML, MANIFEST, SERVICE_WORKER):
+    for path in (SRC, LAYER, STUDIO, BEHAVIOR, GAMEPLAY, THEME_CSS, BASE_HTML, MANIFEST, SERVICE_WORKER):
         require_file(path)
 
     combined = build_runtime()
@@ -104,6 +115,7 @@ def main() -> None:
     # a generated V18 artifact.
     base_template = BASE_HTML.read_text(encoding="utf-8")
     main_template = inject_single_app_script(base_template, combined, "standalone")
+    main_template = inject_ui_theme(main_template, THEME_CSS.read_text(encoding="utf-8"))
     main_template = main_template.replace(
         "Solo Realms V17 — Reliable Free Edition",
         "Solo Realms V18 — Complete Rules & Living Campaign",
