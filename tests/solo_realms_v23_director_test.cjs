@@ -91,6 +91,7 @@ try {
   assert('An investigation is classified as exploration', T.inferIntent('I investigate the muddy tracks').mode === 'exploration');
   assert('A safe road journey is classified as travel', T.plan('We travel along the open road to the next village').mode === 'travel');
   assert('A routine social question does not force a check', T.plan('I ask Mara Venn about the weather').noRoll === true);
+  assert('The phrase “the rest of the map” is not mistaken for a rest action', T.plan('I ask Mara to show me the rest of the map').mode === 'campaign');
   assert('A persuasive request calls for an ability check', T.plan('I persuade the gate guard to let us pass').requiresCheck === true);
   assert('The Director selects the relevant Persuasion skill', T.plan('I persuade the gate guard to let us pass').skill === 'Persuasion');
   assert('A deception attempt calls for a check', T.plan('I lie to Mara Venn about the stolen keys').requiresCheck === true);
@@ -136,7 +137,7 @@ try {
   T.record({ id: 'memory-2', day: 2, action: 'I found unusual tracks beside the northern road.', target: '', mode: 'exploration', noRoll: false, success: true, skill: 'Survival', dc: 15 }, { action: 'I found unusual tracks beside the northern road.', mode: 'exploration', checkType: 'ability-check' });
   const remembered = T.retrieve('Mara Venn promise');
   assert('Continuity retrieval prioritizes relevant past interactions', remembered.length > 0 && remembered[0].target === 'Mara Venn' && remembered[0].tags.includes('promise'));
-  const contextMemory = T21.directorContext().campaign.gameplayV23;
+  const contextMemory = T.context().campaign.gameplayV23;
   assert('AI context includes bounded V23 continuity and its evidence policy', contextMemory.version === '23.0.0' && contextMemory.memoryPolicy.includes('hypotheses'));
 
   reset();
