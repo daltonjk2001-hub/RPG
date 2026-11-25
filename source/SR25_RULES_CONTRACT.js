@@ -507,5 +507,9 @@ globalThis.__SR25_TEST = {
   normalizeLegacyResult: sr25NormalizeLegacyD20Result,
   profileDefaults: sr25ProfileDefaults,
   rulesetProfiles: Object.keys(SR25_PROFILE_DEFAULTS),
-  houseRules: SR25_HOUSE_RULES.slice()
+  houseRules: SR25_HOUSE_RULES.slice(),
+  challengeDC: sr20ChallengeDC,
+  explicitDifficulty: sr21ExplicitDifficulty,
+  difficultyOptions: sr21DifficultyOptions,
+  rulesetPanel: sr25RulesetPanel
 };
