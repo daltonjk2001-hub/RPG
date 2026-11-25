@@ -242,7 +242,7 @@ function sr20RunTests(){
   ok('Successful cover posture grants +2 AC for the current combat round',sr20CoverIsActive()===true);
   const travel=sr20ResolvePlayerAction('We travel onward for one watch',{mode:'travel',roll:12,dc:10});
   ok('Travel consumes carried provisions and advances exposure state',travel.success&&g.survival.exposure===1&&state.character.inventory.length===0);
-  const fatigueBefore=g.survival.fatigue;sr20ResolvePlayerAction('We make camp and rest',{mode:'survival',noRoll:true});
+  g.survival.fatigue=2;const fatigueBefore=g.survival.fatigue;sr20ResolvePlayerAction('We make camp and rest',{mode:'survival',noRoll:true});
   ok('Camping/rest reduces fatigue without a fabricated check',g.survival.fatigue<fatigueBefore);
   const forage=sr20ResolvePlayerAction('I forage for berries and refill my waterskin at the stream',{mode:'survival',roll:20,dc:10});
   ok('Successful survival checks can replenish food and water supplies',forage.success&&state.character.inventory.includes('Rations')&&state.character.inventory.includes('Waterskin'));
