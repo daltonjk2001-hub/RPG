@@ -103,8 +103,8 @@ function sr23DifficultyDC(action) {
   if (/\b(?:nearly impossible|impossible|mythic|legendary|perfectly concealed|unbreakable)\b/.test(text)) return 30;
   if (/\b(?:very hard|masterwork|masterfully|expertly guarded|ancient ward|heavily fortified)\b/.test(text)) return 25;
   if (/\b(?:hard|difficult|dangerous|under fire|while pursued|during a storm|raging river|collapsing|time is running out|sentinels|sentries|trapped)\b/.test(text)) return 20;
-  if (/\b(?:easy|simple|uncomplicated|weak lock|poorly guarded)\b/.test(text)) return 10;
   if (/\b(?:very easy|obvious|unlocked|unopposed|at leisure)\b/.test(text)) return 5;
+  if (/\b(?:easy|simple|uncomplicated|weak lock|poorly guarded)\b/.test(text)) return 10;
   return 15;
 }
 

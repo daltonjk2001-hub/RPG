@@ -159,7 +159,7 @@ function sr20ResolvePlayerAction(text,options={}){
  const die1=noRoll?null:(Number.isInteger(options.roll)?Math.max(1,Math.min(20,options.roll)):Math.floor(Math.random()*20)+1);
  const die2=(adv||dis)&&!noRoll?(Number.isInteger(options.secondRoll)?Math.max(1,Math.min(20,options.secondRoll)):Math.floor(Math.random()*20)+1):null;
  const die=noRoll?null:die2===null?die1:adv?Math.max(die1,die2):Math.min(die1,die2);
- const fatiguePenalty=g.survival.fatigue>=4&&(mode==='travel'||mode==='survival')?-2:0,total=noRoll?null:die+bonus.total+fatiguePenalty,success=noRoll?true:total>=dc;
+ const fatiguePenalty=(typeof sr25HouseRuleEnabled!=='function'||sr25HouseRuleEnabled('travelFatiguePenalty'))&&g.survival.fatigue>=4&&(mode==='travel'||mode==='survival')?-2:0,total=noRoll?null:die+bonus.total+fatiguePenalty,success=noRoll?true:total>=dc;
  const target=sr20FindNPC(options.target,action);
  const outcome={id:sr20Id(),day:sr20CampaignDay(),mode,action,skill,dc,challenge:options.challenge||'standard',die,die2,advantage:adv,disadvantage:dis,bonus,total,success,noRoll,narrative:sr20ActionNarrative(mode,success),target:target?.name||'',className:sr20ClassIdentity(ch).className,createdAt:new Date().toISOString()};
  g.clock.actions++;
@@ -191,7 +191,7 @@ function sr20ResolvePlayerAction(text,options={}){
   g.tactical={stance:posture,intent:action.slice(0,180),round:Number(state.combat?.round)||0,lastCheck:success?'opening':'contested'};
   if(state.combat){
    state.combat.sr20Tactics={...g.tactical,checkTotal:total,dc};
-   if(posture==='flank'&&success&&Array.isArray(state.combat.enemies)){
+   if(posture==='flank'&&success&&(typeof sr25HouseRuleEnabled!=='function'||sr25HouseRuleEnabled('flankingACBonus'))&&Array.isArray(state.combat.enemies)){
     const enemy=state.combat.enemies.find(x=>options.target&&String(x.name||'').toLowerCase()===String(options.target).toLowerCase()&&x.hp>0)||state.combat.enemies.find(x=>x&&x.hp>0);
     if(enemy&&Number.isFinite(Number(enemy.ac))){const prior=enemy.sr20Flank?.originalAC??Number(enemy.ac);enemy.sr20Flank={originalAC:prior,untilRound:Number(state.combat.round)||0};enemy.ac=Math.max(5,prior-2);state.combat.sr20Tactics.flankedTarget=enemy.name||'';}
    }
@@ -242,7 +242,7 @@ app.addEventListener('click',function(e){
  if(quick){e.preventDefault();const modes={search:['exploration','I search the nearby area for useful clues, tracks or hidden routes.'],talk:['social','I approach a nearby person and try to learn what they know.'],travel:['travel','We travel onward for one watch, watching the route and conserving our supplies.'],rest:['survival','We make camp, eat if we have supplies, and rest.']};const pair=modes[quick.dataset.sr20Quick];if(pair){const mode=$('sr20-action-mode'),input=$('sr20-action-text');if(mode)mode.value=pair[0];if(input){input.value=pair[1];input.focus();}}return;}
  const close=e.target?.closest?.('[data-sr20-close]');if(close){e.preventDefault();sr20CloseItem(close.dataset.sr20Close,close.dataset.sr20Group);render();toast('Journal entry updated.');}
 },true);
-function sr20CoverIsActive(){const t=state?.combat?.sr20Tactics,round=Number(state?.combat?.round)||0;return t?.stance==='cover'&&t.lastCheck==='opening'&&round===Number(t.round);}
+function sr20CoverIsActive(){const t=state?.combat?.sr20Tactics,round=Number(state?.combat?.round)||0;return (typeof sr25HouseRuleEnabled!=='function'||sr25HouseRuleEnabled('coverACBonus'))&&t?.stance==='cover'&&t.lastCheck==='opening'&&round===Number(t.round);}
 const sr20MonsterActionBase=sr18ResolveMonsterAction;
 sr18ResolveMonsterAction=function(enemy,action,target){
  const character=target?.player?.character;if(!character||!sr20CoverIsActive())return sr20MonsterActionBase(enemy,action,target);
@@ -260,7 +260,7 @@ function sr20RunTests(){
  const old=state,results=[],ok=(name,pass,detail='')=>results.push({name,pass:!!pass,detail});
  try{
   state={character:{name:'Test Adventurer',classId:'Rogue',ancestry:'Human',level:5,hp:24,maxHp:24,armor:'Leather armor',stats:{STR:10,DEX:16,CON:12,INT:14,WIS:12,CHA:10},proficiencies:['Stealth','Investigation','Deception'],inventory:[{name:'Rations',type:'supply',count:1,desc:'A day of food.'},{name:'Waterskin',type:'supply',count:1,desc:'A filled waterskin.'}]},campaign:{day:2,region:'Ashen Vale',location:'Old Road',npcs:[{name:'Mara Venn',faction:'Free Traders'}],companions:[],sideQuests:[],mainQuest:{title:'Find the lost map',goal:'Recover the map from the ruined watchtower',progress:0,target:2}},log:[],combat:null,view:'adventure'};
-  const g=sr20EnsureCampaign();ok('Gameplay schema initializes without replacing V18 campaign fields',g.version===SR20_GAMEPLAY_VERSION&&state.campaign.mainQuest.title==='Find the lost map');
+  const g=sr20EnsureCampaign();if(typeof sr25SetCampaignProfile==='function')sr25SetCampaignProfile(state.campaign,'solo-realms-v24-enhanced');ok('Gameplay schema initializes without replacing V18 campaign fields',g.version===SR20_GAMEPLAY_VERSION&&state.campaign.mainQuest.title==='Find the lost map');
   ok('Talking about a guard is classified as social, not tactical',sr20InferMode('I talk to the guard about the missing cart')==='social');
   ok('Asking a guard for directions remains a social action',sr20InferMode('I ask the guard where the road leads')==='social');
   ok('When social and tactical intent coexist, the first expressed intent wins',sr20InferMode('I attack first, then speak to the guard')==='tactical'&&sr20InferMode('I speak to the guard, then attack')==='social');

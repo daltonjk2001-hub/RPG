@@ -113,8 +113,8 @@ try {
   assert('V23 Director module is included in the PWA runtime', pwaHtml.includes("const SR23_VERSION = '23.0.0';"));
   assert('V23 Director module is included in the GitHub Pages runtime', pagesHtml.includes("const SR23_VERSION = '23.0.0';"));
   assert('V23 Director source is included in the canonical assembled runtime', runtimeSource.includes("const SR23_VERSION = '23.0.0';"));
-  assert('The PWA service worker uses a fresh V24 cache namespace', /solo-realms-systems-v24-[a-f0-9]+/.test(pwaServiceWorker));
-  assert('GitHub Pages receives the same V23 service-worker cache namespace', pagesServiceWorker === pwaServiceWorker);
+  assert('The PWA service worker uses a fresh V25 cache namespace', /solo-realms-systems-v25-[a-f0-9]+/.test(pwaServiceWorker));
+  assert('GitHub Pages receives the same V25 service-worker cache namespace', pagesServiceWorker === pwaServiceWorker);
   assert('Negated attack is ignored when the player chooses persuasion instead', T.inferIntent("I don't attack the guard; I try to persuade him to let us pass.").mode === 'social');
   assert('A direct attack is classified as tactical', T.inferIntent('I attack the bandit').mode === 'tactical');
   assert('Weapon attacks are not adjudicated as ability checks in the free-form action form', T.requiresDedicatedCombatAction('I attack the bandit'));
@@ -133,6 +133,8 @@ try {
   assert('The Director selects Deception for a lie', T.plan('I lie to Mara Venn about the stolen keys').skill === 'Deception');
   assert('A dangerous river crossing calls for a check', T.plan('We cross a raging river during a storm').requiresCheck === true);
   assert('The 2024-style typical DC scale is used for a hard task', T.dcFor('I cross a dangerous, collapsing bridge') === 20);
+  assert('A very easy task maps to DC 5 before the broad easy match', T.dcFor('I complete a very easy, obvious task') === 5);
+  assert('An easy task maps to DC 10', T.dcFor('I complete an easy task') === 10);
   assert('A nearly impossible task receives DC 30', T.dcFor('I attempt a nearly impossible feat') === 30);
   assert('A simple unopposed action is not forced into an ability check', T.plan('I open the unlocked wooden door').noRoll === true);
   assert('An explicit player DC override can deliberately request a check', (() => {
