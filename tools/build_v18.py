@@ -157,8 +157,8 @@ def build_runtime() -> str:
          "const saveTarget=(e,ability)=>{const d20=die(20),b=sr12SaveBonus(e,ability),r=d20+b,result=sr25ResolveCreatureSavingThrow(e,ability,[d20],b,dc);return {success:result.success,total:r,dc,ability,roll:d20,autoFail:result.autoFail};};", 1),
         ("const saveTarget=(e,ab)=>{const bonus=sr12SaveBonus(e,ab),r=die(20)+bonus;return {success:r>=dc,total:r,dc,ability:ab};};",
          "const saveTarget=(e,ab)=>{const d20=die(20),bonus=sr12SaveBonus(e,ab),r=d20+bonus,result=sr25ResolveCreatureSavingThrow(e,ab,[d20],bonus,dc);return {success:result.success,total:r,dc,ability:ab,roll:d20,autoFail:result.autoFail};};", 1),
-        ("const d1=die(20),d2=ability==='DEX'&&enemy.dodging?die(20):d1,chosen=ability==='DEX'&&enemy.dodging?Math.max(d1,d2):d1;     const save=chosen+sr12SaveBonus(enemy,ability)+cover;saved=save>=dc;",
-         "const d1=die(20),d2=ability==='DEX'&&enemy.dodging?die(20):d1,chosen=ability==='DEX'&&enemy.dodging?Math.max(d1,d2):d1;     const saveBonus=sr12SaveBonus(enemy,ability)+cover,save=chosen+saveBonus,saveResult=sr25ResolveCreatureSavingThrow(enemy,ability,ability==='DEX'&&enemy.dodging?[d1,d2]:[d1],saveBonus,dc,{advantage:ability==='DEX'&&!!enemy.dodging});saved=saveResult.success;", 1),
+        ("const save=chosen+sr12SaveBonus(enemy,ability)+cover;saved=save>=dc;",
+         "const saveBonus=sr12SaveBonus(enemy,ability)+cover,save=chosen+saveBonus,saveResult=sr25ResolveCreatureSavingThrow(enemy,ability,ability==='DEX'&&enemy.dodging?[d1,d2]:[d1],saveBonus,dc,{advantage:ability==='DEX'&&!!enemy.dodging});saved=saveResult.success;", 1),
         ("const dc=8+sr14Prof(c.level)+sr14AbilityMod(c.stats.WIS),save=die(20)+sr14AbilityMod(e.stats?.WIS||10);if(save<dc){",
          "const dc=8+sr14Prof(c.level)+sr14AbilityMod(c.stats.WIS),saveRoll=die(20),saveBonus=sr14AbilityMod(e.stats?.WIS||10),save=saveRoll+saveBonus,saveResult=sr25ResolveCreatureSavingThrow(e,'WIS',[saveRoll],saveBonus,dc);if(!saveResult.success){", 1),
     ]
