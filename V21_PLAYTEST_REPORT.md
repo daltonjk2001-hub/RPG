@@ -17,7 +17,7 @@ The V21 journey suite exercises:
 
 ## Stress coverage
 
-The V21 endurance suite simulates 1,200 mixed exploration, social, campaign, and tactical actions; 200 travel watches under supply scarcity; eight recovery rests; bounded logs/records/leads/consequences; and a Save Center snapshot/validation round trip after the simulated long session.
+The V21 endurance suite simulates 1,200 mixed exploration, social, campaign, and tactical actions; 200 travel watches under supply scarcity; eight recovery rests; exact agreement between V21 elapsed watches and the V18 campaign day/watch clock; bounded logs/records/leads/consequences; and a Save Center snapshot/validation round trip after the simulated long session.
 
 The player-stage suite also probes repeated same-day objective actions, unrelated objective selections, idempotent archives/rewards, stale/older onboarding data, action-intent ambiguities, long-rest timing, and natural-1/20 check resolution.
 
@@ -30,6 +30,7 @@ The player-stage suite also probes repeated same-day objective actions, unrelate
 - Classified an action by the earliest expressed intent; incidental mention of a guard or camp does not override the action's verb.
 - Restricted no-roll rests to survival-mode rest actions; dialogue about a campsite still rolls normally.
 - Aligned an eight-hour rest with two four-hour watches.
+- Aligned travel/rest watch increments with the shared world calendar: six four-hour watches advance one day, and an eight-hour rest advances two watches rather than a whole day.
 - Resolved ability checks from the final total versus DC, rather than making natural 1/20 an automatic failure/success.
 - Required meaningful wording overlap before a selected objective can progress; exact same-day duplicate actions cannot farm steps.
 - Bounded active objectives and preserved unfinished work instead of silently evicting it.
