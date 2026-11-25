@@ -79,3 +79,22 @@ The Director is still procedural when no external generative provider is configu
 ## Regression coverage
 
 `tests/solo_realms_v20_gameplay_test.cjs` loads the assembled standalone game in the existing simulated browser harness and checks the seven-system loop, character modifiers, objective state, discoveries, social memory, tactical cover/flank, travel supplies, resting, consequences, Director context and Adventure panel structure. It runs through `bash tests/run_v18.sh` after the reproducible build.
+
+
+## V20.1 player-stage hardening
+
+The player-stage review identified several usability and rules-integration improvements. The V20.1 hardening branch addresses them as follows:
+
+- **Beginner onboarding:** the Adventure panel now provides a dismissible first-adventure walkthrough explaining free-form intent, approach selection and outcome review.
+- **Transparent checks:** the action composer exposes automatic or explicit skill selection, normal/advantage/disadvantage roll state, and routine/standard/difficult/expert/legendary challenge tiers. Results show ability, proficiency, Expertise and class-edge contributions.
+- **Intent classification:** automatic mode selection prioritizes action verbs and distinguishes talking about a guard from fighting one. When social and tactical intents are both present, the first expressed intent wins.
+- **Rules consistency:** V20 skill checks now recognize Expertise as double proficiency, including cases where the character's Expertise record is the only proficiency source.
+- **Objective integrity:** objective progress requires at least two meaningful overlapping terms (or an exact one-term phrase), reducing accidental progress from incidental wording. No-roll rest actions do not advance objectives, create failure complications, or farm campaign momentum.
+- **Travel time:** one travel action advances one four-hour watch; an eight-hour rest advances two watches. The watch counter is no longer derived from every six arbitrary actions.
+- **Legacy progression:** completed objectives award 10 legacy renown and milestone titles at 1, 5, 10 and 20 completions. This is separate from character level and supports continued play after level 20 without inventing a real-world player-tenure clock.
+- **Long-session continuity:** the latest 40 detailed action records remain readily available; older records are moved into a compact persistent archive (up to 1,000 entries) and included in Director context.
+- **Objective continuity:** the Adventure view keeps every active objective visible and prioritizes unfinished goals; completed entries are pruned before active objectives when the bounded 20-entry ledger fills, while their renown/title milestones remain in legacy history.
+
+The new regression assertions cover guard/social classification, Expertise, challenge tiers, objective matching, legacy context, the new controls and onboarding. These changes remain subject to the full test runner (`bash tests/run_v18.sh`) and live human playtesting before release.
+
+The complete regression runner is now wired to GitHub Actions for the V20.1 hardening branch and pull requests targeting `main`.
