@@ -236,15 +236,19 @@ function sr20RunTests(){
   ok('Tactical flanking temporarily lowers the target enemy AC',state.combat.sr20Tactics.stance==='flank'&&state.combat.enemies[0].ac===11);
   state.combat={round:2,enemies:[]};sr20ResolvePlayerAction('I take cover behind the stone wall',{mode:'tactical',roll:18});
   ok('Successful cover posture grants +2 AC for the current combat round',sr20CoverAdjustedAC(15)===17);
-  const travel=sr20ResolvePlayerAction('We travel onward for one watch',{mode:'travel',roll:12});
+  const travel=sr20ResolvePlayerAction('We travel onward for one watch',{mode:'travel',roll:12,dc:10});
   ok('Travel consumes carried provisions and advances exposure state',travel.success&&g.survival.exposure===1&&state.character.inventory.length===0);
   const fatigueBefore=g.survival.fatigue;sr20ResolvePlayerAction('We make camp and rest',{mode:'survival',noRoll:true});
   ok('Camping/rest reduces fatigue without a fabricated check',g.survival.fatigue<fatigueBefore);
+  const forage=sr20ResolvePlayerAction('I forage for berries and refill my waterskin at the stream',{mode:'survival',roll:20,dc:10});
+  ok('Successful survival checks can replenish food and water supplies',forage.success&&state.character.inventory.includes('Rations')&&state.character.inventory.includes('Waterskin'));
   const failed=sr20ResolvePlayerAction('I threaten the captain without leverage',{mode:'social',target:'Mara Venn',roll:1,dc:25});
   ok('Failed actions create visible consequences',!failed.success&&g.consequences.length>0);
-  ok('Action outcomes persist in campaign history and the game journal',g.records.length===8&&state.log.length===8);
+  ok('Action outcomes persist in campaign history and the game journal',g.records.length===9&&state.log.length===9);
   const context=srAIContext();ok('Director context receives all seven gameplay system states',!!context.campaign.gameplayV20&&context.campaign.gameplayV20.objectives.length===1&&context.campaign.gameplayV20.leads.length>0&&context.campaign.gameplayV20.tactical.stance==='cover');
-  const panel=sr20GameplayPanel();ok('Adventure view exposes the integrated action form and contextual gameplay panels',panel.includes('sr20-action-form')&&panel.includes('Current objectives')&&panel.includes('Combat tactics')&&panel.includes('sr20-objective-form'));
+  const customObjective=sr20SetObjective('Locate the hidden cistern','Search the ruined watchtower for a concealed water source.');
+  const panel=sr20GameplayPanel();ok('Players can add persistent campaign objectives from the Adventure panel',customObjective.title==='Locate the hidden cistern'&&panel.includes('sr20-objective-form')&&panel.includes('Locate the hidden cistern'));
+  ok('Adventure view exposes the integrated action composer and gameplay panels',panel.includes('sr20-action-form')&&panel.includes('Current objectives')&&panel.includes('Combat tactics'));
  }catch(e){ok('V20 seven-system gameplay tests execute without runtime errors',false,String(e?.stack||e));}
  state=old;return results;
 }
