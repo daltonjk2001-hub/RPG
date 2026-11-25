@@ -126,6 +126,8 @@ try{
  assert('Enhanced profile restores the documented +1 class-identity house rule',enhancedSkill.classEdge===1);
 
  T21.state=freshState('Wizard',false);T21.ensure();T20.ensure();
+ assert('A new campaign stays on the strict 2024 profile after the V21/V20 initializers create gameplay state',T21.state.campaign.ruleset?.id==='dnd-2024-srd-5.2.1',JSON.stringify(T21.state.campaign.ruleset));
+ T25.setProfile(T21.state.campaign,'dnd-2024-srd-5.2.1');
  let travel=T21.state.campaign.sr20;travel.survival.fatigue=5;
  const strictTravel=T21.resolve('We travel down the old road for one watch',{mode:'travel',roll:15,dc:14});
  T25.setProfile(T21.state.campaign,'solo-realms-v24-enhanced');
