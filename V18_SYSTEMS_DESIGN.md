@@ -33,3 +33,8 @@ The Save Center is local to the current browser/device. It is not cloud sync. Us
 ## Multiplayer compatibility
 
 V18 increments the authenticated transport protocol from 19 to 20 and peer ID prefix from `sr19` to `sr20`, preventing mixed-version clients from sharing the same rooms. The V15 class-resource protocol remains its own independent version marker.
+
+
+## Director Studio evolution (V19)
+
+The additive Director Studio layer preserves the V18 rules adjudicator and introduces eight weighted personality influences: Grand Storyteller, Mischievous Trickster, Tactical Mastermind, Mystery Architect, Merciless Game Master, World Explorer, Psychological Horror Master, and Comedic Storyteller. Nine starter profiles, including a balanced tabletop default, can be edited through a normalized influence mixer. DM name, custom instructions, narration length, DM initiative, NPC complexity, and player-agency priority are stored in campaign `aiSettings`; player defaults are stored separately. Connected generative prompts and campaign context receive the chosen personality plus bounded memories and recent DM dialogue. Offline mode applies personality-specific narration and chat voice without changing checks, DCs, rewards, damage, or other mechanics. Existing quick profiles remain available and map to V19 personalities.
