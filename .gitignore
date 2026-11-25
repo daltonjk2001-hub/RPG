@@ -1,0 +1,13 @@
+# Operating-system and editor files
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Python cache files
+__pycache__/
+*.py[cod]
+
+# Local test and temporary logs
+*.log
+.tmp/

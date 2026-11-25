@@ -1,0 +1,21 @@
+const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
+const html=fs.readFileSync(path.join(__dirname,'..','Solo_Realms_V18_Main.html'),'utf8');
+const js=[...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).join('\n');
+function el(id=''){return {id,innerHTML:'',textContent:'',value:'',checked:false,dataset:{},style:{},attrs:{},classList:{add(){},remove(){},contains(){return false},toggle(){}},addEventListener(){},remove(){},appendChild(){},setAttribute(k,v){this.attrs[k]=String(v)},getAttribute(k){return this.attrs[k]??null},click(){},querySelector(){return null},querySelectorAll(){return []}};}
+const app=el('app'),body=el('body'),head=el('head'),toast=el('toast');
+const document={title:'',body,head,getElementById(id){return id==='app'?app:id==='toast'?toast:null},querySelector(){return null},querySelectorAll(){return []},createElement(tag){return el(tag)},addEventListener(){}};
+const storage=new Map(),session=new Map();let rand=.99;const math=Object.create(Math);math.random=()=>rand;
+const context={console,document,window:{},location:{search:'',href:'file:///Solo_Realms_V18_Main.html'},localStorage:{getItem(k){return storage.get(k)||null},setItem(k,v){storage.set(k,String(v))},removeItem(k){storage.delete(k)}},sessionStorage:{getItem(k){return session.get(k)||null},setItem(k,v){session.set(k,String(v))},removeItem(k){session.delete(k)}},URLSearchParams,URL,Blob,FileReader:function(){},setTimeout,clearTimeout,Math:math,Date,JSON,Map,Set,Array,Object,String,Number,Boolean,RegExp,Error,Promise,Intl,performance:{now:()=>0},navigator:{},crypto:require('node:crypto').webcrypto,AbortController,fetch:async()=>{throw Error('Unexpected network request in offline test')}};
+context.globalThis=context;vm.runInNewContext(js,context,{timeout:45000,filename:'Solo_Realms_V18_Main.html'});
+const T=context.__SR15_TEST,checks=[];const assert=(name,pass,detail='')=>checks.push({name,pass:!!pass,detail});
+assert('V15.2 resource rebuild layer is installed',T?.version==='15.2.0'&&typeof T.clamp==='function'&&typeof T.tests==='function');
+for(const r of T.tests())assert(r.name,r.pass,r.detail||'');
+const c={name:'Multiclass',classId:'Fighter',level:8,classLevels:{Fighter:5,Rogue:3},stats:{STR:14,DEX:16,CON:14,INT:12,WIS:10,CHA:10},hp:30,maxHp:40,gold:0,inventory:[],spells:[],conditions:[],proficiencies:['Athletics','Stealth'],hitDiceByClass:{Fighter:5,Rogue:3},hitDiceRemainingByClass:{Fighter:3,Rogue:2},hitDiceTotal:8,hitDiceRemaining:5,resourcesByClass:{}};
+T.ensure(c);assert('Both class pools exist after migration',!!c.resourcesByClass.Fighter&&!!c.resourcesByClass.Rogue);
+assert('Existing class-specific Hit Dice counts remain intact',c.hitDiceRemainingByClass.Fighter===3&&c.hitDiceRemainingByClass.Rogue===2);
+const snapshots=T.snapshot(c);assert('Snapshot retains independent resource records',!!snapshots.Fighter&&!!snapshots.Rogue);
+const htmlSheet=(()=>{T.state={character:c,campaign:{day:1,companions:[],sideQuests:[],multiplayer:{active:false}},view:'character',log:[]};return T.classPanel(c);})();
+assert('Character sheet lists each multiclass class ability independently',htmlSheet.includes('Fighter')&&htmlSheet.includes('Rogue')&&htmlSheet.includes('sr15-class-power'));
+for(const x of checks)console.log(`${x.pass?'PASS':'FAIL'} ${x.name}${x.detail?' — '+x.detail:''}`);
+console.log(`\nRESULT ${checks.filter(x=>x.pass).length}/${checks.length} V15.2 resource-engine assertions passed`);
+if(checks.some(x=>!x.pass))process.exitCode=1;

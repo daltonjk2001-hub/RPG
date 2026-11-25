@@ -1,0 +1,20 @@
+const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
+const html=fs.readFileSync(path.join(__dirname,'..','Solo_Realms_V18_Main.html'),'utf8');
+const js=[...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(s=>s.includes('globalThis.__SR16_TEST'))[0];
+if(!js)throw new Error('V16 application runtime not found in main HTML');
+function el(id=''){return {id,innerHTML:'',textContent:'',value:'',checked:false,dataset:{},style:{},attrs:{},classList:{add(){},remove(){},contains(){return false},toggle(){}},addEventListener(){},remove(){},appendChild(){},setAttribute(k,v){this.attrs[k]=String(v)},getAttribute(k){return this.attrs[k]??null},click(){},querySelector(){return null},querySelectorAll(){return []}};}
+const app=el('app'),body=el('body'),head=el('head'),toast=el('toast');
+const document={title:'',body,head,getElementById(id){return id==='app'?app:id==='toast'?toast:null},querySelector(){return null},querySelectorAll(){return []},createElement(tag){return el(tag)},addEventListener(){}};
+const storage=new Map(),session=new Map();const context={console,document,window:{},location:{search:'',href:'file:///Solo_Realms_V18_Main.html'},localStorage:{getItem(k){return storage.get(k)||null},setItem(k,v){storage.set(k,String(v))},removeItem(k){storage.delete(k)}},sessionStorage:{getItem(k){return session.get(k)||null},setItem(k,v){session.set(k,String(v))},removeItem(k){session.delete(k)}},URLSearchParams,URL,Blob,FileReader:function(){},setTimeout,clearTimeout,Math,Date,JSON,Map,Set,Array,Object,String,Number,Boolean,RegExp,Error,Promise,Intl,performance:{now:()=>0},navigator:{},crypto:require('node:crypto').webcrypto,AbortController,fetch:async()=>{throw Error('Unexpected network request in offline V16 test')}};
+context.globalThis=context;vm.runInNewContext(js,context,{timeout:45000,filename:'Solo_Realms_V18_Main.html'});
+const checks=[],assert=(name,pass,detail='')=>checks.push({name,pass:!!pass,detail});
+const T=context.__SR16_TEST;assert('V16 reactive table layer is retained',T?.version==='16.0.0');
+assert('V18 systems layer is installed',context.__SR18_TEST?.version==='18.0.0');
+for(const r of T.tests())assert(r.name,r.pass,r.detail||'');
+const N=context.__SR12_TEST;assert('V18 multiplayer handshake is isolated on protocol 20',html.includes("const SR12_VERSION = '18.0.0';")&&html.includes('protocol:20')&&html.includes("'sr20'+code.toLowerCase()"));
+assert('V15 resource compatibility protocol remains unchanged',context.__SR15_TEST?.protocol===19);
+assert('V16 main HTML contains no external script dependency',!/<script\s+src=/i.test(html));
+assert('Main file retains the V14 campaign engine, V15 resources and V16 reactive DM',html.includes('SR14_CAMPAIGN')&&html.includes('sr15EnsureCharacter')&&html.includes('V16 REACTIVE TABLE DIRECTOR'));
+for(const x of checks)console.log(`${x.pass?'PASS':'FAIL'} ${x.name}${x.detail?' — '+x.detail:''}`);
+console.log(`\nRESULT ${checks.filter(x=>x.pass).length}/${checks.length} V16 reactive and packaging checks passed`);
+if(checks.some(x=>!x.pass))process.exitCode=1;
