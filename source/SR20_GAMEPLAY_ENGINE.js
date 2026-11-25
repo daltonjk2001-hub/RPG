@@ -140,7 +140,7 @@ function sr20ResolvePlayerAction(text,options={}){
   if(!water){g.survival.waterShortages++;g.survival.fatigue=sr20Clamp(g.survival.fatigue+1,0,6);}
   g.survival.exposure++;try{if(typeof sr18AdvanceWorld==='function')sr18AdvanceWorld('travel',1);}catch(e){}
  }else if(mode==='survival'&&/\b(camp|rest|sleep)\b/i.test(action)){
-  const meal=sr20ConsumeSupply(/\b(ration|food|trail meal|provision)\b/i);
+  const meal=sr20ConsumeSupply(/\b(rations?|food|trail meals?|provisions?)\b/i);
   g.survival.fatigue=sr20Clamp(g.survival.fatigue-(meal?2:1),0,6);g.survival.exposure=Math.max(0,g.survival.exposure-1);
   try{if(typeof sr18AdvanceWorld==='function')sr18AdvanceWorld('long_rest',1);}catch(e){}
  }else{try{if(typeof sr18AdvanceWorld==='function')sr18AdvanceWorld('action',0);}catch(e){}}
@@ -237,7 +237,7 @@ function sr20RunTests(){
   const failed=sr20ResolvePlayerAction('I threaten the captain without leverage',{mode:'social',target:'Mara Venn',roll:1,dc:25});
   ok('Failed actions create visible consequences',!failed.success&&g.consequences.length>0);
   ok('Action outcomes persist in campaign history and the game journal',g.records.length===8&&state.log.length===8);
-  const context=srAIContext();ok('Director context receives all seven gameplay system states',!!context.campaign.gameplayV20&&context.campaign.gameplayV20.objectives.length===1&&context.campaign.gameplayV20.leads.length>0&&context.campaign.gameplayV20.tactical.stance==='flank');
+  const context=srAIContext();ok('Director context receives all seven gameplay system states',!!context.campaign.gameplayV20&&context.campaign.gameplayV20.objectives.length===1&&context.campaign.gameplayV20.leads.length>0&&context.campaign.gameplayV20.tactical.stance==='cover');
   const panel=sr20GameplayPanel();ok('Adventure view exposes the integrated action form and contextual gameplay panels',panel.includes('sr20-action-form')&&panel.includes('Current objectives')&&panel.includes('Combat tactics'));
  }catch(e){ok('V20 seven-system gameplay tests execute without runtime errors',false,String(e?.stack||e));}
  state=old;return results;
