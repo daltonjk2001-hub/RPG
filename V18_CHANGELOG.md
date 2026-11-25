@@ -92,3 +92,17 @@ V18 is an expanded procedural rules engine. It does not claim a hand-coded bespo
 - Passed persistent NPC, companion, faction and world state into generative Director context; offline interactions can reference remembered NPC reactions.
 - Kept the engine narrative-only: no direct changes to checks, character stats, HP, inventory, rewards or damage.
 - Added regression coverage for the behavior paths and mechanical invariants.
+
+
+## Seven-system gameplay loop — V20
+
+- Added a player-facing free-form action composer to the Adventure view, with Director-selected or player-selected approaches and visible check outcomes.
+- Added ability-score, skill-proficiency and class-identity modifiers, with a visible +1 class edge for characteristic class approaches.
+- Added investigation discoveries, persistent leads, travel watches, carried ration/water consumption, fatigue, foraging, water gathering and camp/rest procedures.
+- Added successful cover (+2 AC for the current combat round) and flank (-2 enemy AC until the next round) tactics while retaining the V18 combat resolver.
+- Added named-NPC social checks, relationship memory and failed-approach suspicion updates, connected to the V19 NPC behavior engine.
+- Connected player actions, travel, rests, leads and complications to the existing V18 living-world clock/events and V19 reactive faction/NPC context.
+- Added a V20 objective ledger that can initialize from the existing main quest, accept player-created objectives, record optional openings and preserve failed-action consequences.
+- Stored new data additively under campaign, NPC and encounter V20 fields so existing save/archive formats remain in place.
+- Added a dedicated seven-system gameplay regression suite and included it in the reproducible build/test runner.
+- The development PDFs remain research inputs only; they are not presented as an in-game information destination.
