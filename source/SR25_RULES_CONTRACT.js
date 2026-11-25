@@ -12,7 +12,7 @@ const SR25_MECHANICS = Object.freeze([
 ]);
 const SR25_ABILITIES = Object.freeze(['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA']);
 const SR25_HOUSE_RULES = Object.freeze([
-  'classIdentityEdge', 'flankingACBonus', 'travelFatiguePenalty', 'customDCPresets'
+  'classIdentityEdge', 'coverACBonus', 'flankingACBonus', 'travelFatiguePenalty', 'customDCPresets'
 ]);
 const SR25_DC_LADDER = Object.freeze([
   Object.freeze({ dc: 5, label: 'Very easy' }),
@@ -31,6 +31,7 @@ const SR25_PROFILE_DEFAULTS = Object.freeze({
     dcScale: '2024-typical',
     houseRules: Object.freeze({
       classIdentityEdge: false,
+      coverACBonus: false,
       flankingACBonus: false,
       travelFatiguePenalty: false,
       customDCPresets: false
@@ -44,6 +45,7 @@ const SR25_PROFILE_DEFAULTS = Object.freeze({
     dcScale: 'solo-realms-custom',
     houseRules: Object.freeze({
       classIdentityEdge: true,
+      coverACBonus: true,
       flankingACBonus: true,
       travelFatiguePenalty: true,
       customDCPresets: true
@@ -319,6 +321,110 @@ if (typeof sr20ClassEdge === 'function') {
     if (!sr25HouseRuleEnabled('classIdentityEdge')) return false;
     return sr25ClassEdgeBase(skill, character);
   };
+}
+
+if (typeof sr20CoverIsActive === 'function') {
+  const sr25CoverIsActiveBase = sr20CoverIsActive;
+  sr20CoverIsActive = function() {
+    return sr25HouseRuleEnabled('coverACBonus') && sr25CoverIsActiveBase();
+  };
+}
+if (typeof sr21ExplicitDifficulty === 'function') {
+  const sr25ExplicitDifficultyBase = sr21ExplicitDifficulty;
+  sr21ExplicitDifficulty = function(value) {
+    return sr25HouseRuleEnabled('customDCPresets')
+      ? sr25ExplicitDifficultyBase(value)
+      : null;
+  };
+  sr21DifficultyOptions = function() {
+    if (!sr25HouseRuleEnabled('customDCPresets')) {
+      return '<option value="auto" selected>Automatic · 2024 typical DC guidance</option>';
+    }
+    return '<option value="auto" selected>Automatic · Director / 2024 typical DC</option>' +
+      Object.entries(SR25_OLD_CUSTOM_DC_PRESETS).map(([key, dc]) =>
+        '<option value="' + key + '">Solo Realms custom · ' +
+        key.charAt(0).toUpperCase() + key.slice(1) + ' · DC ' + dc + '</option>'
+      ).join('');
+  };
+}
+function sr25RulesetPanel() {
+  const campaign = state?.campaign;
+  if (!campaign) return '';
+  const profile = sr25EnsureCampaignRules(campaign);
+  const labels = {
+    classIdentityEdge: 'Class identity edge (+1)',
+    coverACBonus: 'Cover grants +2 AC',
+    flankingACBonus: 'Successful flank grants −2 enemy AC',
+    travelFatiguePenalty: 'High fatigue gives −2 travel/survival checks',
+    customDCPresets: 'Solo Realms custom DC presets'
+  };
+  const toggles = SR25_HOUSE_RULES.map(key =>
+    '<label class="item-row" style="justify-content:space-between;gap:12px">' +
+    '<span>' + labels[key] + '</span>' +
+    '<input type="checkbox" data-sr25-house-rule="' + key + '"' +
+    (profile.houseRules[key] ? ' checked' : '') + '></label>'
+  ).join('');
+  return '<section class="card" id="sr25-ruleset-panel">' +
+    '<div class="eyebrow">V25 · Campaign rules</div>' +
+    '<h3>Rules profile</h3>' +
+    '<div class="field"><label for="sr25-profile">Ruleset</label>' +
+    '<select id="sr25-profile">' +
+    '<option value="dnd-2024-srd-5.2.1"' + (profile.id === 'dnd-2024-srd-5.2.1' ? ' selected' : '') + '>2024 SRD 5.2.1 · Core profile</option>' +
+    '<option value="solo-realms-v24-enhanced"' + (profile.id === 'solo-realms-v24-enhanced' ? ' selected' : '') + '>Solo Realms Enhanced · Legacy-compatible</option>' +
+    '</select></div>' +
+    '<p class="muted smalltext">2024 typical DCs: 5, 10, 15, 20, 25, 30. Enhanced options are explicit Solo Realms house rules and are saved with this campaign.</p>' +
+    '<div class="eyebrow">House-rule switches</div>' + toggles +
+    '<p class="muted smalltext">Changing the profile or a switch affects future resolutions; it does not rewrite previous rolls or combat outcomes.</p>' +
+    '</section>';
+}
+if (typeof sr20GameplayPanel === 'function') {
+  const sr25GameplayPanelBase = sr20GameplayPanel;
+  sr20GameplayPanel = function() {
+    return sr25GameplayPanelBase() + sr25RulesetPanel();
+  };
+}
+if (typeof srAIContext === 'function') {
+  const sr25AIContextBase = srAIContext;
+  srAIContext = function() {
+    const context = sr25AIContextBase();
+    if (!state?.campaign) return context;
+    const profile = sr25EnsureCampaignRules(state.campaign);
+    context.campaign = context.campaign || {};
+    context.campaign.ruleset = {
+      id: profile.id,
+      edition: profile.edition,
+      sourceName: profile.sourceName,
+      sourceVersion: profile.sourceVersion,
+      dcScale: profile.dcScale,
+      houseRules: { ...profile.houseRules }
+    };
+    return context;
+  };
+}
+if (typeof app !== 'undefined' && app?.addEventListener) {
+  app.addEventListener('change', function(event) {
+    const target = event?.target;
+    if (!target) return;
+    if (target.id === 'sr25-profile') {
+      try {
+        sr25SetCampaignProfile(state.campaign, String(target.value || ''));
+        save();
+        render();
+      } catch (error) {
+        if (typeof toast === 'function') toast(String(error?.message || error));
+      }
+      return;
+    }
+    const key = target.getAttribute?.('data-sr25-house-rule');
+    if (!key) return;
+    try {
+      sr25SetHouseRule(state.campaign, key, !!target.checked);
+      save();
+      render();
+    } catch (error) {
+      if (typeof toast === 'function') toast(String(error?.message || error));
+    }
+  }, true);
 }
 if (typeof sr14AbilityCheck === 'function') {
   const sr25AbilityCheckBase = sr14AbilityCheck;
