@@ -133,6 +133,8 @@ try {
   assert('The Director selects Deception for a lie', T.plan('I lie to Mara Venn about the stolen keys').skill === 'Deception');
   assert('A dangerous river crossing calls for a check', T.plan('We cross a raging river during a storm').requiresCheck === true);
   assert('The 2024-style typical DC scale is used for a hard task', T.dcFor('I cross a dangerous, collapsing bridge') === 20);
+  assert('A very easy task maps to DC 5 before the broad easy match', T.dcFor('I complete a very easy, obvious task') === 5);
+  assert('An easy task maps to DC 10', T.dcFor('I complete an easy task') === 10);
   assert('A nearly impossible task receives DC 30', T.dcFor('I attempt a nearly impossible feat') === 30);
   assert('A simple unopposed action is not forced into an ability check', T.plan('I open the unlocked wooden door').noRoll === true);
   assert('An explicit player DC override can deliberately request a check', (() => {
