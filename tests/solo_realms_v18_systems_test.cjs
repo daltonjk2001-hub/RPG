@@ -35,8 +35,8 @@ assert('Generative DM prompt uses the chosen name and player instructions',promp
 assert('Generative DM prompt includes the real weighted personality blend',prompt.includes('Mischievous Trickster 76%'));
 D.settings().aiMemory=[{day:4,tag:'promise',text:'The guard remembers the silver apple joke.'}];
 D.settings().aiChat=[{role:'user',text:'We will return at dawn.'},{role:'assistant',text:'I will remember.'}];
-const context=D.context();
-assert('Director context includes campaign memories and recent DM conversation',context.campaign.directorMemory.some(m=>m.text.includes('silver apple'))&&context.campaign.recentDMConversation.length===2);
+const directorContext=D.context();
+assert('Director context includes campaign memories and recent DM conversation',directorContext.campaign.directorMemory.some(m=>m.text.includes('silver apple'))&&directorContext.campaign.recentDMConversation.length===2);
 const studio=D.settingsPage();
 assert('Director Studio page exposes profile selection, all eight blend sliders and custom instructions',studio.includes('Director Studio')&&studio.includes('sr19-profile')&&studio.includes('data-sr19-mix="story"')&&studio.includes('data-sr19-mix="comedy"')&&studio.includes('sr19-instructions'));
 assert('Director Studio page exposes narration, initiative, NPC depth and player agency',studio.includes('sr19-narration')&&studio.includes('sr19-initiative')&&studio.includes('sr19-depth')&&studio.includes('sr19-agency'));
