@@ -11,7 +11,9 @@ const SR22LegacyLedger = (() => {
     const normalized = Object.create(null);
     if (isRecord(map)) {
       for (const key of Object.keys(map)) {
-        if (key && key.length <= MAX_ID_LENGTH && map[key] === true) normalized[key] = true;
+        if (key && key.length <= MAX_ID_LENGTH && map[key] === true) {
+          normalized[key.startsWith('reward:') ? key : 'reward:' + key] = true;
+        }
       }
     }
     return normalized;
@@ -31,7 +33,7 @@ const SR22LegacyLedger = (() => {
       const migrated = normalizeMap(legacy.awardedIds);
       for (const milestone of legacy.milestones) {
         const id = typeof milestone?.id === 'string' ? milestone.id.trim() : '';
-        if (id && id.length <= MAX_ID_LENGTH) migrated[id] = true;
+        if (id && id.length <= MAX_ID_LENGTH) migrated['reward:' + id] = true;
       }
       legacy.awardedIds = migrated;
       legacy.awardLedgerVersion = 1;
@@ -48,8 +50,9 @@ const SR22LegacyLedger = (() => {
     if (!isRecord(legacy.awardedIds) || Object.getPrototypeOf(legacy.awardedIds) !== null) {
       legacy.awardedIds = normalizeMap(legacy.awardedIds);
     }
-    if (own(legacy.awardedIds, key)) return false;
-    legacy.awardedIds[key] = true;
+    const ledgerKey = 'reward:' + key;
+    if (own(legacy.awardedIds, ledgerKey)) return false;
+    legacy.awardedIds[ledgerKey] = true;
     return true;
   }
 
