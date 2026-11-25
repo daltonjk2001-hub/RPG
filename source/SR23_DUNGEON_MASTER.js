@@ -189,7 +189,7 @@ function sr23ValidateModelPlan(candidate, action, fallback = sr23PlanAction(acti
   };
 }
 
-function sr23BuildRulingPrompt(action, fallback, context) {
+function sr23BuildRulingPrompt(action, fallback, context, memories = []) {
   return [
     'You are the adjudicating Dungeon Master for a persistent D&D-inspired campaign.',
     'Return exactly one JSON object and no markdown: {"mode":"exploration|social|travel|tactical|survival|campaign","requiresCheck":true,"skill":"one exact skill name","dc":15,"reason":"brief player-facing rationale"}.',
@@ -201,6 +201,7 @@ function sr23BuildRulingPrompt(action, fallback, context) {
     'Treat player theories as unverified hypotheses. Respect established campaign facts and character capability. When the action is not a check, return requiresCheck:false with skill:null and dc:null.',
     'Local fallback plan (use it only if the action text is ambiguous): ' + JSON.stringify({ mode: fallback.mode, requiresCheck: fallback.requiresCheck, skill: fallback.skill, dc: fallback.dc, reason: fallback.reason }),
     'Player action: ' + String(action || '').slice(0, 500),
+    'Relevant prior events: ' + JSON.stringify(Array.isArray(memories) ? memories.slice(0, SR23_MEMORY_LIMIT) : []),
     'Campaign context: ' + JSON.stringify(context || {})
   ].join('\n');
 }
@@ -213,7 +214,8 @@ async function sr23RequestModelPlan(action, options = {}) {
   if (!sr23ConfiguredAI() || typeof srAICall !== 'function') return fallback;
   try {
     const context = typeof srAIContext === 'function' ? srAIContext() : {};
-    const prompt = sr23BuildRulingPrompt(action, fallback, context);
+    const memories = sr23RetrieveMemories(action, SR23_MEMORY_LIMIT);
+    const prompt = sr23BuildRulingPrompt(action, fallback, context, memories);
     const raw = await srAICall('conversation', prompt);
     const parsed = typeof srAIParseJSON === 'function' ? srAIParseJSON(raw) : null;
     const plan = sr23ValidateModelPlan(parsed, action, fallback);
@@ -294,6 +296,8 @@ function sr23RecordEvent(outcome, plan) {
     action: String(outcome.action || plan.action || '').slice(0, 500),
     tags: sr23TagsFor(outcome.action || plan.action),
     checkType: outcome.noRoll ? 'none' : 'ability-check',
+    rulingSource: String(outcome.rulingSource || plan.source || 'local-rules'),
+    reason: String(plan.reason || '').slice(0, 240),
     skill: String(outcome.skill || plan.skill || ''),
     dc: Number.isFinite(Number(outcome.dc)) ? Number(outcome.dc) : null,
     total: Number.isFinite(Number(outcome.total)) ? Number(outcome.total) : null,
@@ -305,7 +309,8 @@ function sr23RecordEvent(outcome, plan) {
   if (data.events.length > SR23_EVENT_LIMIT) data.events.splice(0, data.events.length - SR23_EVENT_LIMIT);
   data.lastRuling = {
     id: event.id, day: event.day, mode: event.mode, action: event.action,
-    skill: event.skill, dc: event.dc, success: event.success, noRoll: event.noRoll
+    skill: event.skill, dc: event.dc, success: event.success, noRoll: event.noRoll,
+    rulingSource: event.rulingSource, reason: event.reason
   };
   return event;
 }
@@ -447,6 +452,7 @@ function sr23NarrateWithModel(outcome, plan) {
     'Player action: ' + outcome.action,
     'Rules result: ' + JSON.stringify({ mode: outcome.mode, noRoll: outcome.noRoll, skill: outcome.skill, dc: outcome.dc, roll: outcome.die, total: outcome.total, success: outcome.success, ruling: outcome.ruling }),
     'Director plan: ' + JSON.stringify(plan),
+    'Relevant prior events: ' + JSON.stringify(sr23RetrieveMemories(outcome.action, SR23_MEMORY_LIMIT)),
     'Campaign context: ' + JSON.stringify(context)
   ].join('\n');
   Promise.resolve().then(() => srAICall('conversation', prompt)).then(raw => {
