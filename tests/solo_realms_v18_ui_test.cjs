@@ -35,7 +35,15 @@ assert('Rendered shell includes a visible Save Center entry' ,app.innerHTML.incl
 assert('Rendered shell includes game navigation and character state',app.innerHTML.includes('simple-topbar')&&app.innerHTML.includes('simple-sidebar')&&app.innerHTML.includes('Rowan Vale'));
 assert('No paid API settings are shown in the primary play shell',!app.innerHTML.includes('API key')&&!app.innerHTML.includes('OpenAI API'));
 for(const view of ['adventure','character','inventory','journal','spells','world','rules','bestiary','crafting','downtime','party','gm','multiplayer','worldmap','consequences','ai','stronghold','downtime5','codex','tactics','treasure','factions7','exploration7','crafting7']){
- try{T.state.view=view;context.__SR18_TEST.render();const m=app.innerHTML.match(/<main class="main">([\\s\\S]*?)<\\/main>/i)?.[1]||app.innerHTML;const classes=[...m.matchAll(/class=["']([^"']+)["']/g)].flatMap(x=>x[1].split(/\\s+/));const ids=[...m.matchAll(/id=["']([^"']+)["']/g)].map(x=>x[1]);const heads=[...m.matchAll(/<h[1-4][^>]*>([^<]{1,85})/g)].map(x=>x[1]);console.log('VIEW_SUMMARY '+JSON.stringify({view,classes:[...new Set(classes)],ids:[...new Set(ids)],headings:[...new Set(heads)].slice(0,25),length:m.length}));}catch(error){console.log('VIEW_SUMMARY_ERROR '+view+' '+error.message);}
+ try{
+  T.state.view=view;context.__SR18_TEST.render();
+  const a=app.innerHTML,begin=a.indexOf('<main class="main">'),finish=a.indexOf('</main>',begin);
+  const m=begin>=0&&finish>begin?a.slice(begin,finish):a;
+  const classes=[...m.matchAll(/class="([^"]+)"/g)].flatMap(x=>x[1].split(' '));
+  const ids=[...m.matchAll(/id="([^"]+)"/g)].map(x=>x[1]);
+  const heads=[...m.matchAll(/<h[1-4][^>]*>([^<]{1,85})/g)].map(x=>x[1]);
+  console.log('VIEW_SUMMARY '+JSON.stringify({view,classes:[...new Set(classes)],ids:[...new Set(ids)],headings:[...new Set(heads)].slice(0,25),length:m.length}));
+ }catch(error){console.log('VIEW_SUMMARY_ERROR '+view+' '+error.message);}
 }
 for(const x of checks)console.log(`${x.pass?'PASS':'FAIL'} ${x.name}`);
 console.log(`\nRESULT ${checks.filter(x=>x.pass).length}/${checks.length} V18 UI regression checks passed`);
