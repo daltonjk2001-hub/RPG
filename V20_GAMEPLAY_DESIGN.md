@@ -95,3 +95,5 @@ The player-stage review identified several usability and rules-integration impro
 - **Long-session continuity:** the latest 40 detailed action records remain readily available; older records are moved into a compact persistent archive (up to 1,000 entries) and included in Director context.
 
 The new regression assertions cover guard/social classification, Expertise, challenge tiers, objective matching, legacy context, the new controls and onboarding. These changes remain subject to the full test runner (`bash tests/run_v18.sh`) and live human playtesting before release.
+
+The complete regression runner is now wired to GitHub Actions for the V20.1 hardening branch and pull requests targeting `main`.
