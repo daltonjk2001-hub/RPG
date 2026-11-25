@@ -29,6 +29,7 @@ try{
  assert('NPC/faction reputation stays bounded',Math.abs(T.state.campaign.npcs[0].sr20.relationship)<=10&&Math.abs(T.state.campaign.sr21.reputation['Town Watch'])<=20);
  assert('Mixed-action clocks and fatigue remain finite',Number.isFinite(g.clock.actions)&&Number.isFinite(g.clock.watch)&&g.survival.fatigue>=0&&g.survival.fatigue<=6);
  const startTravel=g.clock.watch,startShort=g.survival.foodShortages,startExposure=g.survival.exposure;
+ const worldStartDay=T.state.campaign.sr18.clock.day,worldStartWatch=T.state.campaign.sr18.clock.watch;
  for(let i=0;i<200;i++)T.resolve('We travel along the exposed North March road',{mode:'travel',durationWatches:1,skill:'Survival',roll:15,dc:12});
  assert('200 travel watches advance exactly 200 watches',g.clock.watch===startTravel+200);
  assert('Travel uses provisions then counts shortages',g.survival.foodShortages===startShort+195&&g.survival.waterShortages===startShort+195);
@@ -42,7 +43,8 @@ try{
  assert('Endurance campaign exports as portable JSON',json.length>1000&&json.length<12000000);
  assert('Save Center validates the endurance snapshot',!!valid.ok&&valid.state.character.name==='Stress Runner');
  assert('Snapshot retains V20, V21 and world state',!!valid.state.campaign.sr20&&valid.state.campaign.sr21.version==='21.0.0'&&!!valid.state.campaign.sr18);
- assert('Campaign day advances over the journey',Number.isFinite(T.state.campaign.day)&&T.state.campaign.day>=startDay+200);
+ const worldEnd=T.state.campaign.sr18.clock,worldElapsed=(worldEnd.day-worldStartDay)*6+(worldEnd.watch-worldStartWatch);
+ assert('V18 world calendar matches all 216 elapsed four-hour watches',worldElapsed===216&&worldEnd.day===T.state.campaign.day,JSON.stringify({worldStartDay,worldStartWatch,worldEndDay:worldEnd.day,worldEndWatch:worldEnd.watch,worldElapsed,campaignDay:T.state.campaign.day}));
 }catch(e){assert('Long-session simulation completes without an uncaught runtime error',false,e?.stack||String(e))}
 for(const c of checks)console.log((c.pass?'PASS ':'FAIL ')+c.name+(c.detail?' — '+c.detail:''));
 const passed=checks.filter(x=>x.pass).length;console.log('\\nRESULT '+passed+'/'+checks.length+' V21 long-session stress assertions passed');if(passed!==checks.length)process.exitCode=1;
