@@ -113,7 +113,7 @@ try {
   assert('V23 Director module is included in the PWA runtime', pwaHtml.includes("const SR23_VERSION = '23.0.0';"));
   assert('V23 Director module is included in the GitHub Pages runtime', pagesHtml.includes("const SR23_VERSION = '23.0.0';"));
   assert('V23 Director source is included in the canonical assembled runtime', runtimeSource.includes("const SR23_VERSION = '23.0.0';"));
-  assert('The PWA service worker uses a fresh V23 cache namespace', /solo-realms-systems-v23-[a-f0-9]+/.test(pwaServiceWorker));
+  assert('The PWA service worker uses a fresh V24 cache namespace', /solo-realms-systems-v24-[a-f0-9]+/.test(pwaServiceWorker));
   assert('GitHub Pages receives the same V23 service-worker cache namespace', pagesServiceWorker === pwaServiceWorker);
   assert('Negated attack is ignored when the player chooses persuasion instead', T.inferIntent("I don't attack the guard; I try to persuade him to let us pass.").mode === 'social');
   assert('A direct attack is classified as tactical', T.inferIntent('I attack the bandit').mode === 'tactical');

@@ -73,3 +73,9 @@ Read these before adding another standalone gameplay feature. New work should ad
 ## V23 Director-first gameplay
 
 The Adventure page now prioritizes one natural-language action field. Skill, challenge, mode, roll-state, target and objective overrides are available only in collapsed advanced controls. Routine unopposed actions can resolve without checks; meaningful uncertainty uses the automatic Director plan. The local Director always works offline. A configured connected model may propose a validated ruling and then narrate the completed result, but the existing deterministic game engine remains authoritative for dice and state. See V23_DM_DESIGN.md for rules policy, continuity design, research links, and what still requires a future backend or human testing.
+
+## V24 — The Chronicler custom AI Dungeon Master
+
+V24 adds a provider-neutral, server-side AI Director gateway and the custom **The Chronicler** campaign-DM contract. The connected Director has bounded adjudication, narration, in-world conversation, and scene/quest/encounter generation roles. The browser never receives or stores a provider API key. Model proposals are validated, and the deterministic game engine remains authoritative for dice, combat, spells, character resources, rewards, progression, and saved campaign state. The offline Director remains available when no gateway is configured or the service is unavailable.
+
+The gateway is in the worker/ directory; see [CUSTOM_AI_DUNGEON_MASTER.md](CUSTOM_AI_DUNGEON_MASTER.md) for provider research, model choices, security boundaries, deployment instructions, and evaluation criteria. The default recommended model is GPT-6.2 Sol, configured on the Worker, not the browser. You must deploy the Worker and add your provider API key as a server secret before connected AI is available. Provider usage may incur charges. Never add a provider key to GitHub Pages files, campaign saves, localStorage, or sessionStorage.
