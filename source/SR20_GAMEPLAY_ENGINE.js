@@ -114,7 +114,12 @@ function sr20ActionNarrative(mode,success){
  return labels[mode]||labels.campaign;
 }
 function sr20CampaignDay(){return Math.max(1,Number(state?.campaign?.day)||1);}
+function sr20ExpireFlank(){
+ const b=state?.combat,round=Number(b?.round)||0;if(!b||!Array.isArray(b.enemies))return;
+ for(const enemy of b.enemies){const mark=enemy?.sr20Flank;if(mark&&round>mark.untilRound){enemy.ac=mark.originalAC;delete enemy.sr20Flank;}}
+}
 function sr20ResolvePlayerAction(text,options={}){
+ sr20ExpireFlank();
  const action=String(text||'').trim().slice(0,500);if(!action)throw new Error('Describe what your character is trying to do.');
  if(!state?.character||!state?.campaign)throw new Error('Start a campaign before taking a gameplay action.');
  const g=sr20EnsureCampaign(),ch=state.character,mode=SR20_MODES.includes(options.mode)&&options.mode!=='auto'?options.mode:sr20InferMode(action);
@@ -149,7 +154,13 @@ function sr20ResolvePlayerAction(text,options={}){
  if(mode==='tactical'){
   const posture=/\b(cover|hide|defend|guard|protect)\b/i.test(action)?'cover':/\b(flank|circle|outmaneuver)\b/i.test(action)?'flank':/\b(retreat|withdraw|fall back)\b/i.test(action)?'withdraw':/\b(ambush|surprise|sneak)\b/i.test(action)?'ambush':'adaptive';
   g.tactical={stance:posture,intent:action.slice(0,180),round:Number(state.combat?.round)||0,lastCheck:success?'opening':'contested'};
-  if(state.combat)state.combat.sr20Tactics={...g.tactical,checkTotal:total,dc};
+  if(state.combat){
+   state.combat.sr20Tactics={...g.tactical,checkTotal:total,dc};
+   if(posture==='flank'&&success&&Array.isArray(state.combat.enemies)){
+    const enemy=state.combat.enemies.find(x=>options.target&&String(x.name||'').toLowerCase()===String(options.target).toLowerCase()&&x.hp>0)||state.combat.enemies.find(x=>x&&x.hp>0);
+    if(enemy&&Number.isFinite(Number(enemy.ac))){const prior=enemy.sr20Flank?.originalAC??Number(enemy.ac);enemy.sr20Flank={originalAC:prior,untilRound:Number(state.combat.round)||0};enemy.ac=Math.max(5,prior-2);state.combat.sr20Tactics.flankedTarget=enemy.name||'';}
+   }
+  }
  }
  if(mode==='exploration'&&success)sr20AddLead('A discovery connected to the party’s investigation: '+action.slice(0,150)+'.','exploration');
  if(!success)sr20AddConsequence(outcome.narrative+' Attempt: '+action.slice(0,130)+'.',mode);
@@ -191,6 +202,9 @@ app.addEventListener('click',function(e){
  if(quick){e.preventDefault();const modes={search:['exploration','I search the nearby area for useful clues, tracks or hidden routes.'],talk:['social','I approach a nearby person and try to learn what they know.'],travel:['travel','We travel onward for one watch, watching the route and conserving our supplies.'],rest:['survival','We make camp, eat if we have supplies, and rest.']};const pair=modes[quick.dataset.sr20Quick];if(pair){const mode=$('sr20-action-mode'),input=$('sr20-action-text');if(mode)mode.value=pair[0];if(input){input.value=pair[1];input.focus();}}return;}
  const close=e.target?.closest?.('[data-sr20-close]');if(close){e.preventDefault();sr20CloseItem(close.dataset.sr20Close,close.dataset.sr20Group);render();toast('Journal entry updated.');}
 },true);
+const sr20ComputeACBase=computeAC;
+function sr20CoverAdjustedAC(baseAC){const t=state?.combat?.sr20Tactics,round=Number(state?.combat?.round)||0;return Number.isFinite(Number(baseAC))&&t?.stance==='cover'&&t.lastCheck==='opening'&&round===Number(t.round)?Number(baseAC)+2:baseAC;}
+computeAC=function(){return sr20CoverAdjustedAC(sr20ComputeACBase.apply(this,arguments));};
 const sr20AdventureBase=adventurePage;
 adventurePage=function(){return sr20GameplayPanel()+sr20AdventureBase();};
 const sr20ContextBase=srAIContext;
@@ -212,18 +226,20 @@ function sr20RunTests(){
   const social=sr20ResolvePlayerAction('I persuade Mara Venn to tell me who hired the guards',{mode:'social',target:'Mara Venn',roll:18});
   ok('Social actions remember the NPC relationship and last exchange',social.success&&state.campaign.npcs[0].sr20.relationship===1&&g.social['Mara Venn'].relationship===1);
   sr20ResolvePlayerAction('I take cover behind the stone pillar and watch the enemy',{mode:'tactical',roll:16});
-  state.combat={round:2,enemies:[]};sr20ResolvePlayerAction('I flank the nearest enemy',{mode:'tactical',roll:18});
-  ok('Tactical intent persists in the active encounter',state.combat.sr20Tactics.stance==='flank'&&state.combat.sr20Tactics.round===2);
+  state.combat={round:2,enemies:[{name:'Guard',hp:20,ac:13}]};sr20ResolvePlayerAction('I flank the nearest enemy',{mode:'tactical',roll:18});
+  ok('Tactical flanking temporarily lowers the target enemy AC',state.combat.sr20Tactics.stance==='flank'&&state.combat.enemies[0].ac===11);
+  state.combat={round:2,enemies:[]};sr20ResolvePlayerAction('I take cover behind the stone wall',{mode:'tactical',roll:18});
+  ok('Successful cover posture grants +2 AC for the current combat round',sr20CoverAdjustedAC(15)===17);
   const travel=sr20ResolvePlayerAction('We travel onward for one watch',{mode:'travel',roll:12});
   ok('Travel consumes carried provisions and advances exposure state',travel.success&&g.survival.exposure===1&&state.character.inventory.length===0);
   const fatigueBefore=g.survival.fatigue;sr20ResolvePlayerAction('We make camp and rest',{mode:'survival',noRoll:true});
   ok('Camping/rest reduces fatigue without a fabricated check',g.survival.fatigue<fatigueBefore);
   const failed=sr20ResolvePlayerAction('I threaten the captain without leverage',{mode:'social',target:'Mara Venn',roll:1,dc:25});
   ok('Failed actions create visible consequences',!failed.success&&g.consequences.length>0);
-  ok('Action outcomes persist in campaign history and the game journal',g.records.length===7&&state.log.length===7);
+  ok('Action outcomes persist in campaign history and the game journal',g.records.length===8&&state.log.length===8);
   const context=srAIContext();ok('Director context receives all seven gameplay system states',!!context.campaign.gameplayV20&&context.campaign.gameplayV20.objectives.length===1&&context.campaign.gameplayV20.leads.length>0&&context.campaign.gameplayV20.tactical.stance==='flank');
   const panel=sr20GameplayPanel();ok('Adventure view exposes the integrated action form and contextual gameplay panels',panel.includes('sr20-action-form')&&panel.includes('Current objectives')&&panel.includes('Combat tactics'));
  }catch(e){ok('V20 seven-system gameplay tests execute without runtime errors',false,String(e?.stack||e));}
  state=old;return results;
 }
-globalThis.__SR20_TEST={version:SR20_GAMEPLAY_VERSION,ensure:sr20EnsureCampaign,classIdentity:sr20ClassIdentity,classEdge:sr20ClassEdge,inferMode:sr20InferMode,resolve:sr20ResolvePlayerAction,setObjective:sr20SetObjective,closeItem:sr20CloseItem,context:srAIContext,panel:sr20GameplayPanel,tests:sr20RunTests,get state(){return state;},set state(v){state=v;}};
+globalThis.__SR20_TEST={version:SR20_GAMEPLAY_VERSION,ensure:sr20EnsureCampaign,classIdentity:sr20ClassIdentity,classEdge:sr20ClassEdge,inferMode:sr20InferMode,resolve:sr20ResolvePlayerAction,setObjective:sr20SetObjective,closeItem:sr20CloseItem,context:srAIContext,panel:sr20GameplayPanel,coverAC:sr20CoverAdjustedAC,tests:sr20RunTests,get state(){return state;},set state(v){state=v;}};
