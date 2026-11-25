@@ -37,6 +37,16 @@ const campaign=()=>({chapter:1,day:1,location:'Ashenbrook',region:'Green March',
  assert('Utility spell engine records persistent AC effect and duration',!!mage&&spellHero.activeEffects?.some(x=>x.name==='Mage Armor'&&x.acOverride===15));
  const t= T.expandMultiattack({actions:[{name:'Multiattack',description:'The creature makes two Claw attacks and one Bite attack.'},{name:'Claw',description:'Melee Attack Roll: +5, reach 5 ft. Hit: 1d6 slashing damage.',damage:[{dice:'1d6',type:'slashing'}]},{name:'Bite',description:'Melee Attack Roll: +4, reach 5 ft. Hit: 1d8 piercing damage.',damage:[{dice:'1d8',type:'piercing'}]}]});
  assert('Multiattack expands to the right named attack sequence',t?.length===3&&t[0].name==='Claw'&&t[1].name==='Claw'&&t[2].name==='Bite');
+ const ranged=T.parseActionRange({description:'Ranged Weapon Attack Roll: +6, range 30/120 ft. Hit: 1d8 piercing damage.'});
+ assert('Ranged monster attacks parse attack mode and both range bands',ranged.ranged&&ranged.normalRange===30&&ranged.longRange===120);
+ const rangedHero=hero('Ranged Test Hero');rangedHero.reactions=[{name:'Parry',description:'adds 3 to its AC'}];rangedHero.reactionAvailable=true;
+ T.state.character=rangedHero;T.state.combat={mp:false,round:1,heroPos:{x:1,y:1},map:{width:8,height:6,scale:5,terrain:[]},enemies:[]};
+ const rangedEnemy={name:'Archer',hp:20,maxHp:20,attack:20,pos:{x:1,y:2},actions:[]};
+ const rangedTarget={player:{id:'solo',name:rangedHero.name,character:rangedHero},pos:{x:1,y:1}};
+ T.resolveMonsterAction(rangedEnemy,{name:'Longbow',attack_bonus:20,description:'Ranged Weapon Attack Roll: +20, range 30/120 ft. Hit: 1d8 piercing damage.',damage:[{dice:'1d8',type:'piercing'}]},rangedTarget);
+ assert('Ranged monster attacks do not incorrectly consume a melee Parry reaction',rangedHero.reactionAvailable===true);
+ const rechargeProbe={};T.markRechargeUsed(rechargeProbe,{name:'Fire Breath (Recharge 5–6)',description:'Recharge 5–6'});
+ assert('Using a recharge ability marks it unavailable until it recharges',rechargeProbe._sr18Recharge?.['Fire Breath (Recharge 5–6)']===false);
  const choices=['I use a rope and pulley to lift the portcullis','I calm the frightened wolf with food','I combine two runes to disable the ward','I lie to the guard about my identity'];
  const typed=choices.map(x=>T.classifyImprovisation(x)?.id);
  assert('Improvisation distinguishes environment, animal, magic and deception',typed[0]==='environment'&&typed[1]==='animal'&&typed[2]==='arcaneimprov'&&typed[3]==='deception',typed.join(', '));
