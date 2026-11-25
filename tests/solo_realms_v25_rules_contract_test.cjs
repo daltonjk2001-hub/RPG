@@ -90,6 +90,8 @@ try{
  const miss=T25.resolveAttack([1],100,10);
  assert('Natural 20 on an attack automatically hits and is critical',crit.success&&crit.critical&&crit.targetType==='armor-class');
  assert('Natural 1 on an attack automatically misses despite a high modifier',!miss.success&&miss.automaticMiss);
+ const protectedHelper=T25.resolveAbilityCheck([20],0,21,{mechanic:'attack',targetNumber:1});
+ assert('Typed ability-check helper cannot be overridden into an attack or a different target number',protectedHelper.mechanic==='ability-check'&&protectedHelper.targetNumber===21&&!protectedHelper.success);
  const advantage=T25.resolveD20({mechanic:'ability-check',rolls:[4,18],advantage:true,modifier:0,targetNumber:15});
  const disadvantage=T25.resolveD20({mechanic:'ability-check',rolls:[4,18],disadvantage:true,modifier:0,targetNumber:15});
  assert('Advantage keeps the higher of two d20 rolls',advantage.die===18&&advantage.success);
