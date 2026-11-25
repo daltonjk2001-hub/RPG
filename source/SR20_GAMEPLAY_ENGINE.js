@@ -123,7 +123,7 @@ function sr20AddConsequence(text,kind='complication'){
  if(typeof sr18AddWorldEvent==='function')sr18AddWorldEvent('gameplay-consequence',item.text,{consequenceId:item.id,kind});return item;
 }
 function sr20TokenMatch(a,b){
- const words=s=>[...new Set(String(s||'').toLowerCase().match(/[a-z]{4,}/g)||[])],left=words(a),right=new Set(words(b));
+ const words=s=>[...new Set(String(s||'').toLowerCase().match(/[a-z]{3,}/g)||[])],left=words(a),right=new Set(words(b));
  if(!left.length||!right.size)return false;const overlap=left.filter(w=>right.has(w)).length;
  return overlap>=2||(left.length===1&&right.has(left[0])&&String(b||'').toLowerCase().includes(String(a||'').toLowerCase()));
 }
