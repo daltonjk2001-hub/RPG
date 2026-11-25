@@ -70,11 +70,11 @@ function sr24BuildPlanPrompt(action, fallback, context, memories) {
   ].join('\n');
 }
 async function sr24Call(kind, input) {
-  const endpoint = sr24StoredEndpoint();
-  if (!endpoint) return null;
   const allowed = ['adjudication', 'narration', 'conversation', 'connection test', 'new-scene', 'twist', 'quest', 'encounter', 'treasure', 'action'];
   const task = String(kind || 'conversation');
   if (!allowed.includes(task)) throw new Error('The Dungeon Master does not support that task.');
+  const endpoint = sr24StoredEndpoint();
+  if (!endpoint) return null;
   const text = String(input || '').slice(0, SR24_MAX_INPUT);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 45000);
