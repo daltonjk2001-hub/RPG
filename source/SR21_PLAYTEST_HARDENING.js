@@ -194,7 +194,7 @@ function sr21ResolvePlayerAction(text,options={}){
  const success=noRoll?true:!!check.success,total=noRoll?null:check.total,die=noRoll?null:check.roll;
  const target=sr20FindNPC(opts.target,action),beforeWatch=Number(g.clock.watch)||0;
  const summary=sr21SkillBonus(ch,skill);
- const outcome={id:sr20Id(),day:Math.max(1,Number(state.campaign.day)||1),mode,action,skill,dc,die,die2:check?.second??null,advantage:!!check?.advantage,disadvantage:!!check?.disadvantage,bonus:noRoll?summary:{...summary,total:check.bonus},total,success,noRoll,narrative:sr20ActionNarrative(mode,success),target:target?.name||'',className:sr20ClassIdentity(ch).className,createdAt:new Date().toISOString()};
+ const outcome={id:sr20Id(),day:Math.max(1,Number(state.campaign.day)||1),mode,action,skill,dc,challenge:opts.challenge||(opts.difficulty&&opts.difficulty!=='auto'?opts.difficulty:'standard'),difficulty:opts.difficulty||'auto',die,die2:check?.second??null,advantage:!!check?.advantage,disadvantage:!!check?.disadvantage,bonus:noRoll?summary:{...summary,total:check.bonus},total,success,noRoll,narrative:sr20ActionNarrative(mode,success),target:target?.name||'',className:sr20ClassIdentity(ch).className,createdAt:new Date().toISOString()};
  g.clock.actions++;
  if(mode==='travel'){
   const watches=Math.max(1,Math.min(24,Math.floor(Number(opts.durationWatches)||1)));g.clock.watch=beforeWatch+watches;
