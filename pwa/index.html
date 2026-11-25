@@ -8161,7 +8161,7 @@ function sr19WorldPulse(world=null,force=false){
  const mix=sr19Normalize(sr19GetSettings().personalityMix),active=sr19TopInfluences(mix,15);if(!active.length)return null;
  const primary=active[0],secondary=active[1]&&mix[active[1]]>=25?active[1]:null;
  const npcs=campaign.npcs||[],factions=w.factions||[],npc=npcs.slice().sort((x,y)=>(Number(y.grievance)||0)-(Number(x.grievance)||0))[0]||null;
- const faction=factions.slice().sort((x,y)=>(Number(y.pressure)||0)-(Number(x.pressure)||0))[0]||null;
+ const faction=factions.slice().sort((x,y)=>((Number(y.pressure)||0)+(Number(y.sr19?.readiness)||0)*0.5)-((Number(x.pressure)||0)+(Number(x.sr19?.readiness)||0)*0.5))[0]||null;
  let text='';
  if(primary==='story'){
   const thread={id:makeId(),day:campaign.day||1,kind:'personal-arc',npc:npc?.name||'',thread:npc?(npc.name+' has a private concern tied to '+(npc.goals?.[0]||'their past')+'.'):'The central campaign thread around '+(campaign.story?.villain||'the growing threat')+' gains another consequence.',status:'developing'};
