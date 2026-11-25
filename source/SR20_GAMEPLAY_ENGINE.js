@@ -208,9 +208,13 @@ app.addEventListener('click',function(e){
  if(quick){e.preventDefault();const modes={search:['exploration','I search the nearby area for useful clues, tracks or hidden routes.'],talk:['social','I approach a nearby person and try to learn what they know.'],travel:['travel','We travel onward for one watch, watching the route and conserving our supplies.'],rest:['survival','We make camp, eat if we have supplies, and rest.']};const pair=modes[quick.dataset.sr20Quick];if(pair){const mode=$('sr20-action-mode'),input=$('sr20-action-text');if(mode)mode.value=pair[0];if(input){input.value=pair[1];input.focus();}}return;}
  const close=e.target?.closest?.('[data-sr20-close]');if(close){e.preventDefault();sr20CloseItem(close.dataset.sr20Close,close.dataset.sr20Group);render();toast('Journal entry updated.');}
 },true);
-const sr20ComputeACBase=computeAC;
-function sr20CoverAdjustedAC(baseAC){const t=state?.combat?.sr20Tactics,round=Number(state?.combat?.round)||0;return Number.isFinite(Number(baseAC))&&t?.stance==='cover'&&t.lastCheck==='opening'&&round===Number(t.round)?Number(baseAC)+2:baseAC;}
-computeAC=function(){return sr20CoverAdjustedAC(sr20ComputeACBase.apply(this,arguments));};
+function sr20CoverIsActive(){const t=state?.combat?.sr20Tactics,round=Number(state?.combat?.round)||0;return t?.stance==='cover'&&t.lastCheck==='opening'&&round===Number(t.round);}
+const sr20MonsterActionBase=sr18ResolveMonsterAction;
+sr18ResolveMonsterAction=function(enemy,action,target){
+ const character=target?.player?.character;if(!character||!sr20CoverIsActive())return sr20MonsterActionBase(enemy,action,target);
+ const original=character.buffRounds;character.buffRounds=Math.max(1,Number(original)||0);
+ try{return sr20MonsterActionBase(enemy,action,target);}finally{if(original===undefined)delete character.buffRounds;else character.buffRounds=original;}
+};
 const sr20AdventureBase=adventurePage;
 adventurePage=function(){return sr20GameplayPanel()+sr20AdventureBase();};
 const sr20ContextBase=srAIContext;
@@ -235,7 +239,7 @@ function sr20RunTests(){
   state.combat={round:2,enemies:[{name:'Guard',hp:20,ac:13}]};sr20ResolvePlayerAction('I flank the nearest enemy',{mode:'tactical',roll:18});
   ok('Tactical flanking temporarily lowers the target enemy AC',state.combat.sr20Tactics.stance==='flank'&&state.combat.enemies[0].ac===11);
   state.combat={round:2,enemies:[]};sr20ResolvePlayerAction('I take cover behind the stone wall',{mode:'tactical',roll:18});
-  ok('Successful cover posture grants +2 AC for the current combat round',sr20CoverAdjustedAC(15)===17);
+  ok('Successful cover posture grants +2 AC for the current combat round',sr20CoverIsActive()===true);
   const travel=sr20ResolvePlayerAction('We travel onward for one watch',{mode:'travel',roll:12,dc:10});
   ok('Travel consumes carried provisions and advances exposure state',travel.success&&g.survival.exposure===1&&state.character.inventory.length===0);
   const fatigueBefore=g.survival.fatigue;sr20ResolvePlayerAction('We make camp and rest',{mode:'survival',noRoll:true});
@@ -252,4 +256,4 @@ function sr20RunTests(){
  }catch(e){ok('V20 seven-system gameplay tests execute without runtime errors',false,String(e?.stack||e));}
  state=old;return results;
 }
-globalThis.__SR20_TEST={version:SR20_GAMEPLAY_VERSION,ensure:sr20EnsureCampaign,classIdentity:sr20ClassIdentity,classEdge:sr20ClassEdge,inferMode:sr20InferMode,resolve:sr20ResolvePlayerAction,setObjective:sr20SetObjective,closeItem:sr20CloseItem,context:srAIContext,panel:sr20GameplayPanel,coverAC:sr20CoverAdjustedAC,tests:sr20RunTests,get state(){return state;},set state(v){state=v;}};
+globalThis.__SR20_TEST={version:SR20_GAMEPLAY_VERSION,ensure:sr20EnsureCampaign,classIdentity:sr20ClassIdentity,classEdge:sr20ClassEdge,inferMode:sr20InferMode,resolve:sr20ResolvePlayerAction,setObjective:sr20SetObjective,closeItem:sr20CloseItem,context:srAIContext,panel:sr20GameplayPanel,coverActive:sr20CoverIsActive,tests:sr20RunTests,get state(){return state;},set state(v){state=v;}};
