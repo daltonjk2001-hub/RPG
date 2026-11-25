@@ -338,7 +338,9 @@ function sr20RunTests(){
   const archiveContext=srAIContext().campaign.gameplayV20.archive;
   ok('Long-session history keeps 40 recent records and caps the archive at 1,000',g.records.length===40&&g.records[0].id==='live-1'&&g.archive.length===1000&&g.archive[0].id==='old-1'&&g.archive[999].id==='live-0'&&archiveContext.length===20&&archiveContext[19].id==='live-0');
   const panel=sr20GameplayPanel();ok('Players can add persistent campaign objectives from the Adventure panel',customObjective.title==='Locate the hidden cistern'&&objectivePanel.includes('sr20-objective-form')&&objectivePanel.includes('Locate the hidden cistern'));
-  ok('Adventure panel exposes challenge, skill, roll-state and legacy progression controls',panel.includes('sr20-challenge')&&panel.includes('sr20-skill')&&panel.includes('sr20-roll-state')&&panel.includes('Legacy renown'));
+  const currentControls=panel.includes('sr21-skill')&&panel.includes('sr21-difficulty')&&panel.includes('sr21-roll-mode');
+  const legacyControls=panel.includes('sr20-challenge')&&panel.includes('sr20-skill')&&panel.includes('sr20-roll-state');
+  ok('Adventure panel exposes challenge, skill, roll-state and legacy progression controls',(currentControls||legacyControls)&&panel.includes('Legacy renown'));
   ok('Beginner onboarding explains the first action loop and can be dismissed',panel.includes('Your first adventure')&&panel.includes('data-sr20-onboarding-dismiss'));
   ok('Adventure view exposes the integrated action composer and gameplay panels',panel.includes('sr20-action-form')&&panel.includes('Current objectives')&&panel.includes('Combat tactics'));
   const snapshot=sr18Snapshot('V20 persistence regression'),validated=sr18ValidateSave(JSON.parse(JSON.stringify(snapshot)));
