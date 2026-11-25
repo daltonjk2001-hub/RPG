@@ -20,6 +20,8 @@ Solo Realms is a free, offline-first D&D-inspired campaign game. V18.1 remains t
 - `source/SR23_DUNGEON_MASTER.js` — Director-first action planning, conservative no-roll adjudication, bounded continuity events, and optional read-only AI narration.
 - `source/SR25_RULES_CONTRACT.js` — persisted 2024 SRD / Solo Realms Enhanced campaign profiles, house-rule controls, typed mechanic requests, and deterministic d20 resolution.
 - `V25_RULES_CONTRACT.md` — rules-profile migration, d20 semantics, house-rule definitions, and current implementation boundaries.
+- `V25_D20_RULES_AUDIT.md` — known d20 discrepancy inventory and active/legacy call-path audit.
+- `DND_RULES_COVERAGE.md` — status dashboard mapping core D&D rules to code owners, tests and outstanding acceptance criteria.
 - `V23_DM_DESIGN.md` — adjudication policy, design rationale, research references, and explicit limitations.
 - `source/SR20_GAMEPLAY_ENGINE.js` — additive V20 gameplay implementation.
 - `V18_CHANGELOG.md` — V18 and V18.1 changes.
@@ -43,7 +45,7 @@ Requirements: Python 3 and Node.js. From the repository root, run:
 bash tests/run_v18.sh
 ```
 
-The runner rebuilds the standalone and PWA outputs, synchronizes `docs/` from `pwa/`, and runs the V18/V19 compatibility, V20 gameplay/layout, V21 player-stage/endurance, V22 data-integrity, V23 Director-first gameplay, and V25 rules-contract suites. The full V23 regression now contains 757 numbered assertions, including 59 dedicated Director-first checks; CI runs the complete suite under Node 20 and Node 22, followed by release-integrity verification. Automated level bands are gameplay proxies, not real-world tabletop experience. Android installation/touch testing, real two-device multiplayer, and human playtests still require real devices and players. See `V18_TEST_REPORT.md`, `V21_PLAYTEST_REPORT.md`, and `V23_DM_DESIGN.md`.
+The runner rebuilds the standalone and PWA outputs, synchronizes `docs/` from `pwa/`, and runs the V18/V19 compatibility, V20 gameplay/layout, V21 player-stage/endurance, V22 data-integrity, V23 Director-first gameplay, V25 rules-contract suites, and the D&D core-rules coverage ledger. The full V23 regression now contains 757 numbered assertions, including 59 dedicated Director-first checks; CI runs the complete suite under Node 20 and Node 22, followed by release-integrity verification. Automated level bands are gameplay proxies, not real-world tabletop experience. Android installation/touch testing, real two-device multiplayer, and human playtests still require real devices and players. See `V18_TEST_REPORT.md`, `V21_PLAYTEST_REPORT.md`, and `V23_DM_DESIGN.md`.
 
 ## Cost and connectivity
 
