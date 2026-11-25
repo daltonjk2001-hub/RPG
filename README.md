@@ -1,6 +1,6 @@
 # Solo Realms V18.1 — GitHub Repository
 
-Solo Realms is a free, offline-first D&D-inspired campaign app. V18 expands the V17 base with a data-driven spell resolver, stat-block-based monster tactics, flexible adjudication of unusual player actions, persistent campaign simulation, and multi-slot save/recovery tools. V18.1 is a packaging and reproducible-build maintenance release; no gameplay logic or save-format changes are intended.
+Solo Realms is a free, offline-first D&D-inspired campaign app. V18 expands the V17 base with a data-driven spell resolver, stat-block-based monster tactics, flexible adjudication of unusual player actions, persistent campaign simulation, and multi-slot save/recovery tools. V18.1 remains the stable runtime foundation. The V19 Director Studio evolution adds configurable DM personalities, weighted blending, richer continuity context and offline narrative variants while preserving the V18 rules adjudicator.
 
 ## Repository contents
 
@@ -12,7 +12,8 @@ Solo Realms is a free, offline-first D&D-inspired campaign app. V18 expands the 
 - `tools/build_v18.py` — rebuilds the standalone HTML, assembled runtime, and PWA entry point from the tracked inputs.
 - `tests/` — automated regression suites and the test runner.
 - `V18_SETUP.md` — installation, rules-library, campaign, and save instructions.
-- `V18_SYSTEMS_DESIGN.md` — feature scope and implementation notes.
+- `V18_SYSTEMS_DESIGN.md` — V18 architecture and implementation notes.
+- `V19_DIRECTOR_STUDIO.md` — Director Studio profiles, mixer, behavior contract, and tests.
 - `V18_CHANGELOG.md` — V18 and V18.1 changes.
 - `V18_TEST_REPORT.md` — automated test results and remaining live-testing limitations.
 - `V18_ATTRIBUTION.md` — third-party content attribution.
