@@ -78,7 +78,7 @@ try{
  const archive=T.archive();assert('Campaign archive preserves history and the active save',!!archive&&T.legacy().archivedCampaigns.length===1&&T.state.campaign.sr21.archived&&T.state.character.name==='Stage Tester');
  assert('Repeated archive is idempotent',T.archive()===false&&T.legacy().archivedCampaigns.length===1);
  assert('Director context recognizes legacy stage',T.directorContext().campaign.gameplayV21.playerStage==='legacy');
- reset(5);const snap=T18.snapshot('V21 save test'),round=JSON.parse(JSON.stringify(snap)),valid=T18.validateSave(round.state);
+ reset(5,'Rogue');T.state.character.classId='Fighter';T.state.character.classLevels={Fighter:5};const snap=T18.snapshot('V21 save test'),round=JSON.parse(JSON.stringify(snap)),valid=T18.validateSave(round.state);
  assert('V21 state survives the existing Save Center JSON snapshot and validation',!!valid.ok&&valid.state.campaign.sr21.version==='21.0.0'&&!!valid.state.character.sr21Legacy,JSON.stringify({reason:valid.reason,classId:round.state.character?.classId,ancestry:round.state.character?.ancestry,stats:round.state.character?.stats,inventory:Array.isArray(round.state.character?.inventory),proficiencies:Array.isArray(round.state.character?.proficiencies),log:Array.isArray(round.state.log)}));
  reset(1);T.state.campaign.sr21.onboarding={step:0,complete:false,hidden:false};
  assert('New-player first-session guide is optional and visible',T.tutorial().includes('First-session guide'));
