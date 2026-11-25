@@ -2,6 +2,7 @@
  * Additive layer over V20. Existing character, campaign and save schemas remain compatible.
  */
 const SR21_VERSION='21.0.0';
+const SR21_WORLD_CLOCK_CONTRACT='four-hour-watches-v1';
 const SR21_DIFFICULTIES={trivial:5,routine:8,standard:12,hard:16,expert:20,legendary:25};
 const SR21_SKILLS=['Acrobatics','Animal Handling','Arcana','Athletics','Deception','History','Insight','Intimidation','Investigation','Medicine','Nature','Perception','Performance','Persuasion','Religion','Sleight of Hand','Stealth','Survival'];
 const SR21_TUTORIAL_STEPS=[
