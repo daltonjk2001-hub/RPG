@@ -515,5 +515,6 @@ globalThis.__SR25_TEST = {
   challengeDC: sr20ChallengeDC,
   explicitDifficulty: sr21ExplicitDifficulty,
   difficultyOptions: sr21DifficultyOptions,
-  rulesetPanel: sr25RulesetPanel
+  rulesetPanel: sr25RulesetPanel,
+  directorContext: srAIContext
 };
