@@ -4,7 +4,7 @@
 
 V26 routes the 13 active V17 attack-vs-AC comparisons that consume the shared `sr11RollAttack` result into the V25 typed attack resolver. The build keeps the legacy roll producer responsible for choosing the d20 result and applying existing attack modifiers, advantage/disadvantage, and feature bonuses. V25 now owns the final attack success / natural-1 miss / natural-20 critical decision against the AC already calculated by the caller.
 
-The conversion is performed by the reproducible builder after it removes the V17 IIFE wrapper. Each legacy comparison has an exact expected occurrence count; the build fails closed if the call-site inventory changes without an audit update.
+The conversion is performed by the reproducible builder after it removes the V17 IIFE wrapper. Each legacy comparison has an exact expected occurrence count; the build fails closed if the call-site inventory changes without an audit update. The V18 `sr18ResolveMonsterAction` attack path also now consumes the same typed attack-record result directly, with no duplicate legacy hit fallback.
 
 ## Migrated active call sites
 
