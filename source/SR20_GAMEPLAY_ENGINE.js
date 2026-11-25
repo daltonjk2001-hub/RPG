@@ -24,7 +24,7 @@ function sr20EnsureCampaign(){
  g.survival.fatigue=sr20Clamp(g.survival.fatigue,0,6);
  for(const k of ['objectives','leads','consequences','records','archive'])g[k]=Array.isArray(g[k])?g[k]:[];
  g.legacy=g.legacy&&typeof g.legacy==='object'?g.legacy:{renown:0,titles:[],milestones:[],completedObjectives:0};
- g.legacy.renown=Math.max(0,Number(g.legacy.renown)||0);g.legacy.titles=Array.isArray(g.legacy.titles)?g.legacy.titles:[];g.legacy.milestones=Array.isArray(g.legacy.milestones)?g.legacy.milestones:[];
+ g.legacy.renown=Math.max(0,Number(g.legacy.renown)||0);g.legacy.completedObjectives=Math.max(0,Number(g.legacy.completedObjectives)||0);g.legacy.titles=Array.isArray(g.legacy.titles)?g.legacy.titles:[];g.legacy.milestones=Array.isArray(g.legacy.milestones)?g.legacy.milestones:[];
  g.onboarding=g.onboarding&&typeof g.onboarding==='object'?g.onboarding:{completed:false};
  g.social=g.social&&typeof g.social==='object'?g.social:{};
  g.tactical=g.tactical&&typeof g.tactical==='object'?g.tactical:{stance:'balanced',intent:'',round:0};
