@@ -621,14 +621,16 @@ if (typeof sr133HeroSave === 'function') {
       ? [result.d1, result.d2]
       : [result.d1];
     const autoFail = !!result.autoFail || !sr25HasSaveAbility(character, key);
+    const dc = Number(attacker?.saveDC) || 0;
     const canonical = sr25ResolveSavingThrow(rolls, Number(result.bonus || 0) + Number(result.cover || 0),
-      Number(result.dc), {
+      dc, {
         advantage: !!result.advantage,
         disadvantage: !!result.disadvantage,
         autoFail
       });
     return {
       ...result,
+      dc,
       total: autoFail ? -Infinity : canonical.total,
       success: canonical.success,
       autoFail: canonical.autoFail
