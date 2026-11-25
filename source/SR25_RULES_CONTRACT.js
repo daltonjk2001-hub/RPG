@@ -368,9 +368,12 @@ if (typeof sr21SituationDC === 'function') {
     const suggested = Number(decision?.dc);
     if (Number.isFinite(suggested) && suggested >= 5 && suggested <= 30) return suggested;
     const action = String(text || '').toLowerCase();
-    const risk = /\b(under fire|while pursued|during a storm|deadly|fortified|expertly guarded|unstable|collapsing|legendary|ancient ward|time is running out|one chance)\b/.test(action);
-    const simple = /\b(unlocked|unopposed|obvious|routine|familiar|simple|ordinary|at leisure)\b/.test(action);
-    return risk ? 20 : simple ? 10 : 15;
+    if (/\b(nearly impossible|impossible|impossible feat)\b/.test(action)) return 30;
+    if (/\b(very hard|extremely hard|legendary|masterwork|ancient ward)\b/.test(action)) return 25;
+    if (/\b(hard|difficult|dangerous|under fire|while pursued|during a storm|deadly|fortified|expertly guarded|unstable|collapsing|time is running out|one chance)\b/.test(action)) return 20;
+    if (/\b(very easy|obvious|unlocked|unopposed|at leisure)\b/.test(action)) return 5;
+    if (/\b(easy|simple|routine|familiar|ordinary)\b/.test(action)) return 10;
+    return 15;
   };
 }
 if (typeof sr21ResolveOptions === 'function') {
