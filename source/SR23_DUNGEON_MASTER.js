@@ -141,6 +141,105 @@ function sr23PlanAction(text, options = {}) {
   };
 }
 
+function sr23ValidateModelPlan(candidate, action, fallback = sr23PlanAction(action)) {
+  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return fallback;
+  const modes = ['exploration', 'social', 'travel', 'tactical', 'survival', 'campaign'];
+  const skills = typeof SR21_SKILLS !== 'undefined' && Array.isArray(SR21_SKILLS)
+    ? SR21_SKILLS : ['Acrobatics','Animal Handling','Arcana','Athletics','Deception','History','Insight','Intimidation','Investigation','Medicine','Nature','Perception','Performance','Persuasion','Religion','Sleight of Hand','Stealth','Survival'];
+  const dcScale = [5, 10, 15, 20, 25, 30];
+  const mode = modes.includes(String(candidate.mode || '').toLowerCase())
+    ? String(candidate.mode).toLowerCase() : fallback.mode;
+  if (typeof candidate.requiresCheck !== 'boolean') return fallback;
+  if (sr23IsRest(action)) return fallback;
+  if (!candidate.requiresCheck) {
+    let noRollMode = mode;
+    if (noRollMode === 'social' || noRollMode === 'exploration') noRollMode = 'campaign';
+    return {
+      ...fallback, mode: noRollMode, skill: null, dc: null,
+      requiresCheck: false, noRoll: true, checkType: 'none',
+      reason: String(candidate.reason || 'The Director determined that the action is straightforward or unopposed.').slice(0, 240),
+      source: 'connected-model'
+    };
+  }
+  const skill = skills.find(item => String(item).toLowerCase() === String(candidate.skill || '').toLowerCase());
+  const dc = Number(candidate.dc);
+  if (!skill || !dcScale.includes(dc)) return fallback;
+  return {
+    ...fallback, mode, skill, dc, requiresCheck: true, noRoll: false,
+    checkType: 'ability-check',
+    reason: String(candidate.reason || 'The Director identified meaningful uncertainty and a consequence for failure.').slice(0, 240),
+    source: 'connected-model'
+  };
+}
+
+function sr23BuildRulingPrompt(action, fallback, context) {
+  return [
+    'You are the adjudicating Dungeon Master for a persistent D&D-inspired campaign.',
+    'Return exactly one JSON object and no markdown: {"mode":"exploration|social|travel|tactical|survival|campaign","requiresCheck":true,"skill":"one exact skill name","dc":15,"reason":"brief player-facing rationale"}.',
+    'Decide from the described fiction whether the action is possible, routine, or meaningfully uncertain. An unopposed, routine, or effectively certain action normally needs no roll. Ask for an ability check only when the outcome is uncertain and failure would matter.',
+    'Choose one skill from this exact list when a check is warranted: Acrobatics, Animal Handling, Arcana, Athletics, Deception, History, Insight, Intimidation, Investigation, Medicine, Nature, Perception, Performance, Persuasion, Religion, Sleight of Hand, Stealth, Survival.',
+    'Choose the typical DC ladder only: 5 very easy, 10 easy, 15 medium, 20 hard, 25 very hard, 30 nearly impossible. Do not inflate difficulty to punish a creative solution.',
+    'Rest and routine safe travel are not ability checks. A weapon attack, spell attack, saving throw, or opposed combat roll is not an ability check; do not convert one into a skill check.',
+    'Do not invent character abilities, clues, people, places, objects, rewards, damage, inventory changes, quest progress, or world events. Do not roll dice.',
+    'Treat player theories as unverified hypotheses. Respect established campaign facts and character capability. When the action is not a check, return requiresCheck:false with skill:null and dc:null.',
+    'Local fallback plan (use it only if the action text is ambiguous): ' + JSON.stringify({ mode: fallback.mode, requiresCheck: fallback.requiresCheck, skill: fallback.skill, dc: fallback.dc, reason: fallback.reason }),
+    'Player action: ' + String(action || '').slice(0, 500),
+    'Campaign context: ' + JSON.stringify(context || {})
+  ].join('\n');
+}
+
+async function sr23RequestModelPlan(action, options = {}) {
+  const fallback = sr23PlanAction(action, options);
+  if (!sr23ConfiguredAI() || typeof srAICall !== 'function') return fallback;
+  try {
+    const context = typeof srAIContext === 'function' ? srAIContext() : {};
+    const prompt = sr23BuildRulingPrompt(action, fallback, context);
+    const raw = await srAICall('conversation', prompt);
+    const parsed = typeof srAIParseJSON === 'function' ? srAIParseJSON(raw) : null;
+    const plan = sr23ValidateModelPlan(parsed, action, fallback);
+    if (plan.source !== 'connected-model') {
+      console.warn('Director returned an invalid ruling; using the local deterministic fallback.');
+    }
+    return plan;
+  } catch (error) {
+    console.warn('Connected Director ruling unavailable; using the local deterministic fallback:', error);
+    return fallback;
+  }
+}
+
+function sr23InstallConnectedAdjudication() {
+  if (typeof document === 'undefined' || typeof document.addEventListener !== 'function') return;
+  document.addEventListener('submit', event => {
+    if (event.target?.id !== 'sr20-action-form' || !sr23ConfiguredAI()) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+    const action = String($('sr20-action-text')?.value || '').trim().slice(0, 500);
+    if (!action) {
+      if (typeof toast === 'function') toast('Describe what your character is trying to do.');
+      return;
+    }
+    const options = {
+      mode: $('sr20-action-mode')?.value || 'auto',
+      target: $('sr20-action-target')?.value || ''
+    };
+    const resolved = typeof sr21ResolveOptions === 'function' ? sr21ResolveOptions(options) : options;
+    if (typeof toast === 'function') toast('The Director is considering the action…');
+    sr23RequestModelPlan(action, resolved).then(plan => {
+      const outcome = sr23ResolvePlayerAction(action, { ...resolved, directorPlan: plan });
+      if (typeof render === 'function') render();
+      if (typeof toast === 'function') {
+        toast((outcome.success ? 'Success' : 'Complication') + ' · ' +
+          (outcome.skill || 'No check') + ' · ' +
+          (outcome.total === null ? 'no check' : outcome.total + ' vs DC ' + outcome.dc));
+      }
+    }).catch(error => {
+      console.error('Director action resolution failed:', error);
+      if (typeof toast === 'function') toast(error.message || 'The Director could not resolve that action.');
+    });
+  }, true);
+}
+
 function sr23EnsureCampaign() {
   const campaign = state?.campaign;
   if (!campaign) return null;
@@ -355,11 +454,26 @@ function sr23ResolvePlayerAction(text, options = {}) {
   const explicitSkill = String(resolved.skill || 'auto') !== 'auto';
   const explicitDifficulty = String(resolved.difficulty || 'auto') !== 'auto';
   const explicitDC = Number.isFinite(Number(resolved.dc)) && Number(resolved.dc) >= 5 && Number(resolved.dc) <= 30;
-  const plan = sr23PlanAction(action, {
+  const localPlan = sr23PlanAction(action, {
     mode: explicitMode ? resolved.mode : 'auto',
     skill: explicitSkill ? resolved.skill : 'auto',
     target: resolved.target || options.target || ''
   });
+  const plan = options.directorPlan?.source === 'connected-model'
+    ? sr23ValidateModelPlan(options.directorPlan, action, localPlan)
+    : localPlan;
+  if (explicitMode) plan.mode = resolved.mode;
+  if (explicitSkill && plan.requiresCheck) plan.skill = resolved.skill;
+  if (explicitDC) {
+    plan.requiresCheck = true;
+    plan.noRoll = false;
+    plan.checkType = 'ability-check';
+    plan.dc = Number(resolved.dc);
+  } else if (explicitDifficulty) {
+    plan.requiresCheck = true;
+    plan.noRoll = false;
+    plan.checkType = 'ability-check';
+  }
 
   resolved.mode = plan.mode;
   if (!explicitSkill && plan.skill) resolved.skill = plan.skill;
@@ -378,6 +492,7 @@ function sr23ResolvePlayerAction(text, options = {}) {
   const outcome = sr21ResolvePlayerAction(action, resolved);
   outcome.directorVersion = SR23_VERSION;
   outcome.ruling = sr23RulingText(plan, outcome);
+  outcome.rulingSource = plan.source === 'connected-model' ? 'connected-model' : 'local-rules';
   outcome.narrative = sr23OfflineNarration(plan, outcome) + '\n\n' + outcome.ruling;
   outcome.narrationSource = 'offline-rules';
   const data = sr23EnsureCampaign();
@@ -413,6 +528,8 @@ srAIContext = function() {
   return context;
 };
 
+sr23InstallConnectedAdjudication();
+
 globalThis.__SR23_TEST = {
   version: SR23_VERSION,
   inferIntent: sr23FindIntent,
@@ -424,6 +541,8 @@ globalThis.__SR23_TEST = {
   record: sr23RecordEvent,
   retrieve: sr23RetrieveMemories,
   context: () => srAIContext(),
+  validateModelPlan: sr23ValidateModelPlan,
+  buildRulingPrompt: sr23BuildRulingPrompt,
   resolve: sr23ResolvePlayerAction,
   panel: sr23DirectorPanel,
   get state() { return state; },
