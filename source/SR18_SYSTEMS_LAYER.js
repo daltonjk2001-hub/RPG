@@ -2,6 +2,7 @@
  * Built as an additive layer over V17 so earlier campaign/rules/multiplayer/save data remains readable.
  */
 const SR18_VERSION='18.0.0';
+const SR18_WATCHES_PER_DAY=6;
 const SR18_SAVE_DB='solo-realms-v18-save-archive';
 const SR18_SLOT_PREFIX='sr18-save-slot-';
 const SR18_RECOVERY_PREFIX='sr18-recovery-';
@@ -368,7 +369,7 @@ function sr18AdvanceWorld(reason='action',days=0){
  w.clock.actionTicks++;
  const advance=Math.max(0,Math.min(30,Number(days)||0));
  if(advance){w.clock.day+=advance;c.day=Math.max(Number(c.day)||1,w.clock.day);w.clock.watch=1;}
- else if(/travel|rest|downtime|sleep|research|craft/i.test(reason)){w.clock.watch++;if(w.clock.watch>6){w.clock.watch=1;w.clock.day++;c.day=Math.max(Number(c.day)||1,w.clock.day);}}
+ else if(/travel|rest|downtime|sleep|research|craft/i.test(reason)){w.clock.watch++;if(w.clock.watch>SR18_WATCHES_PER_DAY){w.clock.watch=1;w.clock.day++;c.day=Math.max(Number(c.day)||1,w.clock.day);}}
  if(w.clock.actionTicks-w.lastPressureTick>=3||advance){w.lastPressureTick=w.clock.actionTicks;for(const f of w.factions){const linked=(c.sr14?.factions||{})[f.name];if(linked&&Number(linked.reputation)>=20)f.pressure=Math.max(0,f.pressure-1);else if(f.standing!=='allied')f.pressure=Math.min(6,f.pressure+1);}}
  for(const clock of w.clocks){if(clock.value>=clock.limit){clock.value=0;const faction=w.factions.slice().sort((a,b)=>b.pressure-a.pressure)[0];const event=clock.id==='local-tension'?`${c.location||'The settlement'} grows tense: patrols tighten, prices shift, and rumors spread as ${faction?.name||'local groups'} press their interests.`:`The race for ${c.story?.relic||'the lost relic'} accelerates. ${faction?.name||'A rival faction'} makes a move while the party is elsewhere.`;sr18AddWorldEvent('world-clock',event,{clock:clock.id,faction:faction?.name||''});if(faction){faction.progress++;faction.history.unshift({day:w.clock.day,text:event});faction.history=faction.history.slice(0,8);}break;}}
  if(w.clock.actionTicks%5===0){const f=w.factions[(Math.floor(w.clock.actionTicks/5)-1)%w.factions.length];if(f){const rumor=`Rumor: ${f.name} is trying to ${f.goal}.`;w.rumors.unshift({day:w.clock.day,text:rumor,source:f.name});w.rumors=w.rumors.slice(0,12);}}

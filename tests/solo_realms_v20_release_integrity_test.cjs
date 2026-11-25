@@ -38,6 +38,14 @@ pass('GitHub Pages HTML is byte-identical to the canonical PWA entry point', doc
 
 pass('V21 player-stage hardening is assembled into standalone, PWA and Pages runtimes',
   mainScripts[0].includes("const SR21_VERSION='21.0.0';") && pwaScripts[0] === mainScripts[0] && docsScripts[0] === mainScripts[0]);
+for (const [label, marker] of [
+  ['six-watch calendar contract', "const SR18_WATCHES_PER_DAY=6;"],
+  ['V21 four-hour watch contract', "const SR21_WORLD_CLOCK_CONTRACT='four-hour-watches-v1';"],
+]) {
+  pass('Standalone, PWA and Pages include the ' + label,
+    mainScripts[0].includes(marker) && pwaScripts[0].includes(marker) && docsScripts[0].includes(marker));
+}
+
 pass('V21 skill, difficulty, roll and objective controls are shipped in all player-facing builds',
   ['sr21-skill','sr21-difficulty','sr21-roll-mode','sr21-objective'].every(id => main.includes(id) && pwa.includes(id) && docs.includes(id)));
 
