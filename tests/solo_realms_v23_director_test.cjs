@@ -13,6 +13,7 @@ const pwaServiceWorker = fs.readFileSync(path.join(root, 'pwa', 'sw.js'), 'utf8'
 const pagesServiceWorker = fs.readFileSync(path.join(root, 'docs', 'sw.js'), 'utf8');
 
 const nodes = new Map();
+const documentListeners = [];
 function element(id = '') {
   return {
     id, value: '', checked: false, dataset: {}, style: {}, children: [],
@@ -33,7 +34,7 @@ const document = {
   querySelector() { return null; },
   querySelectorAll() { return []; },
   createElement(tag) { return element(tag); },
-  addEventListener() {}
+  addEventListener(type, callback, capture) { documentListeners.push({ type, callback, capture }); }
 };
 const storage = new Map();
 const session = new Map();
@@ -98,6 +99,8 @@ try {
   assert('An invalid model skill is rejected in favor of the local ruling', invalidSkillPlan.source !== 'connected-model' && invalidSkillPlan.skill === modelFallback.skill);
   const invalidDCPlan = T.validateModelPlan({ mode: 'social', requiresCheck: true, skill: 'Persuasion', dc: 12 }, 'I persuade Mara Venn to reveal what she knows.', modelFallback);
   assert('A model DC outside the standard scale is rejected', invalidDCPlan.source !== 'connected-model' && invalidDCPlan.dc === modelFallback.dc);
+  const rulingPrompt = T.buildRulingPrompt('I persuade Mara Venn to reveal what she knows.', modelFallback, { campaign: { title: 'The Lost Cistern' } });
+  assert('The connected Director prompt forbids skill-check substitution for attacks and spell attacks', rulingPrompt.includes('weapon attack, spell attack, saving throw') && rulingPrompt.includes('Do not roll dice.'));
   const restFallback = T.plan('We make camp and rest for the night.');
   const restModelPlan = T.validateModelPlan({ mode: 'survival', requiresCheck: true, skill: 'Survival', dc: 25 }, 'We make camp and rest for the night.', restFallback);
   assert('A model cannot turn a normal long rest into an ability check', restModelPlan.noRoll === true && restModelPlan.skill === null);
@@ -109,6 +112,10 @@ try {
   assert('GitHub Pages receives the same V23 service-worker cache namespace', pagesServiceWorker === pwaServiceWorker);
   assert('Negated attack is ignored when the player chooses persuasion instead', T.inferIntent("I don't attack the guard; I try to persuade him to let us pass.").mode === 'social');
   assert('A direct attack is classified as tactical', T.inferIntent('I attack the bandit').mode === 'tactical');
+  assert('Weapon attacks are not adjudicated as ability checks in the free-form action form', T.requiresDedicatedCombatAction('I attack the bandit'));
+  assert('Spell casts are routed to their dedicated resolver', T.requiresDedicatedCombatAction('I cast Fireball at the ogre'));
+  assert('A negated attack does not force the combat resolver', !T.requiresDedicatedCombatAction("I don't attack the guard; I persuade him instead"));
+  assert('Connected model adjudication is installed as a document-level capture handler', documentListeners.some(item => item.type === 'submit' && item.capture === true));
   assert('An investigation is classified as exploration', T.inferIntent('I investigate the muddy tracks').mode === 'exploration');
   assert('A safe road journey is classified as travel', T.plan('We travel along the open road to the next village').mode === 'travel');
   assert('A routine social question does not force a check', T.plan('I ask Mara Venn about the weather').noRoll === true);
@@ -128,6 +135,11 @@ try {
     const forced = T.resolve('I open the unlocked wooden door.', { dc: 20, roll: 15 });
     return forced.noRoll === false && forced.dc === 20;
   })());
+
+  reset();
+  let attackRejected = false;
+  try { T.resolve('I attack the bandit'); } catch (error) { attackRejected = /dedicated Combat or Spells controls/.test(error.message); }
+  assert('The local adjudicator refuses to fake an ability check for a weapon attack', attackRejected);
 
   reset();
   const safeTravel = T.resolve('We travel along the open road to the next village.');
