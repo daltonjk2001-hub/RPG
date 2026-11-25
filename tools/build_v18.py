@@ -95,6 +95,26 @@ def build_runtime() -> str:
         "sr12ApplyDamage(e,amount,effect.type||sp.damageType||'force')",
     )
 
+    # Route the retained V17/V11/V12 attack-vs-AC call sites through the V25
+    # typed attack resolver. The legacy roll function still owns condition,
+    # advantage/disadvantage and feature bonuses; this adapter owns the final
+    # hit/critical/miss rule against the already computed AC.
+    attack_checks = [
+        ("roll.r===20||(roll.r!==1&&roll.total>=ac)", "sr25AttackSuccess(roll,ac)", 4),
+        ("roll.r===20||(roll.r!==1&&roll.total>=e.ac)", "sr25AttackSuccess(roll,e.ac)", 2),
+        ("r.r===20||(r.r!==1&&r.total>=ac)", "sr25AttackSuccess(r,ac)", 3),
+        ("r.r===20||(r.r!==1&&r.total>=e.ac)", "sr25AttackSuccess(r,e.ac)", 3),
+        ("r.r!==1&&(r.r===20||r.total>=e.ac)", "sr25AttackSuccess(r,e.ac)", 1),
+    ]
+    for old_check, new_check, expected_count in attack_checks:
+        actual_count = base.count(old_check)
+        if actual_count != expected_count:
+            raise SystemExit(
+                f"Expected {expected_count} legacy attack checks for {old_check!r}, "
+                f"found {actual_count}; inspect V17 call sites before rebuilding."
+            )
+        base = base.replace(old_check, new_check)
+
     # Advance the multiplayer handshake while leaving the independent V15
     # resource protocol's own version marker intact.
     replacements = [
