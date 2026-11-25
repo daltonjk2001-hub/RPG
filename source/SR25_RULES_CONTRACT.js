@@ -237,6 +237,22 @@ function sr25ResolveD20(input) {
   if (!Number.isFinite(modifier) || Math.abs(modifier) > 1000) {
     throw new Error('Modifier must be a finite value between -1000 and 1000.');
   }
+  if (input.autoFail !== undefined && typeof input.autoFail !== 'boolean') {
+    throw new Error('Automatic save failure must be a boolean.');
+  }
+  if (input.chooseToFail !== undefined && typeof input.chooseToFail !== 'boolean') {
+    throw new Error('Voluntary save failure must be a boolean.');
+  }
+  if (input.chooseToFail === true && mechanic !== 'saving-throw') {
+    throw new Error('Voluntary failure is only available for saving throws.');
+  }
+  if (mechanic === 'saving-throw' && input.chooseToFail === true) {
+    return {
+      schema: SR25_RESULT_SCHEMA, mechanic, dice: [], die: null, modifier: 0, total: null,
+      targetNumber, targetType: 'difficulty-class', success: false, critical: false,
+      automaticMiss: false, autoFail: false, chosenToFail: true, failureReason: 'voluntary', natural: null
+    };
+  }
   const advantage = !!input.advantage && !input.disadvantage;
   const disadvantage = !!input.disadvantage && !input.advantage;
   let rolls = input.rolls;
@@ -247,9 +263,6 @@ function sr25ResolveD20(input) {
   }
   rolls = rolls.map((roll, index) => sr25FiniteInteger(roll, 'd20 result ' + (index + 1), 1, 20));
   const die = advantage ? Math.max(...rolls) : disadvantage ? Math.min(...rolls) : rolls[0];
-  if (input.autoFail !== undefined && typeof input.autoFail !== 'boolean') {
-    throw new Error('Automatic save failure must be a boolean.');
-  }
   const autoFail = mechanic === 'saving-throw' && input.autoFail === true;
   const total = die + modifier;
   const critical = mechanic === 'attack' && die === 20;
@@ -286,9 +299,150 @@ function sr25HasSaveAbility(target, ability) {
     Object.prototype.hasOwnProperty.call(stats, key) &&
     Number.isFinite(Number(stats[key])) && Number(stats[key]) >= 1 && Number(stats[key]) <= 30;
 }
+function sr25LegendaryResistanceText(value) {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) return value.map(sr25LegendaryResistanceText).join(' ');
+  if (!sr25IsRecord(value)) return '';
+  return ['name', 'title', 'desc', 'description', 'text', 'trait', 'value']
+    .map(key => value[key] == null ? '' : String(value[key])).filter(Boolean).join(' ');
+}
+function sr25LegendaryResistanceSpecification(target, options = {}) {
+  if (!sr25IsRecord(target)) return null;
+  const containers = [target, target.statBlock, target.statblock, target.monster].filter(sr25IsRecord);
+  const traitFields = ['special_abilities', 'specialAbilities', 'special_traits', 'specialTraits', 'traits', 'features'];
+  const traitRecords = [];
+  for (const container of containers) {
+    for (const field of traitFields) {
+      const value = container[field];
+      if (Array.isArray(value)) traitRecords.push(...value);
+      else if (typeof value === 'string' || sr25IsRecord(value)) traitRecords.push(value);
+    }
+  }
+  const trait = traitRecords.find(value => /legendary\s+resistance/i.test(sr25LegendaryResistanceText(value)));
+  const explicit = target.legendaryResistance ?? target.legendary_resistance ??
+    target.legendary_resistance_uses ?? target.statBlock?.legendary_resistance ??
+    target.statblock?.legendary_resistance;
+  const stored = target._sr25LegendaryResistance;
+  const hasExplicit = explicit === true || (Number.isFinite(Number(explicit)) && Number(explicit) > 0) ||
+    sr25IsRecord(explicit) || sr25IsRecord(stored);
+  if (explicit === false || (!trait && !hasExplicit)) return null;
+  const text = sr25LegendaryResistanceText(trait || explicit || stored);
+  const explicitObject = sr25IsRecord(explicit) ? explicit : {};
+  const daily = [...text.matchAll(/(\d+)\s*\/\s*day/gi)].map(match => Number(match[1]));
+  const configured = explicitObject.maxUses ?? explicitObject.usesPerDay ?? explicitObject.perDay ??
+    explicitObject.max ?? stored?.maxUses ?? (typeof explicit === 'number' ? explicit : undefined);
+  const baseUses = Number(configured ?? daily[0] ?? 3);
+  const parsedBase = Number.isFinite(baseUses) && baseUses > 0 ? Math.floor(baseUses) : (daily[0] || 3);
+  const lairMatch = text.match(/(\d+)\s*\/\s*day\s+in\s+(?:its\s+)?lair/i);
+  const inLair = options.inLair === true || target.inLair === true ||
+    target.isInLair === true || target.lairEncounter === true;
+  const maxUses = inLair && lairMatch ? Number(lairMatch[1]) : parsedBase;
+  return {
+    maxUses: Math.max(1, Math.min(99, Math.floor(maxUses))),
+    baseMaxUses: parsedBase,
+    lairMaxUses: lairMatch ? Number(lairMatch[1]) : null,
+    inLair,
+    reset: 'long-rest',
+    sourceText: text
+  };
+}
+function sr25LegendaryResistanceStatus(target, options = {}) {
+  const specification = sr25LegendaryResistanceSpecification(target, options);
+  if (!specification) return { available: false, maxUses: 0, remainingUses: 0, usedUses: 0, reset: 'long-rest' };
+  let resource = target._sr25LegendaryResistance;
+  if (!sr25IsRecord(resource)) {
+    const explicitResource = sr25IsRecord(target.legendaryResistance)
+      ? target.legendaryResistance
+      : sr25IsRecord(target.legendary_resistance) ? target.legendary_resistance : {};
+    const importedRemaining = Number(target.legendaryResistanceRemaining ??
+      target.legendary_resistance_remaining ?? target.legendary_resistance_uses_remaining ??
+      explicitResource.remainingUses ?? explicitResource.remaining_uses);
+    const remainingUses = Number.isFinite(importedRemaining)
+      ? Math.max(0, Math.min(specification.maxUses, Math.floor(importedRemaining)))
+      : specification.maxUses;
+    resource = {
+      maxUses: specification.maxUses,
+      remainingUses,
+      usedUses: specification.maxUses - remainingUses,
+      reset: 'long-rest'
+    };
+    target._sr25LegendaryResistance = resource;
+  } else {
+    resource.maxUses = specification.maxUses;
+    const remaining = Number(resource.remainingUses);
+    resource.remainingUses = Number.isFinite(remaining)
+      ? Math.max(0, Math.min(specification.maxUses, Math.floor(remaining)))
+      : specification.maxUses;
+    resource.usedUses = specification.maxUses - resource.remainingUses;
+    resource.reset = 'long-rest';
+  }
+  return {
+    available: resource.remainingUses > 0,
+    maxUses: resource.maxUses,
+    remainingUses: resource.remainingUses,
+    usedUses: resource.usedUses,
+    reset: 'long-rest',
+    inLair: specification.inLair
+  };
+}
+function sr25ConsumeLegendaryResistance(target, options = {}) {
+  const status = sr25LegendaryResistanceStatus(target, options);
+  if (!status.available) return { consumed: false, ...status };
+  const resource = target._sr25LegendaryResistance;
+  resource.remainingUses = Math.max(0, resource.remainingUses - 1);
+  resource.usedUses = resource.maxUses - resource.remainingUses;
+  return {
+    consumed: true,
+    available: resource.remainingUses > 0,
+    maxUses: resource.maxUses,
+    remainingUses: resource.remainingUses,
+    usedUses: resource.usedUses,
+    reset: 'long-rest',
+    inLair: status.inLair
+  };
+}
+function sr25ResetLegendaryResistance(target, options = {}) {
+  const status = sr25LegendaryResistanceStatus(target, options);
+  if (!status.maxUses) return { reset: false, ...status };
+  const resource = target._sr25LegendaryResistance;
+  resource.remainingUses = resource.maxUses;
+  resource.usedUses = 0;
+  resource.lastReset = 'long-rest';
+  return { reset: true, ...sr25LegendaryResistanceStatus(target, options) };
+}
+function sr25SetNextSavingThrowChoice(target, choice) {
+  if (!sr25IsRecord(target)) throw new Error('A creature is required to set its next saving-throw choice.');
+  const normalized = String(choice || 'roll').toLowerCase();
+  if (!['roll', 'fail'].includes(normalized)) throw new Error('The next saving-throw choice must be roll or fail.');
+  if (normalized === 'fail') target._sr25NextSaveChoice = 'fail';
+  else delete target._sr25NextSaveChoice;
+  return normalized;
+}
+function sr25ConsumeNextSavingThrowChoice(target, options = {}) {
+  const selected = options.chooseToFail === true || target?._sr25NextSaveChoice === 'fail';
+  if (target?._sr25NextSaveChoice === 'fail') delete target._sr25NextSaveChoice;
+  return selected;
+}
 function sr25ResolveCreatureSavingThrow(target, ability, rolls, modifier, dc, options = {}) {
+  if (options.useLegendaryResistance !== undefined && typeof options.useLegendaryResistance !== 'boolean') {
+    throw new Error('Legendary Resistance selection must be a boolean.');
+  }
+  const chooseToFail = sr25ConsumeNextSavingThrowChoice(target, options);
   const autoFail = options.autoFail === true || !sr25HasSaveAbility(target, ability);
-  return sr25ResolveSavingThrow(rolls, modifier, dc, { ...options, autoFail });
+  const result = sr25ResolveSavingThrow(chooseToFail ? [] : rolls, modifier, dc, {
+    ...options, autoFail, chooseToFail
+  });
+  if (result.success || result.chosenToFail || options.useLegendaryResistance !== true) return result;
+  const resistance = sr25ConsumeLegendaryResistance(target, options);
+  if (!resistance.consumed) return result;
+  return {
+    ...result,
+    success: true,
+    legendaryResistanceUsed: true,
+    legendaryResistanceRemaining: resistance.remainingUses,
+    legendaryResistanceMax: resistance.maxUses,
+    overcameAutoFail: result.autoFail === true
+  };
 }
 function sr25ResolveSavingThrowTotal(total, modifier, dc, options = {}) {
   const normalizedTotal = Number(total);
@@ -602,6 +756,13 @@ if (typeof sr14SavingThrow === 'function') {
   const sr25SavingThrowBase = sr14SavingThrow;
   sr14SavingThrow = function(character, ability, dc, options = {}) {
     const key = String(ability || '').toUpperCase();
+    const chooseToFail = sr25ConsumeNextSavingThrowChoice(character, options);
+    if (chooseToFail) {
+      return {
+        ...sr25ResolveSavingThrow([], 0, dc, { chooseToFail: true }),
+        ability: key, dc: Number(dc), roll: null, bonus: 0, chosenToFail: true
+      };
+    }
     const conditions = Array.isArray(character?.conditions)
       ? character.conditions.map(item => String(typeof item === 'string' ? item : item?.name || '').toLowerCase())
       : [];
@@ -614,26 +775,40 @@ if (typeof sr14SavingThrow === 'function') {
 }
 if (typeof sr133HeroSave === 'function') {
   const sr25HeroSaveBase = sr133HeroSave;
-  sr133HeroSave = function(character, ability, player, attacker) {
-    const result = sr25HeroSaveBase(character, ability, player, attacker);
+  sr133HeroSave = function(character, ability, player, attacker, options = {}) {
+    const chooseToFail = sr25ConsumeNextSavingThrowChoice(character, options);
     const key = String(ability || '').toUpperCase();
+    if (chooseToFail) {
+      const dc = Number(options.dc ?? attacker?.saveDC ?? 0);
+      return {
+        d1: null, d2: null, bonus: 0, cover: 0, advantage: false, disadvantage: false,
+        dc, total: null, success: false, autoFail: false, chosenToFail: true,
+        mechanic: 'saving-throw', ability: key, failureReason: 'voluntary'
+      };
+    }
+    const result = sr25HeroSaveBase(character, ability, player, attacker);
     const rolls = result.advantage || result.disadvantage
       ? [result.d1, result.d2]
       : [result.d1];
     const autoFail = !!result.autoFail || !sr25HasSaveAbility(character, key);
-    const dc = Number(attacker?.saveDC) || 0;
-    const canonical = sr25ResolveSavingThrow(rolls, Number(result.bonus || 0) + Number(result.cover || 0),
-      dc, {
+    const dc = Number(result.dc ?? options.dc ?? attacker?.saveDC) || 0;
+    const canonical = sr25ResolveCreatureSavingThrow(character, key, rolls,
+      Number(result.bonus || 0) + Number(result.cover || 0), dc, {
         advantage: !!result.advantage,
         disadvantage: !!result.disadvantage,
-        autoFail
+        autoFail,
+        useLegendaryResistance: options.useLegendaryResistance === true,
+        inLair: options.inLair === true
       });
     return {
       ...result,
       dc,
-      total: autoFail ? -Infinity : canonical.total,
+      total: canonical.chosenToFail ? null : (autoFail && !canonical.legendaryResistanceUsed ? -Infinity : canonical.total),
       success: canonical.success,
-      autoFail: canonical.autoFail
+      autoFail: canonical.autoFail,
+      chosenToFail: canonical.chosenToFail === true,
+      legendaryResistanceUsed: canonical.legendaryResistanceUsed === true,
+      legendaryResistanceRemaining: canonical.legendaryResistanceRemaining
     };
   };
 }
@@ -727,6 +902,10 @@ globalThis.__SR25_TEST = {
   resolveSavingThrowTotal: sr25ResolveSavingThrowTotal,
   savingThrowTotalSuccess: sr25SavingThrowTotalSuccess,
   hasSaveAbility: sr25HasSaveAbility,
+  legendaryResistanceStatus: sr25LegendaryResistanceStatus,
+  consumeLegendaryResistance: sr25ConsumeLegendaryResistance,
+  resetLegendaryResistance: sr25ResetLegendaryResistance,
+  setNextSavingThrowChoice: sr25SetNextSavingThrowChoice,
   heroSave: sr133HeroSave,
   resolveAttack: sr25ResolveAttack,
   withD20Rolls: function(rolls, action) {
