@@ -52,3 +52,28 @@ New modules should not assign to `window`, `globalThis`, or replace existing gam
 ## Next refactor candidates
 
 The remaining legacy wrappers should be migrated incrementally, starting with screen rendering metadata and the save/recovery lifecycle, then world simulation and the gameplay action pipeline. Those changes need separate tests because they cross rendering, timing, and persistent-state boundaries. V22 intentionally does not claim that all older global wrappers have already been removed.
+
+
+## V23 Director-first action pipeline
+
+### SR23_DUNGEON_MASTER.js
+
+V23 moves adjudication to the Director while preserving the V18/V21 deterministic rules engine:
+
+- The primary player input is natural-language intent; normal play no longer requires the player to select a mode, skill, DC, or roll state.
+- Intent classification is ordered and accounts for negated actions.
+- Routine and unopposed tasks generally resolve without checks; meaningful uncertainty uses a provisional skill and the SRD 5.2.1 DC ladder.
+- Safe travel and rests still advance world time and use existing resource rules.
+- Existing V21 mechanics remain authoritative for rolls, character bonuses, NPC/faction updates, objectives, and world state.
+- A bounded campaign.sr23.events log records actions and outcomes; lexical/recency retrieval supplies a small continuity window.
+- Optional configured AI can narrate the already-resolved outcome. It has no authority to change numbers, rewards, inventory, damage, objectives, or campaign state.
+
+V23 currently uses a compatibility adapter around the V20/V21 function boundary. The long-term refactor should move the resolver into a separately testable orchestration API and reduce reliance on global function replacement, without breaking existing game entry points.
+
+### Save contract
+
+The V22 save guard now accepts older saves without campaign.sr23, while validating the optional campaign.sr23.events list against a 240-event bound. Existing character/campaign schemas and prior save versions remain in place.
+
+### Explicit limitations
+
+The first V23 phase is not a fully autonomous AI campaign planner. It does not replace the dedicated combat attack/spell systems, add a hosted AI proxy, or implement a complete entity/fact knowledge graph. Automated tests cannot substitute for human playtests, touch-device checks, or real multiplayer sessions. See V23_DM_DESIGN.md for the adjudication principles, research references, and next-phase roadmap.
