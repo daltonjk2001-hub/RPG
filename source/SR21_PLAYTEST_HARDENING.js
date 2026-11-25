@@ -189,12 +189,13 @@ function sr21ResolvePlayerAction(text,options={}){
  const baseDC=Number.isFinite(Number(opts.dc))&&Number(opts.dc)>=5&&Number(opts.dc)<=30?Number(opts.dc):(Number(decision?.dc)||sr21SituationDC(action,mode,decision));
  const dc=presetDC??sr20ChallengeDC(baseDC,opts.challenge||'standard');
  const noRoll=opts.noRoll===true||(mode==='survival'&&/\b(make camp|camp|rest|sleep|short rest|long rest|take a rest|sleep for the night)\b/i.test(action));
- const fatiguePenalty=g.survival.fatigue>=4&&(mode==='travel'||mode==='survival')?-2:0;
+ const fatiguePenalty=(typeof sr25HouseRuleEnabled!=='function'||sr25HouseRuleEnabled('travelFatiguePenalty'))&&g.survival.fatigue>=4&&(mode==='travel'||mode==='survival')?-2:0;
  const check=noRoll?null:sr21CanonicalCheck(ch,skill,dc,opts,fatiguePenalty);
  const success=noRoll?true:!!check.success,total=noRoll?null:check.total,die=noRoll?null:check.roll;
  const target=sr20FindNPC(opts.target,action),beforeWatch=Number(g.clock.watch)||0;
  const summary=sr21SkillBonus(ch,skill);
- const outcome={id:sr20Id(),day:Math.max(1,Number(state.campaign.day)||1),mode,action,skill,dc,challenge:opts.challenge||(opts.difficulty&&opts.difficulty!=='auto'?opts.difficulty:'standard'),difficulty:opts.difficulty||'auto',die,die2:check?.second??null,advantage:!!check?.advantage,disadvantage:!!check?.disadvantage,bonus:noRoll?summary:{...summary,total:check.bonus},total,success,noRoll,narrative:sr20ActionNarrative(mode,success),target:target?.name||'',className:sr20ClassIdentity(ch).className,createdAt:new Date().toISOString()};
+ const profile=typeof sr25EnsureCampaignRules==='function'?sr25EnsureCampaignRules(state.campaign):null;
+ const outcome={id:sr20Id(),day:Math.max(1,Number(state.campaign.day)||1),mode,action,skill,dc,rulesetId:profile?.id||'',dcSource:opts.dcSource|| (presetDC!==null?'solo-realms-custom-preset':'director-typical'),challenge:opts.challenge||(opts.difficulty&&opts.difficulty!=='auto'?opts.difficulty:'standard'),difficulty:opts.difficulty||'auto',die,die2:check?.second??null,advantage:!!check?.advantage,disadvantage:!!check?.disadvantage,bonus:noRoll?summary:{...summary,total:check.bonus},total,success,noRoll,narrative:sr20ActionNarrative(mode,success),target:target?.name||'',className:sr20ClassIdentity(ch).className,createdAt:new Date().toISOString()};
  g.clock.actions++;
  if(mode==='travel'){
   const watches=Math.max(1,Math.min(24,Math.floor(Number(opts.durationWatches)||1)));g.clock.watch=beforeWatch+watches;
@@ -227,7 +228,7 @@ function sr21ResolvePlayerAction(text,options={}){
   const posture=/\b(cover|hide|defend|protect)\b/i.test(action)?'cover':/\b(flank|circle|outmaneuver)\b/i.test(action)?'flank':/\b(retreat|withdraw|fall back)\b/i.test(action)?'withdraw':/\b(ambush|surprise|sneak attack)\b/i.test(action)?'ambush':'adaptive';
   g.tactical={stance:posture,intent:action.slice(0,180),round:Number(state.combat?.round)||0,lastCheck:success?'opening':'contested'};
   if(state.combat){state.combat.sr20Tactics={...g.tactical,checkTotal:total,dc};
-   if(posture==='flank'&&success&&Array.isArray(state.combat.enemies)){
+   if(posture==='flank'&&success&&(typeof sr25HouseRuleEnabled!=='function'||sr25HouseRuleEnabled('flankingACBonus'))&&Array.isArray(state.combat.enemies)){
     const enemy=state.combat.enemies.find(x=>opts.target&&String(x.name||'').toLowerCase()===String(opts.target).toLowerCase()&&x.hp>0)||state.combat.enemies.find(x=>x&&x.hp>0);
     if(enemy&&Number.isFinite(Number(enemy.ac))){const prior=enemy.sr20Flank?.originalAC??Number(enemy.ac);enemy.sr20Flank={originalAC:prior,untilRound:Number(state.combat.round)||0};enemy.ac=Math.max(5,prior-2);state.combat.sr20Tactics.flankedTarget=enemy.name||'';}
    }
