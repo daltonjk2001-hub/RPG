@@ -19,7 +19,7 @@ const reset=(level=1,cls='Rogue')=>{T.state={character:hero(level,cls),campaign:
 try{
  reset();
  assert('V21 adds state without replacing V18/V20 campaign data',T.state.campaign.sr20.version==='20.0.0'&&T.state.campaign.sr21.version==='21.0.0'&&T.state.campaign.mainQuest.title==='Find the hidden cistern');
- for(const [level,stage] of [[1,'new'],[3,'learning'],[5,'developing'],[10,'experienced'],[15,'veteran'],[20,'expert']]){T.state.character.level=level;assert('Player-stage mapping · level '+level,T.playerStage()===stage);assert('Director stage context · level '+level,context.srAIContext().campaign.gameplayV21.playerStage===stage);}
+ for(const [level,stage] of [[1,'new'],[3,'learning'],[5,'developing'],[10,'experienced'],[15,'veteran'],[20,'expert']]){T.state.character.level=level;assert('Player-stage mapping · level '+level,T.playerStage()===stage);assert('Director stage context · level '+level,T.directorContext().campaign.gameplayV21.playerStage===stage);}
  T.state.character.level=20;T.state.character.sr21Legacy={xp:1000};assert('Level-20 legacy stage is distinct from normal expert stage',T.playerStage()==='legacy');
  assert('Talk about a guard routes to social',T.inferMode('I talk to the guard about the missing cart')==='social');
  assert('Sneaking past a guard routes to exploration',T.inferMode('I sneak past the guard without being seen')==='exploration');
@@ -76,7 +76,7 @@ try{
  assert('Legacy milestones are idempotent and do not change combat stats',duplicate===false&&T.legacy().xp===1000&&JSON.stringify(T.state.character.stats)===stats);
  const archive=T.archive();assert('Campaign archive preserves history and the active save',!!archive&&T.legacy().archivedCampaigns.length===1&&T.state.campaign.sr21.archived&&T.state.character.name==='Stage Tester');
  assert('Repeated archive is idempotent',T.archive()===false&&T.legacy().archivedCampaigns.length===1);
- assert('Director context recognizes legacy stage',context.srAIContext().campaign.gameplayV21.playerStage==='legacy');
+ assert('Director context recognizes legacy stage',T.directorContext().campaign.gameplayV21.playerStage==='legacy');
  reset(5);const snap=T18.snapshot('V21 save test'),round=JSON.parse(JSON.stringify(snap)),valid=T18.validateSave(round.state);
  assert('V21 state survives the existing Save Center JSON snapshot and validation',!!valid.ok&&valid.state.campaign.sr21.version==='21.0.0'&&!!valid.state.character.sr21Legacy);
  reset(1);T.state.campaign.sr21.onboarding={step:0,complete:false,hidden:false};
