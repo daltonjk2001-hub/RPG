@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "source" / "solo_realms_v17.js"
 LAYER = ROOT / "source" / "SR18_SYSTEMS_LAYER.js"
 STUDIO = ROOT / "source" / "SR19_DIRECTOR_STUDIO.js"
+BEHAVIOR = ROOT / "source" / "SR19_REACTIVE_WORLD.js"
 BASE_HTML = ROOT / "build-inputs" / "Solo_Realms_V17_Main.html"
 MAIN_HTML = ROOT / "Solo_Realms_V18_Main.html"
 PWA_DIR = ROOT / "pwa"
@@ -45,6 +46,7 @@ def build_runtime() -> str:
     base = SRC.read_text(encoding="utf-8")
     layer = LAYER.read_text(encoding="utf-8").rstrip()
     studio = STUDIO.read_text(encoding="utf-8").rstrip()
+    behavior = BEHAVIOR.read_text(encoding="utf-8").rstrip()
 
     if not base.rstrip().endswith("})();"):
         raise SystemExit("Unexpected V17 IIFE wrapper; refusing unsafe concatenation.")
@@ -86,11 +88,11 @@ def build_runtime() -> str:
     base = base.replace("reliable-v17", "systems-v18")
     base = base.replace("Solo Realms V17 character and client.", "Solo Realms V18 character and client.")
 
-    return base + layer + "\n\n" + studio + "\n\n})();\n"
+    return base + layer + "\n\n" + studio + "\n\n" + behavior + "\n\n})();\n"
 
 
 def main() -> None:
-    for path in (SRC, LAYER, STUDIO, BASE_HTML, MANIFEST, SERVICE_WORKER):
+    for path in (SRC, LAYER, STUDIO, BEHAVIOR, BASE_HTML, MANIFEST, SERVICE_WORKER):
         require_file(path)
 
     combined = build_runtime()
