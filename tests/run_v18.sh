@@ -9,6 +9,8 @@ for suite in multiplayer legacy ui pwa rules_campaign resource reactive reliabil
   node "tests/solo_realms_v18_${suite}_test.cjs"
 done
 node "tests/solo_realms_v20_gameplay_test.cjs"
+node "tests/solo_realms_v21_hardening_test.cjs"
+node "tests/solo_realms_v21_stress_test.cjs"
 node "tests/solo_realms_v20_layout_test.cjs"
 node "tests/solo_realms_v20_screen_layout_test.cjs"
 node "tests/solo_realms_v20_release_integrity_test.cjs"
