@@ -284,7 +284,7 @@ function sr25HasSaveAbility(target, ability) {
   const stats = target?.stats || target?.abilityScores;
   return SR25_ABILITIES.includes(key) && sr25IsRecord(stats) &&
     Object.prototype.hasOwnProperty.call(stats, key) &&
-    Number.isFinite(Number(stats[key]));
+    Number.isFinite(Number(stats[key])) && Number(stats[key]) >= 1 && Number(stats[key]) <= 30;
 }
 function sr25ResolveCreatureSavingThrow(target, ability, rolls, modifier, dc, options = {}) {
   const autoFail = options.autoFail === true || !sr25HasSaveAbility(target, ability);
