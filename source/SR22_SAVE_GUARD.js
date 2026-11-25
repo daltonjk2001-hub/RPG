@@ -11,7 +11,7 @@ const SR22SaveGuard = (() => {
     maxKeyLength: 512,
     maxStringLength: 500000,
     maxTotalStringLength: 14000000,
-    maxNumberMagnitude: 1000000000000
+    maxNumberMagnitude: Number.MAX_SAFE_INTEGER
   });
   const own = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
   const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
