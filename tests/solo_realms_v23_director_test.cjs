@@ -6,6 +6,9 @@ const root = path.resolve(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'Solo_Realms_V18_Main.html'), 'utf8');
 const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(match => match[1].trim());
 if (scripts.length !== 1) throw new Error('Expected one self-contained game runtime.');
+const pwaHtml = fs.readFileSync(path.join(root, 'pwa', 'index.html'), 'utf8');
+const pagesHtml = fs.readFileSync(path.join(root, 'docs', 'index.html'), 'utf8');
+const runtimeSource = fs.readFileSync(path.join(root, 'source', 'solo_realms_v18.js'), 'utf8');
 
 const nodes = new Map();
 function element(id = '') {
@@ -86,6 +89,10 @@ const reset = () => {
 try {
   reset();
   assert('V23 module version is present', T.version === '23.0.0');
+  assert('V23 Director module is included in the standalone runtime', scripts[0].includes("const SR23_VERSION = '23.0.0';"));
+  assert('V23 Director module is included in the PWA runtime', pwaHtml.includes("const SR23_VERSION = '23.0.0';"));
+  assert('V23 Director module is included in the GitHub Pages runtime', pagesHtml.includes("const SR23_VERSION = '23.0.0';"));
+  assert('V23 Director source is included in the canonical assembled runtime', runtimeSource.includes("const SR23_VERSION = '23.0.0';"));
   assert('Negated attack is ignored when the player chooses persuasion instead', T.inferIntent("I don't attack the guard; I try to persuade him to let us pass.").mode === 'social');
   assert('A direct attack is classified as tactical', T.inferIntent('I attack the bandit').mode === 'tactical');
   assert('An investigation is classified as exploration', T.inferIntent('I investigate the muddy tracks').mode === 'exploration');
