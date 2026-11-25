@@ -169,9 +169,10 @@ function sr21CanonicalCheck(ch,skill,dc,options,fatiguePenalty){
  const canonicalHasExpertise=canonicalBonus-fallback.ability>=fallback.proficiency+fallback.expertise;
  const missingExpertise=fallback.expert&&!canonicalHasExpertise?fallback.expertise:0;
  const bonus=canonicalBonus+missingExpertise+fallback.classEdge;
- const total=die+bonus+fatiguePenalty;
- const success=total>=dc;
- return {roll:die,first,second,advantage,disadvantage,bonus,total,success,skill,dc,check};
+ const resolved=typeof sr25ResolveAbilityCheck==='function'
+  ?sr25ResolveAbilityCheck([die],bonus+fatiguePenalty,dc)
+  :{die,total:die+bonus+fatiguePenalty,success:die+bonus+fatiguePenalty>=dc};
+ return {roll:resolved.die,first,second,advantage,disadvantage,bonus,total:resolved.total,success:resolved.success,skill,dc,check,d20:resolved};
 }
 function sr21RecordTutorial(mode){
  const g=sr21EnsureCampaign();if(!g?.onboarding||g.onboarding.hidden||g.onboarding.complete||Number(state.character?.level)>3)return;
