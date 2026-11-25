@@ -6138,7 +6138,7 @@ function sr12SpellDamage(enemy,sp,c,opts={}){
     const originId=SR12.activePlayerId||SR4.myPlayerId,origin=originId?sr12PlayerPos(originId):state.combat?.heroPos;
     const cover=ability==='DEX'&&origin&&enemy.pos?sr11Cover(enemy.pos,origin):0;
     const d1=die(20),d2=ability==='DEX'&&enemy.dodging?die(20):d1,chosen=ability==='DEX'&&enemy.dodging?Math.max(d1,d2):d1;
-    const save=chosen+sr12SaveBonus(enemy,ability)+cover;saved=save>=dc;
+    const saveBonus=sr12SaveBonus(enemy,ability)+cover,save=chosen+saveBonus,saveResult=sr25ResolveCreatureSavingThrow(enemy,ability,ability==='DEX'&&enemy.dodging?[d1,d2]:[d1],saveBonus,dc,{advantage:ability==='DEX'&&!!enemy.dodging});saved=saveResult.success;
     if(saved){if(sp.kind==='saveDamage')damage=Math.floor(damage/2);else return 0;}
     log(`${enemy.name} makes a ${ability} save: ${save} vs DC ${dc}${cover?' (+'+cover+' cover)':''}${ability==='DEX'&&enemy.dodging?' with Advantage':''} (${saved?'success':'failure'}).`,'rolllog');
   }
@@ -6237,10 +6237,34 @@ function sr12ClassPower(player){
   toast('No class power is ready.');return false;
 }
 function sr12DeathSave(player){
-  const c=player.character;if(c.hp>0&&!c.mpDowned){toast('You are not making death saves.');return false;}
-  const r=die(20);if(r===20){c.hp=1;c.mpDead=false;c.mpDowned=false;c.stable=false;c.deathSuccess=0;c.deathFailure=0;sr131ClearDowned(c);log(`${player.name} rolls a natural 20 and regains 1 HP.`,'goodlog');}
-  else if(r>=10){c.deathSuccess=(c.deathSuccess||0)+1;log(`${player.name} succeeds on a death save (${c.deathSuccess}/3).`,'goodlog');if(c.deathSuccess>=3){c.mpDowned=false;c.deathSuccess=3;log(`${player.name} is stable.`,'goodlog');}}
-  else{c.deathFailure=(c.deathFailure||0)+1;log(`${player.name} fails a death save (${c.deathFailure}/3).`,'badlog');if(c.deathFailure>=3){c.mpDead=true;c.mpDowned=true;log(`${player.name} has died. Revivify or a later campaign event may restore them.`,'badlog');}}
+  const c=player.character;
+  if(c.hp>0&&!c.mpDowned){toast('You are not making death saves.');return false;}
+  const r=die(20);
+  const recordFailure=count=>{
+    c.deathFailure=(c.deathFailure||0)+count;
+    if(count===2)log(player.name+' rolls a natural 1 and suffers two death save failures ('+c.deathFailure+'/3).','badlog');
+    else log(player.name+' fails a death save ('+c.deathFailure+'/3).','badlog');
+    if(c.deathFailure>=3){
+      c.mpDead=true;c.mpDowned=true;
+      log(player.name+' has died. Revivify or a later campaign event may restore them.','badlog');
+    }
+  };
+  if(r===20){
+    c.hp=1;c.mpDead=false;c.mpDowned=false;c.stable=false;c.deathSuccess=0;c.deathFailure=0;
+    sr131ClearDowned(c);
+    log(player.name+' rolls a natural 20 and regains 1 HP.','goodlog');
+  }
+  else if(r===1){
+    recordFailure(2);
+  }
+  else if(r>=10){
+    c.deathSuccess=(c.deathSuccess||0)+1;
+    log(player.name+' succeeds on a death save ('+c.deathSuccess+'/3).','goodlog');
+    if(c.deathSuccess>=3){c.mpDowned=false;c.deathSuccess=3;log(player.name+' is stable.','goodlog');}
+  }
+  else{
+    recordFailure(1);
+  }
   return true;
 }
 function sr12HeroAction(player,action,spellName,targetId,data={}){
@@ -6873,7 +6897,7 @@ function sr131Maneuver(player,kind,mode='prone'){
   if(kind==='grapple'&&c.freeHands===false){toast('You need a free hand to grapple.');return false;}
   if(c.actionSpent){toast('Your action is already spent.');return false;}
   const dc=sr131ManeuverDC(c),ability=sr12SaveBonus(e,'DEX')>sr12SaveBonus(e,'STR')?'DEX':'STR';
-  const save=die(20)+sr12SaveBonus(e,ability),success=save>=dc;c.actionSpent=true;
+  const d20=die(20),saveBonus=sr12SaveBonus(e,ability),save=d20+saveBonus,saveResult=sr25ResolveCreatureSavingThrow(e,ability,[d20],saveBonus,dc),success=saveResult.success;c.actionSpent=true;
   if(kind==='grapple'){
     if(success){log(`${e.name} resists ${player.name}'s grapple (${ability} save ${save} vs DC ${dc}).`,'rolllog');}
     else{e.conditions=e.conditions||[];if(!sr11Has(e,'grappled'))sr11Add(e,'grappled',999,player.name);e.grappleDC=dc;e.grappledBy=player.id;log(`${player.name} grapples ${e.name}; it fails its ${ability} save (${save} vs DC ${dc}).`,'goodlog');}
@@ -7370,7 +7394,7 @@ sr12CastSpell=function(player,name,allyId=null){
   if(SR12_CONCENTRATION.has(name)||sp.concentration)sr12SetConcentration(c,name,Number(sp.duration)||10);
   let total=0,affected=0;
   if(sp.kind==='saveControl'){
-    for(const e of targets){const save=die(20)+sr12SaveBonus(e,sp.save||'WIS');if(save>=sr12SpellDC(c)){log(`${e.name} resists ${name} (${save} vs DC ${sr12SpellDC(c)}).`,'rolllog');continue;}if(sp.condition==='outlined'){e.outlinedRounds=Number(sp.duration)||10;sr11Add(e,'outlined',e.outlinedRounds,'spell');}else sr11Add(e,sp.condition||'restrained',Number(sp.duration)||10,'spell');affected++;}
+    for(const e of targets){const saveAbility=sp.save||'WIS',saveRoll=die(20),saveBonus=sr12SaveBonus(e,saveAbility),save=saveRoll+saveBonus,saveResult=sr25ResolveCreatureSavingThrow(e,saveAbility,[saveRoll],saveBonus,sr12SpellDC(c));if(saveResult.success){log(`${e.name} resists ${name} (${save} vs DC ${sr12SpellDC(c)}).`,'rolllog');continue;}if(sp.condition==='outlined'){e.outlinedRounds=Number(sp.duration)||10;sr11Add(e,'outlined',e.outlinedRounds,'spell');}else sr11Add(e,sp.condition||'restrained',Number(sp.duration)||10,'spell');affected++;}
     log(`${player.name} casts ${name}; ${affected} creature(s) fail their saving throw inside the area.`,'goodlog');
   }else{
     for(const e of targets){if(e.hp<=0)continue;const dealt=sr12SpellDamage(e,sp,c);total+=dealt;if(dealt>0||sp.kind==='saveDamage')affected++;}
@@ -7999,7 +8023,7 @@ function sr14CastSpell(playerOrNull,name,allyId=null,fromMP=false){
  if(enemy&&combat&&origin&&enemy.pos&&!sr11HasLOS(origin,enemy.pos)&&effect.kind!=='area'){toast('A solid obstacle blocks line of sight.');return false;}
  if(slot!==null){if(slot>0&&typeof sr7ConsumeCastSlot==='function')sr7ConsumeCastSlot(c,slot);else if(c.spellSlotsByLevel){const n=Object.keys(c.spellSlotsByLevel).map(Number).filter(x=>x>=sp.level&&c.spellSlotsByLevel[x]>0).sort((a,b)=>a-b)[0];if(n)c.spellSlotsByLevel[n]--;sr7UpdateSlotTotals(c);}else c.spellSlots=Math.max(0,(c.spellSlots||0)-1);}
  const dc=8+sr14Prof(c.level)+sr14AbilityMod(c.stats[spellAbility()])+(c.spellDCBonus||0),dice=sr14DamageDice(sp,slot||sp.level),targets=sr14TargetList(player,sp,enemy,origin);let did=false;
- const saveTarget=(e,ability)=>{const b=sr12SaveBonus(e,ability),r=die(20)+b,success=r>=dc;return {success,total:r,dc,ability};};
+ const saveTarget=(e,ability)=>{const d20=die(20),b=sr12SaveBonus(e,ability),r=d20+b,result=sr25ResolveCreatureSavingThrow(e,ability,[d20],b,dc);return {success:result.success,total:r,dc,ability,roll:d20,autoFail:result.autoFail};};
  if(effect.kind==='heal'){
   const targetsHeal=effect.party&&isMP?state.campaign.multiplayer.players.filter(p=>p.connected):[allyId&&isMP?state.campaign.multiplayer.players.find(p=>p.id===allyId):player].filter(Boolean);
   const amount=rollDice(dice||'1d8')+Math.max(0,sr14AbilityMod(c.stats[spellAbility()]));for(const t of targetsHeal){const n=Math.max(0,Math.min(amount,t.character.maxHp-t.character.hp));t.character.hp+=n;t.character.mpDowned=false;t.character.mpDead=false;t.character.deathSuccess=0;t.character.deathFailure=0;}log(`${player.name} casts ${name}; ${amount} healing is applied to ${targetsHeal.map(x=>x.name).join(', ')}.`,'goodlog');did=true;
@@ -8253,7 +8277,7 @@ sr14RunFeature=function(player,key,option=''){
  if(key==='abjureFoes'){if(!act()||!spend('channel'))return false;const foes=mp?state.combat.enemies.filter(e=>e.hp>0&&sr12Distance(sr12PlayerPos(player.id),e.pos)<=30):state.combat?.enemies?.filter(e=>e.hp>0)||[];let count=0;for(const e of foes){const dc=8+sr14Prof(c.level)+sr14AbilityMod(c.stats.CHA),r=sr14D20('normal').total+sr14AbilityMod(e.stats?.WIS||10);if(r<dc){sr11Add(e,'frightened',10,player.name);count++;}}c.actionSpent=true;log(`${player.name} abjures foes; ${count} creature(s) are Frightened.`,'goodlog');save();render();return true;}
  if(key==='naturesVeil'){if(!bonus()||c.bonusActionSpent)return false;c.invisibleRounds=1;sr11Add(c,'invisible',1,'Nature’s Veil');c.bonusActionSpent=true;log(`${player.name} vanishes from sight until the start of their next turn.`,'goodlog');save();render();return true;}
  if(key==='magicalCunning'){if(c.magicalCunningUsed){toast('Magical Cunning has been used since your last Long Rest.');return false;}c.magicalCunningUsed=true;const slots=c.pactSlotsByLevel||{};for(const level of Object.keys(slots))slots[level]=Math.max(0,Number(c.maxPactSlotsByLevel?.[level]||c.maxSpellSlotsByLevel?.[level]||0));if(c.spellSlotsByLevel&&c.maxSpellSlotsByLevel)for(const level of Object.keys(c.spellSlotsByLevel))if(Number(c.maxSpellSlotsByLevel[level])>0)c.spellSlotsByLevel[level]=Math.max(c.spellSlotsByLevel[level],c.maxSpellSlotsByLevel[level]);sr7UpdateSlotTotals(c);log(`${player.name} performs Magical Cunning and restores Pact Magic.`,'goodlog');save();render();return true;}
- if(key==='turnUndead'){if(!act()||!spend('channel'))return false;const foes=(state.combat?.enemies||[]).filter(e=>e.hp>0&&/undead/i.test(e.type||e.kind||''));let turned=0;for(const e of foes){const dc=8+sr14Prof(c.level)+sr14AbilityMod(c.stats.WIS),save=die(20)+sr14AbilityMod(e.stats?.WIS||10);if(save<dc){sr11Add(e,'frightened',10,player.name);e.turnedByUndead=true;turned++;}}c.actionSpent=true;log(`${player.name} presents a holy symbol; ${turned} undead are Turned.`,'goodlog');save();render();return true;}
+ if(key==='turnUndead'){if(!act()||!spend('channel'))return false;const foes=(state.combat?.enemies||[]).filter(e=>e.hp>0&&/undead/i.test(e.type||e.kind||''));let turned=0;for(const e of foes){const dc=8+sr14Prof(c.level)+sr14AbilityMod(c.stats.WIS),saveRoll=die(20),saveBonus=sr14AbilityMod(e.stats?.WIS||10),save=saveRoll+saveBonus,saveResult=sr25ResolveCreatureSavingThrow(e,'WIS',[saveRoll],saveBonus,dc);if(!saveResult.success){sr11Add(e,'frightened',10,player.name);e.turnedByUndead=true;turned++;}}c.actionSpent=true;log(`${player.name} presents a holy symbol; ${turned} undead are Turned.`,'goodlog');save();render();return true;}
  if(key==='wildCompanion'){if(!bonus()||!spend('wildShapeUses'))return false;const familiar={name:'Primal Spirit',role:'Druid companion',hp:Math.max(1,5*lv),maxHp:Math.max(1,5*lv),ac:12,attack:sr14Prof(c.level)+sr14AbilityMod(c.stats.WIS),damage:'1d4',loyal:true,durationRounds:10,temporary:true};state.campaign.companions=state.campaign.companions||[];state.campaign.companions.push(familiar);c.bonusActionSpent=true;log(`${player.name} summons a Primal Spirit familiar for one hour.`,'goodlog');save();render();return true;}
  return sr14RunFeatureBase2(player,key,option);
 };
@@ -8291,7 +8315,7 @@ function sr14CastSpellComplete(playerOrNull,name,allyId=null,fromMP=false,castMo
  if(!sr14ConsumeMaterial(c,sp))return false;
  if(slot!==null&&slot>0){if(typeof sr7ConsumeCastSlot==='function')sr7ConsumeCastSlot(c,slot);else if(c.spellSlotsByLevel){const n=Object.keys(c.spellSlotsByLevel).map(Number).filter(x=>x>=sp.level&&c.spellSlotsByLevel[x]>0).sort((a,b)=>a-b)[0];if(n)c.spellSlotsByLevel[n]--;sr7UpdateSlotTotals(c);}else c.spellSlots=Math.max(0,(c.spellSlots||0)-1);if(!isReaction)c.spellSlotSpentThisTurn=true;}
  const dc=8+sr14Prof(c.level)+sr14AbilityMod(c.stats?.[ability])+(c.spellDCBonus||0),formula=sr14SpellDamageFormula(sp,slot||sp.level,c),targets=sr14TargetListComplete(player,sp,effect,enemy,origin);let did=false,total=0;
- const saveTarget=(e,ab)=>{const bonus=sr12SaveBonus(e,ab),r=die(20)+bonus;return {success:r>=dc,total:r,dc,ability:ab};};
+ const saveTarget=(e,ab)=>{const d20=die(20),bonus=sr12SaveBonus(e,ab),r=d20+bonus,result=sr25ResolveCreatureSavingThrow(e,ab,[d20],bonus,dc);return {success:result.success,total:r,dc,ability:ab,roll:d20,autoFail:result.autoFail};};
  if(effect.kind==='heal'){
   const targetsHeal=effect.party&&isMP?state.campaign.multiplayer.players.filter(p=>p.connected):[targetPlayer].filter(Boolean);let amount=sr14RollSpellDamage(formula||'1d8')+Math.max(0,sr14AbilityMod(c.stats?.[ability]));if(klass==='Cleric'&&sr14Subclass(c)==='Life Domain'&&sp.level>0&&sr14Level(c,'Cleric')>=3)amount+=2+sp.level;
   for(const t of targetsHeal){const n=Math.max(0,Math.min(amount,t.character.maxHp-t.character.hp));t.character.hp+=n;t.character.mpDowned=false;t.character.mpDead=false;t.character.deathSuccess=0;t.character.deathFailure=0;}log(`${player.name} casts ${name}; ${amount} healing is applied.`,'goodlog');did=true;
@@ -9822,7 +9846,22 @@ sr14AbilityCheck=function(c,skill,dc,opts={}){
  return r;
 };
 const sr18SavingThrowBase=sr14SavingThrow;
-sr14SavingThrow=function(c,ability,dc,opts={}){const effects=sr18ActiveEffect(c),matching=effects.some(x=>x.saveAdvantage),applicable=effects.filter(x=>x.bonusType==='save'||x.bonusType==='attackSave'),bonus=applicable.reduce((n,x)=>n+Number(x.bonus||0)+(x.bonusDice?rollDice(x.bonusDice):0),0),mode=matching?(opts.mode==='disadvantage'?'normal':'advantage'):(opts.mode||'normal');const r=sr18SavingThrowBase(c,ability,dc,{...opts,mode});if(bonus){r.bonus+=bonus;r.total+=bonus;r.success=r.total>=dc;}for(const x of applicable.filter(x=>x.once)){c.activeEffects=c.activeEffects.filter(y=>y!==x);if(c.concentration?.spell===x.name)c.concentration=null;}return r;};
+sr14SavingThrow=function(c,ability,dc,opts={}){
+ const effects=sr18ActiveEffect(c),matching=effects.some(x=>x.saveAdvantage),
+ applicable=effects.filter(x=>x.bonusType==='save'||x.bonusType==='attackSave'),
+ bonus=applicable.reduce((n,x)=>n+Number(x.bonus||0)+(x.bonusDice?rollDice(x.bonusDice):0),0),
+ mode=matching?(opts.mode==='disadvantage'?'normal':'advantage'):(opts.mode||'normal');
+ const r=sr18SavingThrowBase(c,ability,dc,{...opts,mode});
+ if(bonus){
+  r.bonus+=bonus;r.total+=bonus;
+  const canonical=typeof sr25ResolveSavingThrow==='function'
+   ?sr25ResolveSavingThrow([r.roll],r.bonus,dc,{autoFail:r.autoFail===true})
+   :{success:r.total>=dc,autoFail:false};
+  r.success=canonical.success;r.autoFail=canonical.autoFail;
+ }
+ for(const x of applicable.filter(x=>x.once)){c.activeEffects=c.activeEffects.filter(y=>y!==x);if(c.concentration?.spell===x.name)c.concentration=null;}
+ return r;
+};
 const sr18AttackBase=sr11RollAttack;
 sr11RollAttack=function(base,actor,target,melee=false){
  let extra=0,spellAdv=false;for(const e of sr18ActiveEffect(actor)){if(e.bonusType==='attack'||e.bonusType==='attackSave')extra+=Number(e.bonus||0)+(e.bonusDice?rollDice(e.bonusDice):0);if(e.attackAdvantage)spellAdv=true;}
@@ -12375,12 +12414,16 @@ function sr25ResolveD20(input) {
   }
   rolls = rolls.map((roll, index) => sr25FiniteInteger(roll, 'd20 result ' + (index + 1), 1, 20));
   const die = advantage ? Math.max(...rolls) : disadvantage ? Math.min(...rolls) : rolls[0];
+  if (input.autoFail !== undefined && typeof input.autoFail !== 'boolean') {
+    throw new Error('Automatic save failure must be a boolean.');
+  }
+  const autoFail = mechanic === 'saving-throw' && input.autoFail === true;
   const total = die + modifier;
   const critical = mechanic === 'attack' && die === 20;
   const automaticMiss = mechanic === 'attack' && die === 1;
   const success = mechanic === 'attack'
     ? critical || (!automaticMiss && total >= targetNumber)
-    : total >= targetNumber;
+    : !autoFail && total >= targetNumber;
   return {
     schema: SR25_RESULT_SCHEMA,
     mechanic,
@@ -12393,6 +12436,7 @@ function sr25ResolveD20(input) {
     success,
     critical,
     automaticMiss,
+    autoFail,
     natural: die
   };
 }
@@ -12401,6 +12445,30 @@ function sr25ResolveAbilityCheck(rolls, modifier, dc, options = {}) {
 }
 function sr25ResolveSavingThrow(rolls, modifier, dc, options = {}) {
   return sr25ResolveD20({ ...options, mechanic: 'saving-throw', rolls, modifier, targetNumber: dc });
+}
+function sr25HasSaveAbility(target, ability) {
+  const key = String(ability || '').toUpperCase();
+  const stats = target?.stats || target?.abilityScores;
+  return SR25_ABILITIES.includes(key) && sr25IsRecord(stats) &&
+    Object.prototype.hasOwnProperty.call(stats, key) &&
+    Number.isFinite(Number(stats[key])) && Number(stats[key]) >= 1 && Number(stats[key]) <= 30;
+}
+function sr25ResolveCreatureSavingThrow(target, ability, rolls, modifier, dc, options = {}) {
+  const autoFail = options.autoFail === true || !sr25HasSaveAbility(target, ability);
+  return sr25ResolveSavingThrow(rolls, modifier, dc, { ...options, autoFail });
+}
+function sr25ResolveSavingThrowTotal(total, modifier, dc, options = {}) {
+  const normalizedTotal = Number(total);
+  const normalizedModifier = Number(modifier);
+  if (!Number.isFinite(normalizedTotal) || !Number.isFinite(normalizedModifier)) return null;
+  try {
+    return sr25ResolveSavingThrow([normalizedTotal - normalizedModifier], normalizedModifier, dc, options);
+  } catch (error) {
+    return null;
+  }
+}
+function sr25SavingThrowTotalSuccess(total, modifier, dc, options = {}) {
+  return sr25ResolveSavingThrowTotal(total, modifier, dc, options)?.success === true;
 }
 function sr25ResolveAttack(rolls, modifier, ac, options = {}) {
   return sr25ResolveD20({ ...options, mechanic: 'attack', rolls, modifier, targetNumber: ac });
@@ -12471,21 +12539,23 @@ function sr25SkillBonus(character, skill, options = {}) {
     edge: classEdge > 0
   };
 }
-function sr25NormalizeLegacyD20Result(result, targetNumber, mechanic) {
+function sr25NormalizeLegacyD20Result(result, targetNumber, mechanic, options = {}) {
   if (!sr25IsRecord(result)) return result;
   const die = Number(result.roll ?? result.r ?? result.die ?? result.d20 ?? result.r1);
   if (!Number.isInteger(die) || die < 1 || die > 20) return result;
   const dc = Number(targetNumber);
   const total = Number(result.total);
   const bonus = Number.isFinite(total) ? total - die : Number(result.bonus || 0);
+  const autoFail = mechanic === 'saving-throw' && options.autoFail === true;
   const canonical = sr25ResolveD20({
-    mechanic, roll: die, modifier: bonus, targetNumber: dc
+    mechanic, roll: die, modifier: bonus, targetNumber: dc, autoFail
   });
   return {
     ...result,
     roll: die,
     total: canonical.total,
     success: canonical.success,
+    autoFail: canonical.autoFail,
     mechanic,
     targetNumber: dc,
     natural: die,
@@ -12698,9 +12768,40 @@ if (typeof sr14AbilityCheck === 'function') {
 if (typeof sr14SavingThrow === 'function') {
   const sr25SavingThrowBase = sr14SavingThrow;
   sr14SavingThrow = function(character, ability, dc, options = {}) {
+    const key = String(ability || '').toUpperCase();
+    const conditions = Array.isArray(character?.conditions)
+      ? character.conditions.map(item => String(typeof item === 'string' ? item : item?.name || '').toLowerCase())
+      : [];
+    const autoFail = !sr25HasSaveAbility(character, key) ||
+      (['STR', 'DEX'].includes(key) && (conditions.includes('paralyzed') || conditions.includes('unconscious')));
     return sr25NormalizeLegacyD20Result(
-      sr25SavingThrowBase(character, ability, dc, options), dc, 'saving-throw'
+      sr25SavingThrowBase(character, ability, dc, options), dc, 'saving-throw', { autoFail }
     );
+  };
+}
+if (typeof sr133HeroSave === 'function') {
+  const sr25HeroSaveBase = sr133HeroSave;
+  sr133HeroSave = function(character, ability, player, attacker) {
+    const result = sr25HeroSaveBase(character, ability, player, attacker);
+    const key = String(ability || '').toUpperCase();
+    const rolls = result.advantage || result.disadvantage
+      ? [result.d1, result.d2]
+      : [result.d1];
+    const autoFail = !!result.autoFail || !sr25HasSaveAbility(character, key);
+    const dc = Number(attacker?.saveDC) || 0;
+    const canonical = sr25ResolveSavingThrow(rolls, Number(result.bonus || 0) + Number(result.cover || 0),
+      dc, {
+        advantage: !!result.advantage,
+        disadvantage: !!result.disadvantage,
+        autoFail
+      });
+    return {
+      ...result,
+      dc,
+      total: autoFail ? -Infinity : canonical.total,
+      success: canonical.success,
+      autoFail: canonical.autoFail
+    };
   };
 }
 
@@ -12789,7 +12890,26 @@ globalThis.__SR25_TEST = {
   resolveD20: sr25ResolveD20,
   resolveAbilityCheck: sr25ResolveAbilityCheck,
   resolveSavingThrow: sr25ResolveSavingThrow,
+  resolveCreatureSavingThrow: sr25ResolveCreatureSavingThrow,
+  resolveSavingThrowTotal: sr25ResolveSavingThrowTotal,
+  savingThrowTotalSuccess: sr25SavingThrowTotalSuccess,
+  hasSaveAbility: sr25HasSaveAbility,
+  heroSave: sr133HeroSave,
   resolveAttack: sr25ResolveAttack,
+  withD20Rolls: function(rolls, action) {
+    if (!Array.isArray(rolls) || typeof action !== 'function' || !rolls.length) {
+      throw new Error('A d20 roll sequence and callback are required.');
+    }
+    const queue = rolls.slice();
+    const original = Math.random;
+    Math.random = function() {
+      if (!queue.length) return original();
+      const die = Number(queue.shift());
+      if (!Number.isInteger(die) || die < 1 || die > 20) throw new Error('Mock d20 results must be integers from 1 to 20.');
+      return (die - 0.000001) / 20;
+    };
+    try { return action(); } finally { Math.random = original; }
+  },
   resolveAttackRecord: sr25ResolveAttackRecord,
   attackSuccess: sr25AttackSuccess,
   resolveAttackTotal: sr25ResolveAttackTotal,
