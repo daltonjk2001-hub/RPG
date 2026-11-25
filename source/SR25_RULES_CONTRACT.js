@@ -269,13 +269,13 @@ function sr25ResolveD20(input) {
   };
 }
 function sr25ResolveAbilityCheck(rolls, modifier, dc, options = {}) {
-  return sr25ResolveD20({ mechanic: 'ability-check', rolls, modifier, targetNumber: dc, ...options });
+  return sr25ResolveD20({ ...options, mechanic: 'ability-check', rolls, modifier, targetNumber: dc });
 }
 function sr25ResolveSavingThrow(rolls, modifier, dc, options = {}) {
-  return sr25ResolveD20({ mechanic: 'saving-throw', rolls, modifier, targetNumber: dc, ...options });
+  return sr25ResolveD20({ ...options, mechanic: 'saving-throw', rolls, modifier, targetNumber: dc });
 }
 function sr25ResolveAttack(rolls, modifier, ac, options = {}) {
-  return sr25ResolveD20({ mechanic: 'attack', rolls, modifier, targetNumber: ac, ...options });
+  return sr25ResolveD20({ ...options, mechanic: 'attack', rolls, modifier, targetNumber: ac });
 }
 function sr25NormalizeLegacyD20Result(result, targetNumber, mechanic) {
   if (!sr25IsRecord(result)) return result;
