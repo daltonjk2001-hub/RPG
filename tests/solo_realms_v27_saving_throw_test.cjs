@@ -93,7 +93,7 @@ try{
 
  const deathAt=html.indexOf('function sr12DeathSave');
  const death=deathAt>=0?html.slice(deathAt,deathAt+1700):'';
- assert('Death saving throws retain their specialized natural-20 recovery and natural-1 two-failure procedure',death.includes('if(r===20)')&&death.includes('else if(r===1)')&&!death.includes('sr25ResolveCreatureSavingThrow'));
+ assert('Death saves remain specialized, natural 20 restores 1 HP, and natural 1 adds two failures',death.includes('if(r===20)')&&death.includes('else if(r===1)')&&death.includes('recordFailure(2)')&&death.includes('c.deathFailure=(c.deathFailure||0)+count')&&!death.includes('sr25ResolveCreatureSavingThrow'));
 }catch(error){
  assert('V27 saving-throw suite completes without uncaught runtime errors',false,error?.stack||String(error));
 }
