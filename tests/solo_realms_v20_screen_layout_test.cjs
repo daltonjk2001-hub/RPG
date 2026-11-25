@@ -15,9 +15,22 @@ const screens=[
   'rules','bestiary','crafting','downtime','party','gm','multiplayer','consequences',
   'ai','stronghold','downtime5','codex','tactics','treasure','factions7','exploration7','crafting7'
 ];
-const mainScript=[...main.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi)].map(x=>x[1].trim())[0]||'';
-const pwaScripts=[...pwa.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi)].map(x=>x[1].trim());
-const docsScript=[...docs.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi)].map(x=>x[1].trim())[0]||'';
+function scripts(html){
+  const out=[],lower=html.toLowerCase();
+  let cursor=0;
+  while(true){
+    const start=lower.indexOf('<script',cursor);
+    if(start<0)break;
+    const openEnd=lower.indexOf('>',start);
+    const close=lower.indexOf('</script>',openEnd+1);
+    if(openEnd<0||close<0)break;
+    out.push(html.slice(openEnd+1,close).trim());
+    cursor=close+9;
+  }
+  return out;
+}
+const mainScripts=scripts(main),pwaScripts=scripts(pwa),docsScripts=scripts(docs);
+const mainScript=mainScripts[0]||'',docsScript=docsScripts[0]||'';
 
 ok('Screen metadata layer is loaded into the assembled runtime',runtime.includes('function sr20ApplyScreenLayout')&&mainScript.includes('function sr20ApplyScreenLayout'));
 ok('Screen metadata is applied after the V20 gameplay layer wraps the renderer',runtime.indexOf('function sr20GameplayPanel')>=0&&runtime.indexOf('const sr20ScreenRenderBase=render')>runtime.indexOf('function sr20GameplayPanel'));
@@ -32,11 +45,11 @@ ok('World and Atlas styles location cards and map grids',['.map-grid','.location
 ok('Rules and reference pages use a dedicated rule-card grid',css.includes('.main[data-screen="rules"] .rule-grid')&&css.includes('.main[data-screen="codex"] .rule-grid'));
 ok('Crafting and GM tools use dedicated recipe and tool grids',css.includes('.main[data-screen="crafting"] .shop-grid')&&css.includes('.main[data-screen="gm"] .shop-grid'));
 ok('Director settings use a two-column settings and memory layout',css.includes('.main[data-screen="ai"] > .grid')&&css.includes('.main[data-screen="ai"] .toggle-row'));
-ok('Phone breakpoints reflow the screen layouts to one column',/@media\\s*\\(max-width:\\s*760px\\)/.test(css)&&css.includes('.main[data-screen="spells"]')&&css.includes('grid-template-columns: minmax(0, 1fr)'));
-ok('Tablet breakpoints retain a controlled two-column layout',/@media\\s*\\(min-width:\\s*761px\\) and \\(max-width:\\s*1040px\\)/.test(css));
+ok('Phone breakpoints reflow screen layouts to one column',css.includes('@media (max-width: 760px)')&&css.includes('.main[data-screen="spells"]')&&css.includes('grid-template-columns: minmax(0, 1fr)'));
+ok('Tablet breakpoints retain a controlled two-column layout',css.includes('@media (min-width: 761px) and (max-width: 1040px)'));
 ok('Standalone runtime and PWA runtime include identical screen metadata logic',!!mainScript&&pwaScripts[0]===mainScript);
 ok('Pages entry point includes the same screen metadata logic',!!docsScript&&docsScript===mainScript);
-ok('Screen styling is local and keeps the game offline-first',!/@import\\s+url|https?:\\/\\//i.test(css));
-for(const x of checks)console.log(`${x.pass?'PASS':'FAIL'} ${x.name}`);
-console.log(`\\nRESULT ${checks.filter(x=>x.pass).length}/${checks.length} V20 screen-layout checks passed`);
+ok('Screen styling is local and keeps the game offline-first',!css.includes('@import')&&!css.includes('http://')&&!css.includes('https://'));
+for(const x of checks)console.log((x.pass?'PASS':'FAIL')+' '+x.name);
+console.log('\nRESULT '+checks.filter(x=>x.pass).length+'/'+checks.length+' V20 screen-layout checks passed');
 if(checks.some(x=>!x.pass))process.exitCode=1;
