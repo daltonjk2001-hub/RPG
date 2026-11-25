@@ -17,3 +17,21 @@ render=function(){
  catch(error){console.warn('Screen layout metadata could not be applied:',error);}
  return result;
 };
+
+// V18 exposes a render function through its regression bridge. Keep that
+// reference in sync with the live renderer so test renders receive the same
+// screen metadata as actual browser renders.
+try{
+ const bridge=globalThis.__SR18_TEST;
+ if(bridge&&typeof bridge.render==='function'){
+  const bridgeRender=bridge.render;
+  bridge.render=function(){
+   const result=bridgeRender();
+   try{sr20ApplyScreenLayout();}
+   catch(error){console.warn('Screen layout metadata bridge could not be applied:',error);}
+   return result;
+  };
+ }
+}catch(error){
+ console.warn('Screen layout test bridge was not available:',error);
+}
