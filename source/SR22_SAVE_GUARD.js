@@ -103,12 +103,12 @@ const SR22SaveGuard = (() => {
     }
     const character = state.character;
     const campaign = state.campaign;
-    if (!Array.isArray(campaign.companions)) campaign.companions = [];
-    if (!Array.isArray(campaign.npcs)) campaign.npcs = [];
-    if (!Array.isArray(campaign.sideQuests)) campaign.sideQuests = [];
     if (!isRecord(character) || !isRecord(campaign)) {
       return fail('Save is missing a character or campaign.');
     }
+    if (!Array.isArray(campaign.companions)) campaign.companions = [];
+    if (!Array.isArray(campaign.npcs)) campaign.npcs = [];
+    if (!Array.isArray(campaign.sideQuests)) campaign.sideQuests = [];
     if (!isRecord(character.stats)) return fail('Save has incomplete ability scores.');
 
     const abilities = Array.isArray(schema.abilities) ? schema.abilities : [];
