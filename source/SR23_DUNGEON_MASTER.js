@@ -8,7 +8,7 @@ const SR23_EVENT_LIMIT = 240;
 const SR23_MEMORY_LIMIT = 8;
 
 const SR23_INTENT_RULES = [
-  { mode: 'social', pattern: /\b(?:persuad\w*|convinc\w*|negotia\w*|bargain\w*|deceiv\w*|lie|bluff\w*|intimidat\w*|\b(?:lie|deceiv\w*|bluff\w*|intimidat\w*|threaten\w*|bribe\w*|interrogat\w*|apologiz\w*|plead\w*|parley|talk|speak|ask|question)\b/gi },
+  { mode: 'social', pattern: /\b(?:persuad\w*|convinc\w*|negotia\w*|bargain\w*|deceiv\w*|lie|bluff\w*|intimidat\w*|threaten\w*|bribe\w*|interrogat\w*|apologiz\w*|plead\w*|parley|talk|speak|ask|question)\b/gi },
   { mode: 'tactical', pattern: /\b(?:attack\w*|fight\w*|strike\w*|shoot\w*|stab\w*|slash\w*|ambush\w*|flank\w*|parry\w*|disarm\w*|grapple\w*|retreat\w*|withdraw\w*|defend\w*|take cover|dodge\w*|charge\w*)\b/gi },
   { mode: 'survival', pattern: /\b(?:make camp|camp|take a rest|short rest|long rest|rest(?!\s+of)|sleep|forage\w*|hunt\w*|fish\w*|gather\w*|cook\w*|repair\w*|craft\w*|treat wounds|purify|boil water|collect water)\b/gi },
   { mode: 'travel', pattern: /\b(?:travel\w*|journey\w*|march\w*|hike\w*|cross\w*|sail\w*|ride\w*|set out|move camp|navigate\w*)\b/gi },
