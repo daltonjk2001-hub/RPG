@@ -49,7 +49,7 @@ def inject_ui_theme(template: str, css: str) -> str:
         raise SystemExit("UI theme is already present in the HTML template.")
     if "</head>" not in template.lower():
         raise SystemExit("Could not inject UI theme: closing </head> not found.")
-    style = '\\n<style id="sr20-ui-theme">\\n' + css.rstrip() + "\\n</style>\\n"
+    style = '\n<style id="sr20-ui-theme">\n' + css.rstrip() + "\n</style>\n"
     match = re.search(r"</head>", template, re.IGNORECASE)
     return template[:match.start()] + style + template[match.start():]
 
