@@ -11,6 +11,7 @@ done
 node "tests/solo_realms_v20_gameplay_test.cjs"
 node "tests/solo_realms_v21_hardening_test.cjs"
 node "tests/solo_realms_v21_stress_test.cjs"
+node "tests/solo_realms_v22_data_integrity_test.cjs"
 node "tests/solo_realms_v20_layout_test.cjs"
 node "tests/solo_realms_v20_screen_layout_test.cjs"
 node "tests/solo_realms_v20_release_integrity_test.cjs"
