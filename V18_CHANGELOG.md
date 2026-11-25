@@ -81,3 +81,14 @@ V18 is an expanded procedural rules engine. It does not claim a hand-coded bespo
 - Kept V18 authoritative for dice, rules, character state, damage and rewards.
 - Preserved existing quick profiles and mapped them to equivalent personality blends.
 - Added regression tests for profile selection, normalization, prompt behavior, UI controls and offline mechanical invariants.
+
+
+## Director behavior engine — V19.1
+
+- Added persistent NPC memory-driven behavior: running jokes, tactical countermeasures, unresolved questions, personal arcs, leads, unease and retaliation readiness.
+- Added companion stance/advice memory based on each companion’s goals and values.
+- Added faction posture/readiness/grievance/secrecy behavior.
+- Added personality-driven world pulses for story threads, callbacks, tactical plans, mysteries, consequences, discoveries and omens.
+- Passed persistent NPC, companion, faction and world state into generative Director context; offline interactions can reference remembered NPC reactions.
+- Kept the engine narrative-only: no direct changes to checks, character stats, HP, inventory, rewards or damage.
+- Added regression coverage for the behavior paths and mechanical invariants.
