@@ -192,7 +192,7 @@ function sr23ValidateModelPlan(candidate, action, fallback = sr23PlanAction(acti
 function sr23BuildRulingPrompt(action, fallback, context, memories = []) {
   return [
     'You are the adjudicating Dungeon Master for a persistent D&D-inspired campaign.',
-    'Return exactly one JSON object and no markdown: {"mode":"exploration|social|travel|tactical|survival|campaign","requiresCheck":true,"skill":"one exact skill name","dc":15,"reason":"brief player-facing rationale"}.',
+    'Return the existing conversation JSON envelope with one string field named reply. The reply value must itself be compact JSON with keys mode, requiresCheck, skill, dc, and reason. Example envelope: {"reply":"{\\\"mode\\\":\\\"social\\\",\\\"requiresCheck\\\":true,\\\"skill\\\":\\\"Persuasion\\\",\\\"dc\\\":15,\\\"reason\\\":\\\"The keeper is reluctant.\\\"}"}.',
     'Decide from the described fiction whether the action is possible, routine, or meaningfully uncertain. An unopposed, routine, or effectively certain action normally needs no roll. Ask for an ability check only when the outcome is uncertain and failure would matter.',
     'Choose one skill from this exact list when a check is warranted: Acrobatics, Animal Handling, Arcana, Athletics, Deception, History, Insight, Intimidation, Investigation, Medicine, Nature, Perception, Performance, Persuasion, Religion, Sleight of Hand, Stealth, Survival.',
     'Choose the typical DC ladder only: 5 very easy, 10 easy, 15 medium, 20 hard, 25 very hard, 30 nearly impossible. Do not inflate difficulty to punish a creative solution.',
@@ -206,6 +206,17 @@ function sr23BuildRulingPrompt(action, fallback, context, memories = []) {
   ].join('\n');
 }
 
+function sr23ExtractModelPlan(raw) {
+  if (typeof srAIParseJSON !== 'function') return null;
+  const parsed = srAIParseJSON(raw);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+  if (typeof parsed.reply === 'string') {
+    const nested = srAIParseJSON(parsed.reply);
+    return nested && typeof nested === 'object' && !Array.isArray(nested) ? nested : null;
+  }
+  return parsed;
+}
+
 async function sr23RequestModelPlan(action, options = {}) {
   if (sr23RequiresDedicatedCombatAction(action)) {
     throw new Error('Weapon attacks and spell casts use the dedicated Combat or Spells controls so range, defenses, spell slots, and damage are resolved correctly.');
@@ -217,7 +228,7 @@ async function sr23RequestModelPlan(action, options = {}) {
     const memories = sr23RetrieveMemories(action, SR23_MEMORY_LIMIT);
     const prompt = sr23BuildRulingPrompt(action, fallback, context, memories);
     const raw = await srAICall('conversation', prompt);
-    const parsed = typeof srAIParseJSON === 'function' ? srAIParseJSON(raw) : null;
+    const parsed = sr23ExtractModelPlan(raw);
     const plan = sr23ValidateModelPlan(parsed, action, fallback);
     if (plan.source !== 'connected-model') {
       console.warn('Director returned an invalid ruling; using the local deterministic fallback.');
@@ -573,6 +584,7 @@ globalThis.__SR23_TEST = {
   validateModelPlan: sr23ValidateModelPlan,
   requiresDedicatedCombatAction: sr23RequiresDedicatedCombatAction,
   buildRulingPrompt: sr23BuildRulingPrompt,
+  extractModelPlan: sr23ExtractModelPlan,
   resolve: sr23ResolvePlayerAction,
   panel: sr23DirectorPanel,
   get state() { return state; },
