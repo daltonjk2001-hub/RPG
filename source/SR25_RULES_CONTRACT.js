@@ -618,6 +618,7 @@ if (typeof globalThis.__SR18_TEST === 'object' && globalThis.__SR18_TEST) {
   globalThis.__SR18_TEST.validateSave = sr18ValidateSave;
 }
 if (typeof globalThis.__SR21_TEST === 'object' && globalThis.__SR21_TEST) {
+  globalThis.__SR21_TEST.ensure = sr21EnsureCampaign;
   globalThis.__SR21_TEST.skillBonus = sr21SkillBonus;
 }
 globalThis.__SR25_TEST = {
