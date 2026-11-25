@@ -94,6 +94,8 @@ try {
   assert('The phrase “the rest of the map” is not mistaken for a rest action', T.plan('I ask Mara to show me the rest of the map').mode === 'campaign');
   assert('A persuasive request calls for an ability check', T.plan('I persuade the gate guard to let us pass').requiresCheck === true);
   assert('The Director selects the relevant Persuasion skill', T.plan('I persuade the gate guard to let us pass').skill === 'Persuasion');
+  assert('Inspecting physical evidence selects Investigation, not wilderness tracking', T.skillFor('exploration', 'I inspect the broken stonework for concealed tracks') === 'Investigation');
+  assert('Following a trail selects Survival', T.skillFor('exploration', 'I follow the tracks into the woods') === 'Survival');
   assert('A deception attempt calls for a check', T.plan('I lie to Mara Venn about the stolen keys').requiresCheck === true);
   assert('The Director selects Deception for a lie', T.plan('I lie to Mara Venn about the stolen keys').skill === 'Deception');
   assert('A dangerous river crossing calls for a check', T.plan('We cross a raging river during a storm').requiresCheck === true);
