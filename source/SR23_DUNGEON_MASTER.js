@@ -362,7 +362,7 @@ function sr23ResolvePlayerAction(text, options = {}) {
     resolved.difficulty = 'auto';
     resolved.dc = plan.dc;
     resolved.challenge = 'standard';
-  } else {
+  } else if (explicitDifficulty) {
     delete resolved.dc;
   }
   resolved.noRoll = plan.noRoll && !explicitDifficulty && !explicitDC;
