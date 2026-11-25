@@ -9412,6 +9412,257 @@ const sr17RenderBase=render;
 render=function(){const out=sr17RenderBase();try{document.title='Solo Realms V18 — Reliable Free Edition';const f=document.querySelector('.footer-note');if(f)f.textContent='SOLO REALMS V18 · LIBRARY DOWNLOADS & RESTORE · CAMPAIGN RESTART CONTROLS · REACTIVE WORLD';}catch(e){}return out;};
 globalThis.__SR17_TEST={version:SR17_VERSION,branch:SR17_LIBRARY_BRANCH,urls:{...SR14_PACK_URLS},loadLibrary:sr14LoadFreePack,validatePack:sr14PackValidate,hydrate:sr17HydrateLibrary,getLibrary:sr17GetLibrary,exportLibrary:sr17ExportLibrary,importLibrary:sr17ImportLibraryFile,spellMarkdown:sr17SpellMarkdown,bestiaryMarkdown:sr17BestiaryMarkdown,inSharedTable:sr17InSharedTable,hasLibrary:sr17HasLibrary,newChronicle:sr17NewChronicle,newCharacter:sr17NewCharacter,get libraryReady(){return SR17_LIBRARY_READY;}};
 
+/* SOLO REALMS V22 — bounded, compatibility-aware save validation.
+ * Pure module: accepts a save plus its rules schema and returns a normalized copy.
+ * It does not touch live game state or mutate the supplied object.
+ */
+const SR22SaveGuard = (() => {
+  const LIMITS = Object.freeze({
+    maxDepth: 40,
+    maxNodes: 400000,
+    maxArrayLength: 25000,
+    maxProperties: 20000,
+    maxKeyLength: 512,
+    maxStringLength: 500000,
+    maxTotalStringLength: 14000000,
+    maxNumberMagnitude: Number.MAX_SAFE_INTEGER
+  });
+  const own = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
+  const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+
+  function fail(reason) {
+    return { ok: false, reason };
+  }
+
+  function inspectTree(root) {
+    if (!isRecord(root)) return 'Save root is not a valid object.';
+    const stack = [{ value: root, depth: 0, exit: false }];
+    const active = new WeakSet();
+    const visited = new WeakSet();
+    let nodes = 0;
+    let totalStringLength = 0;
+
+    while (stack.length) {
+      const entry = stack.pop();
+      const value = entry.value;
+      if (entry.exit) {
+        active.delete(value);
+        continue;
+      }
+      if (value === null || typeof value === 'boolean') continue;
+      if (typeof value === 'string') {
+        if (value.length > LIMITS.maxStringLength) return 'Save contains an oversized text field.';
+        totalStringLength += value.length;
+        if (totalStringLength > LIMITS.maxTotalStringLength) return 'Save contains too much text data.';
+        continue;
+      }
+      if (typeof value === 'number') {
+        if (!Number.isFinite(value) || Math.abs(value) > LIMITS.maxNumberMagnitude) {
+          return 'Save contains an invalid numeric value.';
+        }
+        continue;
+      }
+      if (typeof value !== 'object') return 'Save contains a non-JSON data value.';
+      if (entry.depth > LIMITS.maxDepth) return 'Save data is nested too deeply.';
+      if (active.has(value)) return 'Save contains a circular data reference.';
+      if (visited.has(value)) continue;
+      visited.add(value);
+      active.add(value);
+      nodes++;
+      if (nodes > LIMITS.maxNodes) return 'Save contains too many data records.';
+
+      stack.push({ value, depth: entry.depth, exit: true });
+      if (Array.isArray(value)) {
+        if (value.length > LIMITS.maxArrayLength) return 'Save contains an oversized list.';
+        for (let i = value.length - 1; i >= 0; i--) {
+          stack.push({ value: value[i], depth: entry.depth + 1, exit: false });
+        }
+      } else {
+        const keys = Object.keys(value);
+        if (keys.length > LIMITS.maxProperties) return 'Save contains an oversized data record.';
+        for (let i = keys.length - 1; i >= 0; i--) {
+          const key = keys[i];
+          if (key.length > LIMITS.maxKeyLength) return 'Save contains an oversized data-field name.';
+          if (key === '__proto__' || key === 'prototype' || key === 'constructor') {
+            return 'Save contains a reserved data-field name.';
+          }
+          totalStringLength += key.length;
+          if (totalStringLength > LIMITS.maxTotalStringLength) return 'Save contains too much text data.';
+          stack.push({ value: value[key], depth: entry.depth + 1, exit: false });
+        }
+      }
+    }
+    return null;
+  }
+
+  function checkArray(value, limit, label) {
+    return Array.isArray(value) && value.length > limit
+      ? label + ' contains too many entries (maximum ' + limit + ').'
+      : null;
+  }
+
+  function validate(value, schema = {}) {
+    let source = value?.schema === 'solo-realms-v18-save-v1' ? value.state : value;
+    if (source && !source.character && source.state?.character && source.state?.campaign) {
+      source = source.state;
+    }
+    const treeError = inspectTree(source);
+    if (treeError) return fail(treeError);
+
+    let state;
+    try {
+      state = JSON.parse(JSON.stringify(source));
+    } catch (error) {
+      return fail('Save could not be safely copied: ' + String(error?.message || error));
+    }
+    const character = state.character;
+    const campaign = state.campaign;
+    if (!isRecord(character) || !isRecord(campaign)) {
+      return fail('Save is missing a character or campaign.');
+    }
+    if (!Array.isArray(campaign.companions)) campaign.companions = [];
+    if (!Array.isArray(campaign.npcs)) campaign.npcs = [];
+    if (!Array.isArray(campaign.sideQuests)) campaign.sideQuests = [];
+    if (!isRecord(character.stats)) return fail('Save has incomplete ability scores.');
+
+    const abilities = Array.isArray(schema.abilities) ? schema.abilities : [];
+    for (const ability of abilities) {
+      const score = Number(character.stats[ability]);
+      if (!Number.isFinite(score) || score < 1 || score > 30) {
+        return fail('Save has an invalid ' + ability + ' ability score (expected 1–30).');
+      }
+      character.stats[ability] = score;
+    }
+
+    if (!Array.isArray(character.inventory) || !Array.isArray(character.proficiencies)) {
+      return fail('Save inventory or proficiencies are invalid.');
+    }
+    if (state.log !== undefined && state.log !== null && !Array.isArray(state.log)) {
+      return fail('Save chronicle log is invalid.');
+    }
+    const classes = isRecord(schema.classes) ? schema.classes : {};
+    const ancestries = isRecord(schema.ancestries) ? schema.ancestries : {};
+    if (typeof character.classId !== 'string' || !own(classes, character.classId) ||
+        typeof character.ancestry !== 'string' || !own(ancestries, character.ancestry)) {
+      return fail('Save uses an unknown character class or ancestry.');
+    }
+    const level = Number(character.level);
+    if (!Number.isInteger(level) || level < 1 || level > 20) {
+      return fail('Character level is outside the supported range (1–20).');
+    }
+    character.level = level;
+
+    const campaignArrays = [
+      [character.inventory, 2000, 'Inventory'],
+      [character.proficiencies, 300, 'Proficiencies'],
+      [state.log, 5000, 'Chronicle log'],
+      [campaign.companions, 200, 'Companions'],
+      [campaign.npcs, 2000, 'NPC roster'],
+      [campaign.sideQuests, 1000, 'Side quests'],
+      [campaign.sr18?.factions, 200, 'World factions'],
+      [campaign.sr18?.clocks, 200, 'World clocks'],
+      [campaign.sr18?.events, 1000, 'World events'],
+      [campaign.sr18?.rumors, 500, 'World rumors'],
+      [campaign.sr18?.actionLedger, 2000, 'World action history'],
+      [campaign.sr18?.deadlines, 500, 'World deadlines'],
+      [campaign.sr20?.objectives, 200, 'Campaign objectives'],
+      [campaign.sr20?.leads, 200, 'Campaign leads'],
+      [campaign.sr20?.consequences, 200, 'Campaign consequences'],
+      [campaign.sr20?.records, 1000, 'Recent action records'],
+      [campaign.sr20?.archive, 5000, 'Archived action records'],
+      [character.sr21Legacy?.milestones, 500, 'Legacy milestone history'],
+      [character.sr21Legacy?.archivedCampaigns, 50, 'Legacy campaign archive']
+    ];
+    for (const [array, limit, label] of campaignArrays) {
+      if (array === undefined || array === null) continue;
+      if (!Array.isArray(array)) return fail(label + ' is not a valid list.');
+      const arrayError = checkArray(array, limit, label);
+      if (arrayError) return fail(arrayError);
+    }
+
+    for (const field of ['hp', 'maxHp', 'gold', 'xp']) {
+      if (character[field] === undefined || character[field] === null) continue;
+      const number = Number(character[field]);
+      if (!Number.isFinite(number) || Math.abs(number) > 1000000000) {
+        return fail('Save contains an invalid character ' + field + ' value.');
+      }
+    }
+
+    state.log = Array.isArray(state.log) ? state.log.slice(-300) : [];
+    return { ok: true, state };
+  }
+
+  return Object.freeze({ version: '22.0.0', limits: LIMITS, validate });
+})();
+
+/* SOLO REALMS V22 — exact, persistent legacy-reward deduplication.
+ * The visible milestone list remains a compact 100-entry history. This separate
+ * ledger retains every claimed ID across saves and JSON export/import.
+ */
+const SR22LegacyLedger = (() => {
+  const own = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
+  const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+  const MAX_ID_LENGTH = 180;
+
+  function normalizeMap(map) {
+    const normalized = Object.create(null);
+    if (isRecord(map)) {
+      for (const key of Object.keys(map)) {
+        if (key && key.length <= MAX_ID_LENGTH && map[key] === true) {
+          normalized[key.startsWith('reward:') ? key : 'reward:' + key] = true;
+        }
+      }
+    }
+    return normalized;
+  }
+
+  function ensure(character, version = '22.0.0') {
+    if (!isRecord(character)) return null;
+    let legacy = isRecord(character.sr21Legacy) ? character.sr21Legacy : {};
+    character.sr21Legacy = legacy;
+    legacy.version = legacy.version || version;
+    legacy.xp = Math.max(0, Math.floor(Number(legacy.xp) || 0));
+    legacy.milestones = Array.isArray(legacy.milestones) ? legacy.milestones : [];
+    legacy.archivedCampaigns = Array.isArray(legacy.archivedCampaigns) ? legacy.archivedCampaigns : [];
+    legacy.reputation = isRecord(legacy.reputation) ? legacy.reputation : {};
+
+    if (legacy.awardLedgerVersion !== 1) {
+      const migrated = normalizeMap(legacy.awardedIds);
+      for (const milestone of legacy.milestones) {
+        const id = typeof milestone?.id === 'string' ? milestone.id.trim() : '';
+        if (id && id.length <= MAX_ID_LENGTH) migrated['reward:' + id] = true;
+      }
+      legacy.awardedIds = migrated;
+      legacy.awardLedgerVersion = 1;
+    } else if (!isRecord(legacy.awardedIds) || Object.getPrototypeOf(legacy.awardedIds) !== null) {
+      legacy.awardedIds = normalizeMap(legacy.awardedIds);
+    }
+    return legacy;
+  }
+
+  function claim(legacy, id) {
+    if (!isRecord(legacy)) return false;
+    const key = String(id ?? '').trim();
+    if (!key || key.length > MAX_ID_LENGTH) return false;
+    if (!isRecord(legacy.awardedIds) || Object.getPrototypeOf(legacy.awardedIds) !== null) {
+      legacy.awardedIds = normalizeMap(legacy.awardedIds);
+    }
+    const ledgerKey = 'reward:' + key;
+    if (own(legacy.awardedIds, ledgerKey)) return false;
+    legacy.awardedIds[ledgerKey] = true;
+    return true;
+  }
+
+  return Object.freeze({ version: '22.0.0', ensure, claim });
+})();
+
+globalThis.__SR22_TEST = {
+  version: '22.0.0',
+  validateSave: (value, schema) => SR22SaveGuard.validate(value, schema),
+  ensureLegacy: (character, version) => SR22LegacyLedger.ensure(character, version),
+  claimLegacy: (legacy, id) => SR22LegacyLedger.claim(legacy, id)
+};
+
 /* SOLO REALMS V18 — rules, monster tactics, improvisation, living campaign, and save recovery.
  * Built as an additive layer over V17 so earlier campaign/rules/multiplayer/save data remains readable.
  */
@@ -9821,7 +10072,7 @@ async function sr18DBPut(store,key,value){const db=await sr18OpenDB();return new
 async function sr18DBGet(store,key){const db=await sr18OpenDB();return new Promise((resolve,reject)=>{const tx=db.transaction(store,'readonly'),req=tx.objectStore(store).get(key);req.onsuccess=()=>resolve(req.result??null);req.onerror=()=>reject(req.error||new Error('Save archive read failed'));});}
 async function sr18DBDelete(store,key){const db=await sr18OpenDB();return new Promise((resolve,reject)=>{const tx=db.transaction(store,'readwrite');tx.objectStore(store).delete(key);tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error||new Error('Save archive delete failed'));});}
 function sr18Snapshot(label='Manual save'){return {schema:'solo-realms-v18-save-v1',game:'Solo Realms',version:SR18_VERSION,label:String(label).slice(0,60),savedAt:new Date().toISOString(),state:JSON.parse(JSON.stringify(state))};}
-function sr18ValidateSave(value){const s=value?.schema==='solo-realms-v18-save-v1'?value.state:value;if(!s||typeof s!=='object'||!s.character||!s.campaign)return {ok:false,reason:'Save is missing a character or campaign.'};const c=s.character;if(!c.stats||!ABILITIES.every(a=>Number.isFinite(Number(c.stats[a]))))return {ok:false,reason:'Save has incomplete ability scores.'};if(!Array.isArray(c.inventory)||!Array.isArray(c.proficiencies)||!Array.isArray(s.log||[]))return {ok:false,reason:'Save inventory, proficiencies, or chronicle log is invalid.'};if(!CLASSES[c.classId]||!ANCESTRIES[c.ancestry])return {ok:false,reason:'Save uses an unknown character class or ancestry.'};if(!Number.isFinite(Number(c.level))||Number(c.level)<1||Number(c.level)>20)return {ok:false,reason:'Character level is outside the supported range.'};if(!Array.isArray(s.campaign.companions))s.campaign.companions=[];if(!Array.isArray(s.campaign.npcs))s.campaign.npcs=[];if(!Array.isArray(s.campaign.sideQuests))s.campaign.sideQuests=[];return {ok:true,state:s};}
+function sr18ValidateSave(value){return SR22SaveGuard.validate(value,{abilities:ABILITIES,classes:CLASSES,ancestries:ANCESTRIES});}
 async function sr18StoreSlot(n,label=''){n=Number(n);if(!Number.isInteger(n)||n<1||n>SR18_MAX_SLOTS)throw new Error('Choose a save slot from 1 to 8.');if(!state.character||!state.campaign)throw new Error('Create a character and campaign before saving a slot.');const snap=sr18Snapshot(label||`Slot ${n}`),record={...snap,slot:n,hero:state.character.name,level:state.character.level,region:state.campaign.region||state.campaign.location||'Unknown region'};try{await sr18DBPut('slots',String(n),record);}catch(e){const json=JSON.stringify(record);if(json.length>1800000)throw new Error('This browser cannot store a save this large without IndexedDB.');localStorage.setItem(SR18_SLOT_PREFIX+n,json);}return record;}
 async function sr18ReadSlot(n){try{const x=await sr18DBGet('slots',String(n));if(x)return x;}catch(e){}for(const key of [SR18_SLOT_PREFIX+n,`solo-realms-v3-slot-${n}`,`solo-realms-v17-slot-${n}`]){try{const raw=localStorage.getItem(key);if(!raw)continue;const parsed=JSON.parse(raw);const snap=sr18NormalizeImported(parsed);if(sr18ValidateSave(snap).ok)return parsed;}catch(e){}}return null;}
 async function sr18DeleteSlot(n){try{await sr18DBDelete('slots',String(n));}catch(e){}try{localStorage.removeItem(SR18_SLOT_PREFIX+n);}catch(e){}return true;}
@@ -10698,8 +10949,7 @@ function sr21EnsureCampaign(){
 }
 function sr21EnsureLegacy(){
  const ch=state?.character;if(!ch)return null;
- ch.sr21Legacy=ch.sr21Legacy&&typeof ch.sr21Legacy==='object'?ch.sr21Legacy:{};
- const l=ch.sr21Legacy;l.version=SR21_VERSION;l.xp=Math.max(0,Number(l.xp)||0);
+ const l=SR22LegacyLedger.ensure(ch,SR21_VERSION);l.xp=Math.max(0,Number(l.xp)||0);
  l.archivedCampaigns=Array.isArray(l.archivedCampaigns)?l.archivedCampaigns:[];
  l.milestones=Array.isArray(l.milestones)?l.milestones:[];l.reputation=l.reputation&&typeof l.reputation==='object'?l.reputation:{};
  l.rank=SR21_LEGACY_RANKS.reduce((rank,r,i)=>l.xp>=r.xp?i+1:rank,0);
@@ -10707,9 +10957,8 @@ function sr21EnsureLegacy(){
 }
 function sr21AwardLegacyXP(amount,reason,id){
  const ch=state?.character;if(!ch||Number(ch.level)<20)return false;
- const l=sr21EnsureLegacy(),key=String(id||reason||'legacy-event');
- if(l.milestones.some(x=>x.id===key))return false;
- const gained=Math.max(0,Math.floor(Number(amount)||0));if(!gained)return false;
+ const l=sr21EnsureLegacy(),key=String(id||reason||'legacy-event').trim();
+ const gained=Math.max(0,Math.floor(Number(amount)||0));if(!gained||!SR22LegacyLedger.claim(l,key))return false;
  l.xp+=gained;l.milestones.unshift({id:key,reason:String(reason||'Milestone'),xp:gained,at:new Date().toISOString()});l.milestones=l.milestones.slice(0,100);
  const before=l.rank;l.rank=SR21_LEGACY_RANKS.reduce((rank,r,i)=>l.xp>=r.xp?i+1:rank,0);
  l.title=l.rank?SR21_LEGACY_RANKS[l.rank-1].title:'Unrecorded';
