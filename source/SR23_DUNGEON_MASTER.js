@@ -85,13 +85,14 @@ function sr23SkillFor(mode, action, chosen) {
     return 'Athletics';
   }
   if (mode === 'exploration') {
-    if (/\b(?:track|tracks|trail|navigate|wilderness|forage)\b/.test(text)) return 'Survival';
+    if (/\b(?:follow|track|trace)\s+(?:the\s+)?(?:tracks?|trail|footprints?|scent)|\b(?:navigate|wilderness|forage)\b/.test(text)) return 'Survival';
     if (/\b(?:listen|hear|spot|watch|notice|see|observe)\b/.test(text)) return 'Perception';
     if (/\b(?:sneak|hide|quiet|unseen)\b/.test(text)) return 'Stealth';
     if (/\b(?:lock|latch|mechanism|palm|lift the key|disarm)\b/.test(text)) return 'Sleight of Hand';
     if (/\b(?:rune|spell|arcane|magic|ward|enchant)\b/.test(text)) return 'Arcana';
     if (/\b(?:history|ancient|chronicle|historical|remember who)\b/.test(text)) return 'History';
     if (/\b(?:motive|read the guard|read the merchant|tell if)\b/.test(text)) return 'Insight';
+    if (/\b(?:inspect|examine|search|investigat|clue|evidence|deduction|stonework|tracks?)\b/.test(text)) return 'Investigation';
     return 'Investigation';
   }
   return typeof sr21SkillFor === 'function' ? sr21SkillFor(mode, action, null, null) : 'Investigation';
