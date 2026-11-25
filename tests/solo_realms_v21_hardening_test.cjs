@@ -7,7 +7,7 @@ if(scripts.length!==1)throw Error('Expected a self-contained runtime');
 const nodes=new Map();
 function el(id=''){return {id,innerHTML:'',textContent:'',value:'',dataset:{},style:{},attrs:{},files:[],classList:{add(){},remove(){},contains(){return false},toggle(){}},addEventListener(){},remove(){},appendChild(){},setAttribute(k,v){this.attrs[k]=String(v);},getAttribute(k){return this.attrs[k]??null;},click(){},querySelector(){return null;},querySelectorAll(){return [];},focus(){},closest(){return null;}};}
 const app=el('app'),body=el('body'),head=el('head'),toast=el('toast');nodes.set('app',app);nodes.set('toast',toast);
-const document={title:'',body,head,getElementById(id){if(!nodes.has(id))nodes.set(id,el(id));return nodes.get(id);},querySelector(){return null;},querySelectorAll(){return [];},createElement(tag){return el(tag);},addEventListener(){}};
+const document={title:'',body,head,getElementById(id){return nodes.get(id)||null;},querySelector(){return null;},querySelectorAll(){return [];},createElement(tag){return el(tag);},addEventListener(){}};
 const storage=new Map(),session=new Map(),math=Object.create(Math);math.random=()=>.49;
 const context={console,document,window:{},location:{protocol:'https:',search:'',href:'https://example.invalid/'},localStorage:{getItem(k){return storage.get(k)||null;},setItem(k,v){storage.set(k,String(v));},removeItem(k){storage.delete(k);}},sessionStorage:{getItem(k){return session.get(k)||null;},setItem(k,v){session.set(k,String(v));},removeItem(k){session.delete(k);}},URLSearchParams,URL,Blob,FileReader:function(){},setTimeout,clearTimeout,Math:math,Date,JSON,Map,Set,Array,Object,String,Number,Boolean,RegExp,Error,Promise,Intl,performance:{now:()=>0},navigator:{onLine:true},crypto:require('node:crypto').webcrypto,AbortController,fetch:async()=>{throw Error('Network disabled in stage simulation');}};
 context.globalThis=context;vm.runInNewContext(scripts[0],context,{timeout:60000,filename:'Solo_Realms_V21_Stage'});
@@ -34,6 +34,7 @@ try{
  const panel=T.panel();assert('Adventure action panel renders without recursive overflow',panel.includes('id="sr20-gameplay"')&&panel.includes('What do you do?'));
  assert('V21 control set is present',panel.includes('id="sr21-skill"')&&panel.includes('id="sr21-difficulty"')&&panel.includes('id="sr21-roll-mode"')&&panel.includes('id="sr21-objective"')&&panel.includes('id="sr21-objective-goal"'));
  assert('Duplicate legacy skill/difficulty/roll controls are removed',!panel.includes('id="sr20-skill"')&&!panel.includes('id="sr20-challenge"')&&!panel.includes('id="sr20-roll-state"'));
+ for(const id of ['sr21-skill','sr21-difficulty','sr21-roll-mode','sr21-objective'])nodes.set(id,el(id));
  nodes.get('sr21-skill').value='Stealth';nodes.get('sr21-difficulty').value='hard';nodes.get('sr21-roll-mode').value='advantage';nodes.get('sr21-objective').value='objective-123';
  const ui=T.resolveOptions({skill:'Arcana',advantage:false,disadvantage:false,objectiveId:'stale'});assert('V21 form selections override legacy submission fields',ui.skill==='Stealth'&&ui.difficulty==='hard'&&ui.advantage===true&&!ui.disadvantage&&ui.objectiveId==='objective-123',JSON.stringify(ui));
  nodes.get('sr21-skill').value='auto';nodes.get('sr21-difficulty').value='auto';nodes.get('sr21-roll-mode').value='normal';nodes.get('sr21-objective').value='auto';
