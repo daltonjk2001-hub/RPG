@@ -1,10 +1,12 @@
 # Solo Realms — Full End-State Implementation Roadmap
 
 **Purpose:** Deliver the complete target described in SOLO_REALMS_COMPLETE_END_DESIGN.md.  
-**Starting point:** V23 is merged to main. It is a foundation, not completion.  
+**Starting point:** V24 is merged to main as the current audited baseline. V23 remains the Director-first foundation; V24 adds The Chronicler client and server-side gateway code. Neither release represents completion.  
 **Policy:** Work in independently testable increments. Merge only after the phase gate is satisfied.
 
 The roadmap is dependency-ordered. The order matters: campaign state, rules authority, and memory must be reliable before autonomous NPCs, dynamic campaign generation, or expanded AI control are layered on top.
+
+For a code-level status inventory, six-pillar D&D reference mapping, discrepancy list, first sprint, and feature acceptance tests, see [DND_IMPLEMENTATION_BACKLOG.md](DND_IMPLEMENTATION_BACKLOG.md). This document remains the phase/dependency authority; the backlog translates those phases into concrete, evidence-linked work.
 
 ---
 
@@ -362,14 +364,14 @@ Some work can run in parallel after the required contracts exist. No later phase
 
 ## What is already done versus what remains
 
-### V23 foundations already merged
-- Natural-language-first Adventure input.
-- Basic local no-roll/check planning.
-- Initial connected model ruling proposal and schema validation.
+### V23/V24 foundations already merged
+- Natural-language-first Adventure input and the V23 local Director planner.
+- Connected ruling proposal, schema validation, bounded event memory and safe local fallback.
 - Deterministic mechanics remain authoritative for dice and state.
-- Basic action-event memory with bounded retrieval.
-- Older save compatibility and V23 PWA cache migration.
-- Regression coverage for those foundations.
+- V24 The Chronicler client, provider-neutral Worker gateway and provider adapters.
+- Server-side provider-secret handling, request/task allowlists, request bounds and Durable Object-backed IP rate limiting.
+- Older save compatibility, data-integrity hardening and PWA cache migration.
+- Regression coverage for the current foundations.
 
 ### Not yet complete
 - Full semantic intent understanding across all game mechanics.
@@ -381,7 +383,7 @@ Some work can run in parallel after the required contracts exist. No later phase
 - Situation graph, robust clue graph, and full campaign generation.
 - Full exploration/travel/downtime/stronghold systems.
 - Finished conversation-first UI across all screens.
-- Hosted secure model gateway.
+- Production deployment and user/session-authenticated operations for the V24 model gateway, including campaign-scoped authorization, usage/cost controls and operational monitoring.
 - Production-grade co-op authority and synchronization.
 - Real human/device playtest evidence.
 
