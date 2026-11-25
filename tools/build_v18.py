@@ -7,6 +7,7 @@ that shell, so rebuilding never depends on a previously generated V18 file.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -174,8 +175,32 @@ def main() -> None:
         encoding="utf-8",
     )
 
+    # Version the offline cache from the exact app shell and all precached assets.
+    # A changed build therefore changes sw.js, activates a fresh cache, and removes
+    # the old Solo Realms cache instead of leaving installed clients on stale HTML.
+    core_assets = (
+        PWA_HTML,
+        MANIFEST,
+        PWA_DIR / "icons" / "icon-192.png",
+        PWA_DIR / "icons" / "icon-512.png",
+    )
+    cache_digest = hashlib.sha256()
+    for asset in core_assets:
+        require_file(asset)
+        cache_digest.update(asset.relative_to(PWA_DIR).as_posix().encode("utf-8"))
+        cache_digest.update(bytes([0]))
+        cache_digest.update(asset.read_bytes())
+        cache_digest.update(bytes([0]))
+    cache_name = f"solo-realms-systems-v18-{cache_digest.hexdigest()[:16]}"
+
     sw_text = SERVICE_WORKER.read_text(encoding="utf-8")
-    sw_text = sw_text.replace("solo-realms-reliable-v17", "solo-realms-systems-v18")
+    cache_pattern = re.compile(r"(?m)^const CACHE_NAME = .+;$")
+    cache_matches = list(cache_pattern.finditer(sw_text))
+    if len(cache_matches) != 1:
+        raise SystemExit(
+            f"Expected exactly one service-worker CACHE_NAME declaration; found {len(cache_matches)}."
+        )
+    sw_text = cache_pattern.sub(f"const CACHE_NAME = '{cache_name}';", sw_text, count=1)
     SERVICE_WORKER.write_text(sw_text, encoding="utf-8")
 
     print(f"Built {MAIN_HTML.relative_to(ROOT)} ({MAIN_HTML.stat().st_size:,} bytes)")

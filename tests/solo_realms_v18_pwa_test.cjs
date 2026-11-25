@@ -1,4 +1,4 @@
-const fs=require('node:fs'),path=require('node:path');
+const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const candidateA=path.join(__dirname,'Solo_Realms_V11_PWA');const candidateB=path.join(__dirname,'..','pwa');const root=fs.existsSync(candidateA)?candidateA:candidateB;
 const checks=[];const assert=(name,value)=>checks.push({name,pass:!!value});
 const index=fs.readFileSync(path.join(root,'index.html'),'utf8');
@@ -10,7 +10,16 @@ assert('PWA entry identifies the V18 application',index.includes('Solo Realms V1
 assert('PWA registers service worker on secure origins',index.includes("navigator.serviceWorker.register('./sw.js')"));
 assert('Manifest requests standalone display',manifest.display==='standalone');
 assert('Manifest long and short names identify V18',manifest.name.includes('V18')&&manifest.short_name.includes('V18'));
-assert('Service worker uses an isolated V18 cache namespace',sw.includes('solo-realms-systems-v18'));
+const cacheDigest=crypto.createHash('sha256');
+for(const relative of ['index.html','manifest.webmanifest','icons/icon-192.png','icons/icon-512.png']){
+  cacheDigest.update(relative);
+  cacheDigest.update(Buffer.from([0]));
+  cacheDigest.update(fs.readFileSync(path.join(root,relative)));
+  cacheDigest.update(Buffer.from([0]));
+}
+const expectedCacheName='solo-realms-systems-v18-'+cacheDigest.digest('hex').slice(0,16);
+const cacheMatch=sw.match(/^const CACHE_NAME = '([^']+)';$/m);
+assert('Service worker cache is content-versioned from every precached app asset',cacheMatch?.[1]===expectedCacheName);
 assert('Manifest uses correct subfolder scope and start URL',manifest.scope==='./'&&manifest.start_url==='./index.html');
 assert('Manifest has 192 and 512 icons',manifest.icons.some(x=>x.sizes==='192x192')&&manifest.icons.some(x=>x.sizes==='512x512'));
 assert('192 icon file is the correct size',JSON.stringify(pngSize(path.join(root,'icons/icon-192.png')))===JSON.stringify({w:192,h:192}));

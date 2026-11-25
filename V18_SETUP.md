@@ -13,7 +13,7 @@ For more reliable downloads, offline caching and Android installation, use the P
 3. Use the browser's Install app / Add to Home screen action.
 4. Launch Solo Realms from the installed app icon.
 
-The V18 service worker uses a fresh `solo-realms-systems-v18` cache namespace so it does not reuse the previous V17 shell.
+The service-worker cache name is derived from the published app shell, manifest, and icons. Each changed build gets a distinct cache, so installed copies pick up the new application and remove the stale Solo Realms cache after activation.
 
 ## 3. Install the free rules reference
 
