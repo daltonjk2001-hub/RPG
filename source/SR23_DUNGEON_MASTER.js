@@ -173,7 +173,7 @@ function sr23RecordEvent(outcome, plan) {
     mode: String(outcome.mode || plan.mode || 'campaign'),
     action: String(outcome.action || plan.action || '').slice(0, 500),
     tags: sr23TagsFor(outcome.action || plan.action),
-    checkType: String(plan.checkType || 'none'),
+    checkType: outcome.noRoll ? 'none' : 'ability-check',
     skill: String(outcome.skill || plan.skill || ''),
     dc: Number.isFinite(Number(outcome.dc)) ? Number(outcome.dc) : null,
     total: Number.isFinite(Number(outcome.total)) ? Number(outcome.total) : null,
@@ -211,7 +211,7 @@ function sr23RetrieveMemories(query, limit = SR23_MEMORY_LIMIT) {
 }
 
 function sr23RulingText(plan, outcome) {
-  if (plan.noRoll) return 'Director ruling: no check. ' + plan.reason;
+  if (outcome.noRoll) return 'Director ruling: no check. ' + plan.reason;
   return 'Director ruling: ' + String(outcome.skill || plan.skill) + ' ability check, DC ' +
     String(outcome.dc || plan.dc) + '. ' + plan.reason;
 }
