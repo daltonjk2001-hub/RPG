@@ -10,6 +10,7 @@ for suite in multiplayer legacy ui pwa rules_campaign resource reactive reliabil
 done
 node "tests/solo_realms_v20_gameplay_test.cjs"
 node "tests/solo_realms_v20_layout_test.cjs"
+node "tests/solo_realms_v20_screen_layout_test.cjs"
 node "tests/solo_realms_v20_release_integrity_test.cjs"
 node - <<'NODE'
 const fs=require('node:fs');
