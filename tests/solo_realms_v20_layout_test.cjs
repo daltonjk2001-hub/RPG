@@ -16,6 +16,9 @@ ok('GitHub Pages docs build receives the same theme',!!docsTheme&&docsTheme===ma
 ok('Theme source and generated HTML stay synchronized',mainTheme.trim()===css.trim());
 ok('Design system defines shared background, surface, border, text and accent tokens',['--sr-bg:','--sr-panel:','--sr-line:','--sr-parchment:','--sr-brass:'].every(x=>css.includes(x)));
 ok('Top bar and primary navigation receive distinct shell treatments',css.includes('.simple-topbar')&&css.includes('.simple-sidebar')&&css.includes('[aria-current="page"]'));
+ok('Desktop shell uses a persistent sidebar beside the main game surface',css.includes('.layout {')&&css.includes('grid-template-columns: minmax(205px, 244px) minmax(0, 1fr)')&&css.includes('.layout > .main'));
+ok('Campaign header gives the hero status and options their own hierarchy',css.includes('.simple-brand')&&css.includes('.simple-hero-status')&&css.includes('.simple-options-list'));
+ok('Small screens swap to the dedicated five-part mobile navigation',css.includes('.simple-sidebar { display: none; }')&&css.includes('.simple-mobile-nav')&&css.includes('grid-template-columns: repeat(4, minmax(0, 1fr))'));
 ok('Common campaign panels and content rows share consistent spacing and surfaces',css.includes('#app .card')&&css.includes('#app .two-col')&&css.includes('#app .item-row'));
 ok('Adventure action composer receives a deliberate responsive form layout',css.includes('#sr20-action-form')&&css.includes('grid-template-columns'));
 ok('Phone layout collapses paired panels and action fields into one column',/@media\s*\(max-width:\s*760px\)/.test(css)&&css.includes('#app .two-col { grid-template-columns: minmax(0, 1fr)'));
