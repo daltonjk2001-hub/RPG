@@ -26,6 +26,7 @@ function sr21EnsureCampaign(){
  const prior=g.onboarding&&typeof g.onboarding==='object'?g.onboarding:{};
  g.onboarding={step:Number.isInteger(prior.step)?prior.step:0,complete:prior.complete===undefined?!!prior.completed:!!prior.complete,hidden:!!prior.hidden};
  g.onboarding.step=Math.max(0,Math.min(SR21_TUTORIAL_STEPS.length,g.onboarding.step));
+ sr21EnsureLegacy();
  return g;
 }
 function sr21EnsureLegacy(){
