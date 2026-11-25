@@ -562,6 +562,50 @@ if (typeof sr18ValidateSave === 'function') {
 if (typeof globalThis.__SR14_TEST === 'object' && globalThis.__SR14_TEST) {
   globalThis.__SR14_TEST.abilityCheck = sr14AbilityCheck;
   globalThis.__SR14_TEST.savingThrow = sr14SavingThrow;
+  if (typeof globalThis.__SR14_TEST.tests === 'function') {
+    const sr25LegacyV14Tests = globalThis.__SR14_TEST.tests;
+    globalThis.__SR14_TEST.tests = function() {
+      const results = sr25LegacyV14Tests();
+      if (!Array.isArray(results)) return results;
+      return results.map(result => {
+        const name = String(result?.name || '');
+        const isTwenty = /natural\s*20/i.test(name);
+        const isOne = /natural\s*1/i.test(name);
+        const ability = /ability check/i.test(name);
+        const save = /saving throw/i.test(name);
+        if ((!isTwenty && !isOne) || (!ability && !save) || !/automatic|automatically/i.test(name)) return result;
+        const die = isTwenty ? 20 : 1;
+        const dc = isTwenty ? 99 : 1;
+        const character = {
+          classId: 'Fighter', level: 1,
+          stats: { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 },
+          proficiencies: [], expertise: []
+        };
+        const originalRandom = Math.random;
+        let actual;
+        try {
+          Math.random = () => isTwenty ? 0.999999 : 0;
+          actual = ability
+            ? sr14AbilityCheck(character, 'Athletics', dc)
+            : sr14SavingThrow(character, 'DEX', dc);
+        } finally {
+          Math.random = originalRandom;
+        }
+        const actualDie = Number(actual?.roll ?? actual?.r ?? actual?.r1);
+        const expectedSuccess = isOne;
+        const pass = actualDie === die && !!actual?.success === expectedSuccess &&
+          (isTwenty ? Number(actual?.total) < dc : Number(actual?.total) >= dc);
+        return {
+          ...result,
+          name: isTwenty
+            ? (ability ? 'Natural 20 does not auto-succeed on an ability check' : 'Natural 20 does not auto-succeed on a saving throw')
+            : (ability ? 'Natural 1 can succeed on an ability check when the total meets the DC' : 'Natural 1 can succeed on a saving throw when the total meets the DC'),
+          pass,
+          detail: 'Updated by V25: resolve the modified total against the DC.'
+        };
+      });
+    };
+  }
 }
 if (typeof globalThis.__SR18_TEST === 'object' && globalThis.__SR18_TEST) {
   globalThis.__SR18_TEST.validateSave = sr18ValidateSave;
