@@ -518,3 +518,9 @@ globalThis.__SR25_TEST = {
   rulesetPanel: sr25RulesetPanel,
   directorContext: srAIContext
 };
+try {
+  if (state?.campaign) sr25EnsureCampaignRules(state.campaign);
+  if (typeof render === 'function') render();
+} catch (error) {
+  console.warn('V25 rules profile initialization:', error);
+}
