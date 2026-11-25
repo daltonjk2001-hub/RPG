@@ -356,15 +356,19 @@ if (typeof sr20ChallengeDC === 'function') {
       : Math.max(5, Math.min(30, Number(baseDC) || 12));
   };
 }
-if (typeof sr23ResolvePlayerAction === 'function') {
-  const sr25DirectorResolveBase = sr23ResolvePlayerAction;
-  sr23ResolvePlayerAction = function(action, options = {}) {
-    const hasManualDC = Number.isFinite(Number(options.dc)) && Number(options.dc) >= 5 && Number(options.dc) <= 30;
-    const hasCustomPreset = String(options.difficulty || 'auto') !== 'auto';
-    const dcSource = hasManualDC ? 'manual-override'
-      : hasCustomPreset ? 'solo-realms-custom-preset'
-      : 'director-typical';
-    return sr25DirectorResolveBase(action, { ...options, dcSource });
+if (typeof sr21ResolveOptions === 'function') {
+  const sr25ResolveOptionsBase = sr21ResolveOptions;
+  sr21ResolveOptions = function(options = {}) {
+    const resolved = sr25ResolveOptionsBase(options);
+    if (resolved.dcSource) return resolved;
+    if (Number.isFinite(Number(resolved.dc)) && Number(resolved.dc) >= 5 && Number(resolved.dc) <= 30) {
+      resolved.dcSource = 'manual-override';
+    } else if (String(resolved.difficulty || 'auto') !== 'auto') {
+      resolved.dcSource = 'solo-realms-custom-preset';
+    } else {
+      resolved.dcSource = 'director-typical';
+    }
+    return resolved;
   };
 }
 function sr25RulesetPanel() {
