@@ -34,3 +34,8 @@ Existing quick profiles remain available and map to V19 personality profiles. Ca
 ## Boundary
 
 The personality mixer does not itself provide a generative model. Without a configured provider, the Director remains procedural and uses the selected blend for narrative flavor. Open-ended semantic interpretation requires a connected model endpoint.
+
+
+## Reactive NPC and living-world behavior (V19.1)
+
+The personality blend now changes persistent simulation state, not just narration and prompts. Each NPC can retain weighted behavior state for banter and callbacks, tactical alertness and countermeasures, suspicion and unresolved questions, personal story beats, curiosity and optional leads, retaliation readiness, and unease. Companions retain a durable stance/advice record shaped by their own goals and values. Factions track readiness, posture, grievances, secrecy, and their last player contact. The living world advances one optional personality-driven pulse every three V18 world ticks. Depending on the leading influence, it can develop personal story threads, recurring callbacks, faction scouting/defensive plans, unresolved mystery leads, consequence plans, regional discovery leads, or atmospheric omens. These are stored in the existing campaign world state and passed into generative DM context. The offline Director can surface remembered NPC behavior on future interactions. All additions are narrative/behavior state; V18 still owns checks, stats, damage, rewards, inventory and campaign mechanics.
