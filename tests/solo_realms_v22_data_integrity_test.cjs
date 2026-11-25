@@ -22,6 +22,7 @@ try{
  assert('V22 data modules expose versioned namespaced APIs',T22.version==='22.0.0'&&typeof T22.validateSave==='function'&&typeof T22.ensureLegacy==='function'&&typeof T22.claimLegacy==='function');
  let valid=save();const result=T18.validateSave(valid);
  assert('Valid V18 save passes bounded validation',result.ok&&result.state.character.level===5);
+ assert('Missing campaign records are rejected without an uncaught exception',(()=>{try{return !T18.validateSave({character:hero()}).ok;}catch(error){return false;}})());
  assert('Validation returns a copy rather than mutating the source',result.ok&&valid.character.stats.STR===14&&result.state!==valid&&result.state.character!==valid.character);
  let wrapped={schema:'solo-realms-v18-save-v1',game:'Solo Realms',version:'18.0.0',state:save()};
  assert('Versioned V18 export envelope remains accepted',T18.validateSave(wrapped).ok);
