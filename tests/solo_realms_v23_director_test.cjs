@@ -91,6 +91,16 @@ const reset = () => {
 try {
   reset();
   assert('V23 module version is present', T.version === '23.0.0');
+  const modelFallback = T.plan('I persuade Mara Venn to reveal what she knows.');
+  const modelPlan = T.validateModelPlan({ mode: 'social', requiresCheck: true, skill: 'Persuasion', dc: 20, reason: 'Mara has a reason to withhold the information.' }, 'I persuade Mara Venn to reveal what she knows.', modelFallback);
+  assert('A valid connected-Director ruling is accepted as a structured plan', modelPlan.source === 'connected-model' && modelPlan.mode === 'social' && modelPlan.skill === 'Persuasion' && modelPlan.dc === 20);
+  const invalidSkillPlan = T.validateModelPlan({ mode: 'social', requiresCheck: true, skill: 'Arcane Persuasion', dc: 20 }, 'I persuade Mara Venn to reveal what she knows.', modelFallback);
+  assert('An invalid model skill is rejected in favor of the local ruling', invalidSkillPlan.source !== 'connected-model' && invalidSkillPlan.skill === modelFallback.skill);
+  const invalidDCPlan = T.validateModelPlan({ mode: 'social', requiresCheck: true, skill: 'Persuasion', dc: 12 }, 'I persuade Mara Venn to reveal what she knows.', modelFallback);
+  assert('A model DC outside the standard scale is rejected', invalidDCPlan.source !== 'connected-model' && invalidDCPlan.dc === modelFallback.dc);
+  const restFallback = T.plan('We make camp and rest for the night.');
+  const restModelPlan = T.validateModelPlan({ mode: 'survival', requiresCheck: true, skill: 'Survival', dc: 25 }, 'We make camp and rest for the night.', restFallback);
+  assert('A model cannot turn a normal long rest into an ability check', restModelPlan.noRoll === true && restModelPlan.skill === null);
   assert('V23 Director module is included in the standalone runtime', scripts[0].includes("const SR23_VERSION = '23.0.0';"));
   assert('V23 Director module is included in the PWA runtime', pwaHtml.includes("const SR23_VERSION = '23.0.0';"));
   assert('V23 Director module is included in the GitHub Pages runtime', pagesHtml.includes("const SR23_VERSION = '23.0.0';"));
@@ -129,6 +139,11 @@ try {
   const shortTalk = T.resolve('I ask Mara Venn about the weather.');
   assert('Routine conversation resolves without an artificial social check', shortTalk.noRoll === true && shortTalk.mode === 'campaign');
   assert('Routine conversation does not farm NPC relationship points', Number(T.state.campaign.npcs[0].sr20?.relationship || 0) === 0);
+
+  reset();
+  const connectedPlan = T.validateModelPlan({ mode: 'social', requiresCheck: true, skill: 'Persuasion', dc: 20, reason: 'The keeper is reluctant.' }, 'I persuade Mara Venn to tell me what she saw.', T.plan('I persuade Mara Venn to tell me what she saw.'));
+  const connectedOutcome = T.resolve('I persuade Mara Venn to tell me what she saw.', { directorPlan: connectedPlan, roll: 15 });
+  assert('A valid connected ruling is passed into the deterministic rules resolver', connectedOutcome.rulingSource === 'connected-model' && connectedOutcome.dc === 20);
 
   reset();
   const check = T.resolve('I persuade Mara Venn to tell me what she saw.', { roll: 15 });
