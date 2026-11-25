@@ -10,7 +10,7 @@ V20 is an additive gameplay layer. It keeps the V18 rules and combat resolver, V
 
 ### 1. Director and action resolution
 
-The Adventure view now exposes a free-form action composer. The player describes intent; the engine chooses or accepts an approach, selects a skill, calculates ability/proficiency/class modifiers, applies advantage or disadvantage when provided, rolls a d20 and compares the result to a DC. The visible outcome records the roll and explains whether the action succeeded.
+The Adventure view exposes a free-form action composer. The player describes intent; the engine chooses or accepts an approach, selects a skill, calculates ability/proficiency/class modifiers, applies advantage or disadvantage when provided, rolls a d20 and compares the result to a DC. The visible outcome records the roll and explains whether the action succeeded.
 
 The V18 improvisation resolver is consulted first for a compatible skill/DC proposal. V20 supplies a safe fallback when that resolver has no specific proposal. It does not let narration secretly rewrite a check or grant an unearned spell, item or reward.
 
@@ -72,10 +72,25 @@ All V20 state is stored under `campaign.sr20`; NPC relationship memories are sto
 
 The reproducible build appends `source/SR20_GAMEPLAY_ENGINE.js` after the existing V18/V19 layers and regenerates the standalone HTML, PWA and `docs/` mirror from the same source.
 
+## V21 player-stage hardening
+
+V21 is an additive layer in `source/SR21_PLAYTEST_HARDENING.js`. It addresses the source-based player-stage review:
+
+- Intent phrases for social interactions are considered before combat terms, so incidental references to guards or enemies do not turn ordinary dialogue into tactical actions. Stealthy movement past a guard is treated as exploration unless the player describes an attack/ambush.
+- The Adventure composer exposes an explicit skill choice, challenge tier, advantage/disadvantage selector and objective focus. Automatic DCs depend on mode and visible situation cues, not character level.
+- V21 delegates the core d20 skill check to the V14/V18 ability-check resolver, retaining established character modifiers and effects; it adds the V20 class edge and fatigue modifier.
+- A low-level first-session guide teaches exploration, social interaction, travel and camp actions through play.
+- Travel watches advance only on travel; each travel watch consumes carried food and water. A full camp/rest advances eight watches and does not generate campaign momentum.
+- Player-created objectives have configurable progress steps. The same action cannot be repeated on the same day to farm progress. Campaign openings are based on completed objectives rather than any three successful actions.
+- Named NPC social outcomes update campaign/faction reputation and remain available to Director context.
+- Level-20 characters earn a separate Legacy Chronicle through completed objectives and campaign archives. Legacy ranks grant titles and durable history, not free character levels or combat-stat increases. Campaign archives preserve a summary without deleting the active campaign or its save.
+
+The player-stage labels in Director context are level-based experience proxies (new/learning, experienced, veteran, expert, legacy); they are not claims about the actual number of years a person has played tabletop RPGs.
+
 ## Boundaries still requiring playtesting
 
-The Director is still procedural when no external generative provider is configured. Text classification is heuristic, not open-ended semantic understanding. The class edge is an explicit house rule. Travel supply matching relies on recognizable inventory item names. Tactical cover/flank effects are a small tactical layer, not a grid/pathfinding rewrite. Full campaign balance, multiplayer encounter edge cases, Android installation and long-session save compatibility still require human playtesting.
+The Director remains procedural/offline unless an external generative provider is configured. Text classification is heuristic, not open-ended semantic understanding. The class edge is an explicit house rule. Travel supply matching relies on recognizable inventory item names. Tactical cover/flank effects are a small tactical layer, not a grid/pathfinding rewrite. Full campaign balance, multiplayer encounter edge cases, Android installation and long-session save compatibility still require human playtesting.
 
 ## Regression coverage
 
-`tests/solo_realms_v20_gameplay_test.cjs` loads the assembled standalone game in the existing simulated browser harness and checks the seven-system loop, character modifiers, objective state, discoveries, social memory, tactical cover/flank, travel supplies, resting, consequences, Director context and Adventure panel structure. It runs through `bash tests/run_v18.sh` after the reproducible build.
+`tests/solo_realms_v20_gameplay_test.cjs` checks the seven-system loop. `tests/solo_realms_v21_hardening_test.cjs` adds regression coverage for intent routing, skill/Expertise integration, situational DCs, advantage/disadvantage, tutorial guidance, travel watches, supply use, rest/momentum, objective progress, legacy rewards and campaign archives. Both suites run through `bash tests/run_v18.sh`.
