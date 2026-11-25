@@ -70,3 +70,14 @@ V18 is an expanded procedural rules engine. It does not claim a hand-coded bespo
 - Added regression assertions for ranged attack parsing, Parry behavior and recharge cooldown state, plus a dedicated transient IndexedDB-open recovery test.
 - Added a GitHub Actions workflow to rebuild the release and run the complete regression runner on hardening-branch pushes and pull requests.
 - No save schema, campaign field, spell rule, character progression rule or multiplayer protocol version changes are intended.
+
+
+## Director Studio evolution — V19
+
+- Added nine distinct DM starter profiles and eight editable personality influences.
+- Added custom DM identity/instructions and controls for narration length, DM initiative, NPC complexity and player agency.
+- Applied the selected personality to connected generative prompts, campaign context, and offline narration/chat voice.
+- Added bounded campaign-memory and recent-DM-conversation context.
+- Kept V18 authoritative for dice, rules, character state, damage and rewards.
+- Preserved existing quick profiles and mapped them to equivalent personality blends.
+- Added regression tests for profile selection, normalization, prompt behavior, UI controls and offline mechanical invariants.
