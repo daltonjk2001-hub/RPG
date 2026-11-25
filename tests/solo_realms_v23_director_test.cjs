@@ -101,6 +101,8 @@ try {
   assert('A model DC outside the standard scale is rejected', invalidDCPlan.source !== 'connected-model' && invalidDCPlan.dc === modelFallback.dc);
   const rulingPrompt = T.buildRulingPrompt('I persuade Mara Venn to reveal what she knows.', modelFallback, { campaign: { title: 'The Lost Cistern' } });
   assert('The connected Director prompt forbids skill-check substitution for attacks and spell attacks', rulingPrompt.includes('weapon attack, spell attack, saving throw') && rulingPrompt.includes('Do not roll dice.'));
+  const memoryPrompt = T.buildRulingPrompt('I ask Mara Venn about the silver key.', modelFallback, {}, [{ day: 2, target: 'Mara Venn', action: 'I promised Mara I would return the silver key.' }]);
+  assert('Connected Director prompts include action-relevant continuity events', memoryPrompt.includes('Relevant prior events') && memoryPrompt.includes('silver key'));
   const restFallback = T.plan('We make camp and rest for the night.');
   const restModelPlan = T.validateModelPlan({ mode: 'survival', requiresCheck: true, skill: 'Survival', dc: 25 }, 'We make camp and rest for the night.', restFallback);
   assert('A model cannot turn a normal long rest into an ability check', restModelPlan.noRoll === true && restModelPlan.skill === null);
@@ -163,6 +165,7 @@ try {
   assert('Character proficiency is still applied by the existing rules engine', check.bonus.proficiency > 0);
   assert('The Director ruling is recorded with the action', String(check.ruling || '').includes('ability check'));
   assert('A structured continuity event is recorded', T.state.campaign.sr23.events.length === 1 && T.state.campaign.sr23.events[0].action === check.action);
+  assert('Continuity records preserve the ruling source and rationale', T.state.campaign.sr23.events[0].rulingSource === 'local-rules' && !!T.state.campaign.sr23.events[0].reason);
 
   reset();
   T.state.campaign.sr20.objectives = [{
