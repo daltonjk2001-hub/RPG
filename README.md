@@ -48,3 +48,10 @@ The game, repository, local solo play, and reference-pack downloads are free. Th
 ## Licensing and attribution
 
 The included SRD 5.2.1 reference material is attributed under CC BY 4.0. See `V18_ATTRIBUTION.md` for details. The attribution document identifies the third-party sources and their licenses; it does not assign a license to the original Solo Realms code.
+
+
+## V22 data integrity and runtime modules
+
+V22 adds a bounded, compatibility-aware save validator and an exact legacy-reward ID ledger. The visible legacy milestone list remains limited to the latest 100 entries, while the separate ledger preserves every claimed reward ID through save/load and JSON export/import. V3/V17-style saves remain supported when their required character fields are valid. The save validator works on a normalized copy and rejects malformed, oversized, excessively deep, or reserved-key data before replacing an active campaign.
+
+The V22 implementation is split into `source/SR22_SAVE_GUARD.js` and `source/SR22_LEGACY_LEDGER.js`. These are namespaced modules with explicit inputs and outputs; the existing V18/V21 function names remain as small compatibility adapters. See `ARCHITECTURE_V22.md` for the module boundary and incremental refactor policy. Run `bash tests/run_v18.sh` to include the V22 data-integrity suite.
