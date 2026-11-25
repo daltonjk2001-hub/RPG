@@ -100,6 +100,11 @@ try {
   assert('The 2024-style typical DC scale is used for a hard task', T.dcFor('I cross a dangerous, collapsing bridge') === 20);
   assert('A nearly impossible task receives DC 30', T.dcFor('I attempt a nearly impossible feat') === 30);
   assert('A simple unopposed action is not forced into an ability check', T.plan('I open the unlocked wooden door').noRoll === true);
+  assert('An explicit player DC override can deliberately request a check', (() => {
+    reset();
+    const forced = T.resolve('I open the unlocked wooden door.', { dc: 20, roll: 15 });
+    return forced.noRoll === false && forced.dc === 20;
+  })());
 
   reset();
   const safeTravel = T.resolve('We travel along the open road to the next village.');
