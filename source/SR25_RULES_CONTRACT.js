@@ -598,7 +598,15 @@ globalThis.__SR25_TEST = {
   difficultyOptions: sr21DifficultyOptions,
   situationDC: sr21SituationDC,
   rulesetPanel: sr25RulesetPanel,
-  directorContext: srAIContext
+  directorContext: srAIContext,
+  withAttackRoll: function(mockRoll, action) {
+    if (typeof mockRoll !== 'function' || typeof action !== 'function' || typeof sr11RollAttack !== 'function') {
+      throw new Error('A mock attack roll and callback are required.');
+    }
+    const original = sr11RollAttack;
+    sr11RollAttack = mockRoll;
+    try { return action(); } finally { sr11RollAttack = original; }
+  }
 };
 try {
   if (state?.campaign) sr25EnsureCampaignRules(state.campaign);
