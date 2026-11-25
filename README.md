@@ -31,7 +31,7 @@ Solo Realms is a free, offline-first D&D-inspired campaign game. V18.1 remains t
 3. Connect to the internet when installing the SRD reference library or using multiplayer. Local single-player play and an already-installed reference pack work offline.
 4. Open **More → Rules & Settings → Rules Guide** and select **Install free library** to cache the rules, spells, creatures, and conditions.
 5. Open **Save Center** in the top bar for eight manual save slots, recovery, and portable JSON backup.
-6. After starting a campaign, use **What do you do?** in Adventure to resolve free-form actions, travel, social scenes, investigations, tactical approaches, survival actions, and campaign objectives. New characters receive an optional first-session guide; the player controls can explicitly set skill, difficulty, roll state, and objective.
+6. After starting a campaign, use **What do you do?** in Adventure to resolve free-form actions, travel, social scenes, investigations, tactical approaches, survival actions, and campaign objectives. New characters receive an optional first-session guide; normal play uses the Director-first input, while deliberate overrides are available under collapsed advanced controls.
 
 ## Build and test
 
@@ -58,6 +58,17 @@ V22 adds a bounded, compatibility-aware save validator and an exact legacy-rewar
 
 The V22 implementation is split into `source/SR22_SAVE_GUARD.js` and `source/SR22_LEGACY_LEDGER.js`. These are namespaced modules with explicit inputs and outputs; the existing V18/V21 function names remain as small compatibility adapters. See `ARCHITECTURE_V22.md` for the module boundary and incremental refactor policy. Run `bash tests/run_v18.sh` to include the V22 data-integrity suite.
 
+
+
+## Complete end-state design
+
+V23 is the first Director-first foundation, not the completed game. The full destination is defined in three canonical documents:
+
+1. **Complete game design** — the player experience, DM responsibilities, rules, story/campaign model, living world, NPCs, memory, connected/offline modes, and completion criteria.
+2. **Target technical architecture** — domain boundaries, transaction and event contracts, authoritative rules services, AI gateway, memory, and persistence.
+3. **Implementation roadmap** — the build sequence, dependencies, acceptance gates, and an explicit list of what V23 has and has not delivered.
+
+Read these before adding another standalone gameplay feature. New work should advance the roadmap's next foundation phase instead of creating disconnected systems.
 
 ## V23 Director-first gameplay
 
