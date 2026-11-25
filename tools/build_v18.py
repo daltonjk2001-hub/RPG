@@ -19,6 +19,7 @@ STUDIO = ROOT / "source" / "SR19_DIRECTOR_STUDIO.js"
 BEHAVIOR = ROOT / "source" / "SR19_REACTIVE_WORLD.js"
 GAMEPLAY = ROOT / "source" / "SR20_GAMEPLAY_ENGINE.js"
 SCREEN_LAYOUT = ROOT / "source" / "SR20_SCREEN_LAYOUT.js"
+PLAYTEST_HARDENING = ROOT / "source" / "SR21_PLAYTEST_HARDENING.js"
 THEME_CSS = ROOT / "source" / "SR20_UI_THEME.css"
 BASE_HTML = ROOT / "build-inputs" / "Solo_Realms_V17_Main.html"
 MAIN_HTML = ROOT / "Solo_Realms_V18_Main.html"
@@ -62,6 +63,7 @@ def build_runtime() -> str:
     behavior = BEHAVIOR.read_text(encoding="utf-8").rstrip()
     gameplay = GAMEPLAY.read_text(encoding="utf-8").rstrip()
     screen_layout = SCREEN_LAYOUT.read_text(encoding="utf-8").rstrip()
+    playtest_hardening = PLAYTEST_HARDENING.read_text(encoding="utf-8").rstrip()
 
     if not base.rstrip().endswith("})();"):
         raise SystemExit("Unexpected V17 IIFE wrapper; refusing unsafe concatenation.")
@@ -107,7 +109,7 @@ def build_runtime() -> str:
 
 
 def main() -> None:
-    for path in (SRC, LAYER, STUDIO, BEHAVIOR, GAMEPLAY, SCREEN_LAYOUT, THEME_CSS, BASE_HTML, MANIFEST, SERVICE_WORKER):
+    for path in (SRC, LAYER, STUDIO, BEHAVIOR, GAMEPLAY, SCREEN_LAYOUT, PLAYTEST_HARDENING, THEME_CSS, BASE_HTML, MANIFEST, SERVICE_WORKER):
         require_file(path)
 
     combined = build_runtime()
@@ -187,7 +189,7 @@ def main() -> None:
 
     print(f"Built {PWA_HTML.relative_to(ROOT)} ({PWA_HTML.stat().st_size:,} bytes)")
     print(f"Synchronized {DOCS_DIR.relative_to(ROOT)}/ from {PWA_DIR.relative_to(ROOT)}/")
-    print("Patched typed spell damage, protocol 20, and assembled V20 gameplay systems.")
+    print("Assembled V18 rules, V19 Director, V20 gameplay/layout, and V21 player-stage hardening.")
 
 
 if __name__ == "__main__":
