@@ -387,8 +387,17 @@ srAIContext=function(){const x=sr18AIContextBase();const w=sr18EnsureWorld();if(
 function sr18OpenDB(){
  if(typeof indexedDB==='undefined')return Promise.reject(new Error('IndexedDB unavailable'));
  if(SR18_DB_PROMISE)return SR18_DB_PROMISE;
- SR18_DB_PROMISE=new Promise((resolve,reject)=>{const req=indexedDB.open(SR18_SAVE_DB,1);req.onupgradeneeded=()=>{const db=req.result;for(const store of ['slots','recovery'])if(!db.objectStoreNames.contains(store))db.createObjectStore(store);};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error('Could not open save archive'));});
- return SR18_DB_PROMISE;
+ let connection;
+ const pending=new Promise((resolve,reject)=>{
+  let req;
+  try{req=indexedDB.open(SR18_SAVE_DB,1);}catch(error){reject(error);return;}
+  req.onupgradeneeded=()=>{const db=req.result;for(const store of ['slots','recovery'])if(!db.objectStoreNames.contains(store))db.createObjectStore(store);};
+  req.onsuccess=()=>{connection=req.result;if(!connection){reject(new Error('Save archive opened without a database connection'));return;}connection.onversionchange=()=>{try{connection.close();}catch(error){}if(SR18_DB_PROMISE===cached)SR18_DB_PROMISE=null;};resolve(connection);};
+  req.onerror=()=>reject(req.error||new Error('Could not open save archive'));
+ });
+ const cached=pending.catch(error=>{if(SR18_DB_PROMISE===cached)SR18_DB_PROMISE=null;throw error;});
+ SR18_DB_PROMISE=cached;
+ return cached;
 }
 async function sr18DBPut(store,key,value){const db=await sr18OpenDB();return new Promise((resolve,reject)=>{const tx=db.transaction(store,'readwrite');tx.objectStore(store).put(value,key);tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error||new Error('Save archive write failed'));tx.onabort=()=>reject(tx.error||new Error('Save archive write aborted'));});}
 async function sr18DBGet(store,key){const db=await sr18OpenDB();return new Promise((resolve,reject)=>{const tx=db.transaction(store,'readonly'),req=tx.objectStore(store).get(key);req.onsuccess=()=>resolve(req.result??null);req.onerror=()=>reject(req.error||new Error('Save archive read failed'));});}
