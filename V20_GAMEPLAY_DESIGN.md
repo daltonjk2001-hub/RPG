@@ -93,6 +93,7 @@ The player-stage review identified several usability and rules-integration impro
 - **Travel time:** one travel action advances one four-hour watch; an eight-hour rest advances two watches. The watch counter is no longer derived from every six arbitrary actions.
 - **Legacy progression:** completed objectives award 10 legacy renown and milestone titles at 1, 5, 10 and 20 completions. This is separate from character level and supports continued play after level 20 without inventing a real-world player-tenure clock.
 - **Long-session continuity:** the latest 40 detailed action records remain readily available; older records are moved into a compact persistent archive (up to 1,000 entries) and included in Director context.
+- **Objective continuity:** the Adventure view keeps every active objective visible and prioritizes unfinished goals; completed entries are pruned before active objectives when the bounded 20-entry ledger fills, while their renown/title milestones remain in legacy history.
 
 The new regression assertions cover guard/social classification, Expertise, challenge tiers, objective matching, legacy context, the new controls and onboarding. These changes remain subject to the full test runner (`bash tests/run_v18.sh`) and live human playtesting before release.
 
