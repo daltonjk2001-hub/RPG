@@ -38,7 +38,11 @@ The player-stage suite also probes repeated same-day objective actions, unrelate
 
 ## Verification status
 
-The new suites are wired into `bash tests/run_v18.sh` and the release-integrity suite verifies that the V21 runtime and controls ship identically in the standalone, PWA, and Pages builds. Final passing assertion totals will be recorded after GitHub Actions completes on the PR branch.
+The new suites are wired into `bash tests/run_v18.sh`. The release-integrity suite verifies that the V21 runtime and controls ship identically in standalone, PWA, and Pages builds. On the final tested PR revision, the full regression passed **663/663 numbered assertions** and the independent V18 hardening workflow also passed **663/663**. Across the two independent CI runtimes (Node 22 and Node 20), that is **1,326 successful assertion executions**, with the release-integrity suite passing in both. The V21-specific results were **58/58 player-stage assertions** and **15/15 long-session stress assertions** per run.
+
+## Non-blocking CI notices
+
+The successful GitHub Actions runs still emit the Node `punycode` deprecation notice and a warning that some GitHub actions currently target Node 20. These did not fail either workflow and are separate maintenance items.
 
 ## Limits
 
