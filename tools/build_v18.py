@@ -106,7 +106,15 @@ def build_runtime() -> str:
     base = base.replace("reliable-v17", "systems-v18")
     base = base.replace("Solo Realms V17 character and client.", "Solo Realms V18 character and client.")
 
-    return base + layer + "\n\n" + studio + "\n\n" + behavior + "\n\n" + gameplay + "\n\n" + screen_layout + "\n\n" + playtest_hardening + "\n\n})();\n"
+    combined = base + layer + "\n\n" + studio + "\n\n" + behavior + "\n\n" + gameplay + "\n\n" + screen_layout + "\n\n" + playtest_hardening + "\n\n})();\n"
+    required_contracts = {
+        "six four-hour watches per calendar day": "const SR18_WATCHES_PER_DAY=6;",
+        "V21 four-hour watch integration": "const SR21_WORLD_CLOCK_CONTRACT='four-hour-watches-v1';",
+    }
+    missing = [label for label, marker in required_contracts.items() if marker not in combined]
+    if missing:
+        raise SystemExit("Refusing to build an incomplete runtime; missing: " + ", ".join(missing))
+    return combined
 
 
 def main() -> None:
