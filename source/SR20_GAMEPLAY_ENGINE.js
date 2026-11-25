@@ -243,9 +243,9 @@ function sr20RunTests(){
   ok('Free-form player intent is routed into exploration',sr20InferMode('I follow the muddy tracks and scout the ridge')==='exploration');
   ok('Auto mode classifies making camp and resting as survival',sr20InferMode('We make camp and rest for the night')==='survival');
   ok('Auto mode classifies gathering and purifying water as survival',sr20InferMode('I collect and purify water from the stream')==='survival');
-  const leadAction=sr20ResolvePlayerAction('I inspect the broken stonework for concealed tracks',{mode:'exploration',roll:5,secondRoll:17,advantage:true});
+  const leadAction=sr20ResolvePlayerAction('I inspect the broken stonework for concealed tracks',{mode:'exploration',roll:17,secondRoll:5,advantage:true});
   ok('Advantage selects the higher of two d20 results',leadAction.die===17&&leadAction.die2===5&&leadAction.advantage&&!leadAction.disadvantage);
-  const disadvantage=sr20ResolvePlayerAction('I attempt a difficult deduction',{mode:'campaign',roll:17,secondRoll:3,disadvantage:true,dc:30});
+  const disadvantage=sr20ResolvePlayerAction('I attempt a difficult deduction',{mode:'campaign',roll:3,secondRoll:17,disadvantage:true,dc:30});
   ok('Disadvantage selects the lower of two d20 results',disadvantage.die===3&&disadvantage.die2===17&&disadvantage.disadvantage&&!disadvantage.success);
   ok('Exploration resolves a skill check and creates a persistent discovery',leadAction.success&&leadAction.skill==='Investigation'&&g.leads.length===1);
   const social=sr20ResolvePlayerAction('I persuade Mara Venn to tell me who hired the guards',{mode:'social',target:'Mara Venn',roll:18});
