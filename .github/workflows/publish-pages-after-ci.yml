@@ -3,7 +3,7 @@ name: Publish Solo Realms after successful main regression
 on:
   workflow_run:
     workflows:
-      - Solo Realms V18 hardening
+      - Solo Realms full regression suite
     types:
       - completed
     branches:
@@ -11,6 +11,8 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 concurrency:
   group: solo-realms-pages-publish-main
@@ -20,7 +22,10 @@ jobs:
   publish:
     if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Check out the exact tested main revision
         uses: actions/checkout@v4
@@ -33,12 +38,18 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
       - name: Confirm main still points to the tested revision
         id: freshness
         shell: bash
         env:
           TESTED_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
+          set -euo pipefail
           git fetch origin main
           current_main="$(git rev-parse origin/main)"
           if [[ "$current_main" == "$TESTED_SHA" ]]; then
@@ -48,6 +59,14 @@ jobs:
             echo "current=false" >> "$GITHUB_OUTPUT"
             echo "Skipping stale build: main is $current_main, tested revision was $TESTED_SHA"
           fi
+
+      - name: Verify this deployment originates from the Pages source branch
+        if: steps.freshness.outputs.current == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
+          echo "PASS deployment context is the main branch used by GitHub Pages"
 
       - name: Rebuild standalone game, PWA and GitHub Pages mirror
         if: steps.freshness.outputs.current == 'true'
@@ -68,9 +87,12 @@ jobs:
           test -f docs/sw.js
           test -f docs/icons/icon-192.png
           test -f docs/icons/icon-512.png
+          cmp -s pwa/index.html docs/index.html
+          node tests/solo_realms_v20_release_integrity_test.cjs
 
       - name: Commit generated player-facing builds
         if: steps.freshness.outputs.current == 'true'
+        id: generated
         shell: bash
         run: |
           set -euo pipefail
@@ -83,3 +105,17 @@ jobs:
             git commit -m "Publish rebuilt Solo Realms V20.1 gameplay"
             git push origin HEAD:main
           fi
+          published_sha="$(git rev-parse HEAD)"
+          echo "sha=$published_sha" >> "$GITHUB_OUTPUT"
+          echo "Published generated build commit: $published_sha" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the generated GitHub Pages site
+        if: steps.freshness.outputs.current == 'true'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs
+
+      - name: Deploy the generated site to GitHub Pages
+        if: steps.freshness.outputs.current == 'true'
+        id: deployment
+        uses: actions/deploy-pages@v4
