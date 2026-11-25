@@ -612,6 +612,29 @@ if (typeof sr14SavingThrow === 'function') {
     );
   };
 }
+if (typeof sr133HeroSave === 'function') {
+  const sr25HeroSaveBase = sr133HeroSave;
+  sr133HeroSave = function(character, ability, player, attacker) {
+    const result = sr25HeroSaveBase(character, ability, player, attacker);
+    const key = String(ability || '').toUpperCase();
+    const rolls = result.advantage || result.disadvantage
+      ? [result.d1, result.d2]
+      : [result.d1];
+    const autoFail = !!result.autoFail || !sr25HasSaveAbility(character, key);
+    const canonical = sr25ResolveSavingThrow(rolls, Number(result.bonus || 0) + Number(result.cover || 0),
+      Number(result.dc), {
+        advantage: !!result.advantage,
+        disadvantage: !!result.disadvantage,
+        autoFail
+      });
+    return {
+      ...result,
+      total: autoFail ? -Infinity : canonical.total,
+      success: canonical.success,
+      autoFail: canonical.autoFail
+    };
+  };
+}
 
 // The imported-save validator is pure. Migrate only its normalized copy, never the caller's object.
 if (typeof sr18ValidateSave === 'function') {
@@ -702,6 +725,7 @@ globalThis.__SR25_TEST = {
   resolveSavingThrowTotal: sr25ResolveSavingThrowTotal,
   savingThrowTotalSuccess: sr25SavingThrowTotalSuccess,
   hasSaveAbility: sr25HasSaveAbility,
+  heroSave: sr133HeroSave,
   resolveAttack: sr25ResolveAttack,
   resolveAttackRecord: sr25ResolveAttackRecord,
   attackSuccess: sr25AttackSuccess,
