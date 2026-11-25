@@ -342,7 +342,7 @@ function sr20RunTests(){
   ok('Beginner onboarding explains the first action loop and can be dismissed',panel.includes('Your first adventure')&&panel.includes('data-sr20-onboarding-dismiss'));
   ok('Adventure view exposes the integrated action composer and gameplay panels',panel.includes('sr20-action-form')&&panel.includes('Current objectives')&&panel.includes('Combat tactics'));
   const snapshot=sr18Snapshot('V20 persistence regression'),validated=sr18ValidateSave(JSON.parse(JSON.stringify(snapshot)));
-  ok('V20 gameplay state survives the existing Save Center snapshot and validation path',validated.ok&&validated.state.campaign.sr20.version===SR20_GAMEPLAY_VERSION&&validated.state.campaign.sr20.records.length===g.records.length&&validated.state.campaign.sr20.objectives.some(x=>x.title==='Locate the hidden cistern')&&validated.state.campaign.sr20.legacy.renown===g.legacy.renown&&validated.state.campaign.sr20.legacy.completedObjectives===20&&validated.state.campaign.sr20.archive.length===1000);
+  ok('V20 gameplay state survives the existing Save Center snapshot and validation path',validated.ok&&validated.state.campaign.sr20.version===SR20_GAMEPLAY_VERSION&&validated.state.campaign.sr20.records.length===g.records.length&&validated.state.campaign.sr20.objectives.some(x=>x.title==='Find the lost map'&&x.status==='active')&&validated.state.campaign.sr20.legacy.milestones.some(x=>x.title==='Locate the hidden cistern')&&validated.state.campaign.sr20.legacy.renown===g.legacy.renown&&validated.state.campaign.sr20.legacy.completedObjectives===20&&validated.state.campaign.sr20.archive.length===1000);
  }catch(e){ok('V20 seven-system gameplay tests execute without runtime errors',false,String(e?.stack||e));}
  state=old;return results;
 }
