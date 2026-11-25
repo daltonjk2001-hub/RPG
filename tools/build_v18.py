@@ -105,7 +105,7 @@ def build_runtime() -> str:
     base = base.replace("reliable-v17", "systems-v18")
     base = base.replace("Solo Realms V17 character and client.", "Solo Realms V18 character and client.")
 
-    return base + layer + "\n\n" + studio + "\n\n" + behavior + "\n\n" + gameplay + "\n\n" + screen_layout + "\n\n})();\n"
+    return base + layer + "\n\n" + studio + "\n\n" + behavior + "\n\n" + gameplay + "\n\n" + screen_layout + "\n\n" + playtest_hardening + "\n\n})();\n"
 
 
 def main() -> None:
