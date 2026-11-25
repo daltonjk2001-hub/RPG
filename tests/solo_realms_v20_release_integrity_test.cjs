@@ -11,7 +11,7 @@ const pwa = fs.readFileSync(path.join(pwaDir, 'index.html'), 'utf8');
 const docs = fs.readFileSync(path.join(docsDir, 'index.html'), 'utf8');
 
 function scripts(html) {
-  return [...html.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi)].map(match => match[1].trim());
+  return [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(match => match[1].trim());
 }
 function files(directory, prefix = '') {
   return fs.readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name)).flatMap(entry => {
@@ -32,7 +32,7 @@ const mainScripts = scripts(main);
 const pwaScripts = scripts(pwa);
 const docsScripts = scripts(docs);
 
-pass('Standalone remains a self-contained single-script application', mainScripts.length === 1 && !/<script\\s+src=/i.test(main));
+pass('Standalone remains a self-contained single-script application', mainScripts.length === 1 && !/<script\s+src=/i.test(main));
 pass('PWA contains the same game runtime plus its service-worker registration', pwaScripts.length === 2 && pwaScripts[0] === mainScripts[0] && pwaScripts[1].includes("serviceWorker.register('./sw.js')"));
 pass('GitHub Pages HTML is byte-identical to the canonical PWA entry point', docs === pwa && docsScripts.length === 2 && docsScripts[0] === mainScripts[0]);
 
