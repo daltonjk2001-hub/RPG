@@ -355,8 +355,15 @@ if (typeof sr20EnsureCampaign === 'function') {
 if (typeof sr21EnsureCampaign === 'function') {
   const sr25EnsurePlayerCampaignBase = sr21EnsureCampaign;
   sr21EnsureCampaign = function() {
+    const campaignBefore = state?.campaign;
+    const hadExplicitRuleset = !!campaignBefore?.ruleset;
+    const hadPriorV20Rules = !!(campaignBefore?.sr20 && campaignBefore.sr20.version);
     const result = sr25EnsurePlayerCampaignBase();
-    if (state?.campaign) sr25EnsureCampaignRules(state.campaign);
+    if (state?.campaign) {
+      sr25EnsureCampaignRules(state.campaign, {
+        legacy: hadExplicitRuleset ? undefined : hadPriorV20Rules
+      });
+    }
     return result;
   };
 }
