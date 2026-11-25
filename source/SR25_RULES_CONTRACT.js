@@ -347,6 +347,26 @@ if (typeof sr21ExplicitDifficulty === 'function') {
       ).join('');
   };
 }
+
+if (typeof sr20ChallengeDC === 'function') {
+  const sr25ChallengeDCBase = sr20ChallengeDC;
+  sr20ChallengeDC = function(baseDC, challenge) {
+    return sr25HouseRuleEnabled('customDCPresets')
+      ? sr25ChallengeDCBase(baseDC, challenge)
+      : Math.max(5, Math.min(30, Number(baseDC) || 12));
+  };
+}
+if (typeof sr23ResolvePlayerAction === 'function') {
+  const sr25DirectorResolveBase = sr23ResolvePlayerAction;
+  sr23ResolvePlayerAction = function(action, options = {}) {
+    const hasManualDC = Number.isFinite(Number(options.dc)) && Number(options.dc) >= 5 && Number(options.dc) <= 30;
+    const hasCustomPreset = String(options.difficulty || 'auto') !== 'auto';
+    const dcSource = hasManualDC ? 'manual-override'
+      : hasCustomPreset ? 'solo-realms-custom-preset'
+      : 'director-typical';
+    return sr25DirectorResolveBase(action, { ...options, dcSource });
+  };
+}
 function sr25RulesetPanel() {
   const campaign = state?.campaign;
   if (!campaign) return '';
@@ -484,5 +504,8 @@ globalThis.__SR25_TEST = {
   resolveAbilityCheck: sr25ResolveAbilityCheck,
   resolveSavingThrow: sr25ResolveSavingThrow,
   resolveAttack: sr25ResolveAttack,
-  normalizeLegacyResult: sr25NormalizeLegacyD20Result
+  normalizeLegacyResult: sr25NormalizeLegacyD20Result,
+  profileDefaults: sr25ProfileDefaults,
+  rulesetProfiles: Object.keys(SR25_PROFILE_DEFAULTS),
+  houseRules: SR25_HOUSE_RULES.slice()
 };
