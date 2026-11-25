@@ -18,6 +18,7 @@ LAYER = ROOT / "source" / "SR18_SYSTEMS_LAYER.js"
 STUDIO = ROOT / "source" / "SR19_DIRECTOR_STUDIO.js"
 BEHAVIOR = ROOT / "source" / "SR19_REACTIVE_WORLD.js"
 GAMEPLAY = ROOT / "source" / "SR20_GAMEPLAY_ENGINE.js"
+SCREEN_LAYOUT = ROOT / "source" / "SR20_SCREEN_LAYOUT.js"
 THEME_CSS = ROOT / "source" / "SR20_UI_THEME.css"
 BASE_HTML = ROOT / "build-inputs" / "Solo_Realms_V17_Main.html"
 MAIN_HTML = ROOT / "Solo_Realms_V18_Main.html"
@@ -60,6 +61,7 @@ def build_runtime() -> str:
     studio = STUDIO.read_text(encoding="utf-8").rstrip()
     behavior = BEHAVIOR.read_text(encoding="utf-8").rstrip()
     gameplay = GAMEPLAY.read_text(encoding="utf-8").rstrip()
+    screen_layout = SCREEN_LAYOUT.read_text(encoding="utf-8").rstrip()
 
     if not base.rstrip().endswith("})();"):
         raise SystemExit("Unexpected V17 IIFE wrapper; refusing unsafe concatenation.")
@@ -101,11 +103,11 @@ def build_runtime() -> str:
     base = base.replace("reliable-v17", "systems-v18")
     base = base.replace("Solo Realms V17 character and client.", "Solo Realms V18 character and client.")
 
-    return base + layer + "\n\n" + studio + "\n\n" + behavior + "\n\n" + gameplay + "\n\n})();\n"
+    return base + layer + "\n\n" + studio + "\n\n" + behavior + "\n\n" + gameplay + "\n\n" + screen_layout + "\n\n})();\n"
 
 
 def main() -> None:
-    for path in (SRC, LAYER, STUDIO, BEHAVIOR, GAMEPLAY, THEME_CSS, BASE_HTML, MANIFEST, SERVICE_WORKER):
+    for path in (SRC, LAYER, STUDIO, BEHAVIOR, GAMEPLAY, SCREEN_LAYOUT, THEME_CSS, BASE_HTML, MANIFEST, SERVICE_WORKER):
         require_file(path)
 
     combined = build_runtime()
