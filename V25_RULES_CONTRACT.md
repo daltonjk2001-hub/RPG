@@ -40,7 +40,7 @@ The 2024 SRD's typical task DC guidance is 5 (very easy), 10 (easy), 15 (medium)
 
 ## d20 test semantics
 
-V25 provides a deterministic typed d20 resolver for ability checks, saving throws, and attack rolls.
+V25 provides a deterministic typed d20 resolver for ability checks, saving throws, and attack rolls. Pure ability-modifier, proficiency-bonus and skill-bonus services are also extracted; the primary V21 ability-check path and V18 monster attack-vs-AC path now use the typed resolver.
 
 - **Ability checks:** add modifiers and compare the total with the DC. A natural 20 is not an automatic success; a natural 1 is not an automatic failure.
 - **Saving throws:** add modifiers and compare the total with the DC. A natural 20 or natural 1 has no general automatic-success or automatic-failure rule. Specific effects can define exceptions.
@@ -66,7 +66,7 @@ This distinguishes a Director-selected DC from a deliberate manual DC or a Solo 
 
 ## Compatibility and test coverage
 
-The V25 regression suite covers:
+See `V25_D20_RULES_AUDIT.md` for the known live-call inventory and `DND_RULES_COVERAGE.md` for the feature-level coverage ledger. The V25 regression suite covers:
 
 - New-campaign defaults and V18/V20 save migration.
 - Profile switching and independent house-rule toggles.
@@ -88,4 +88,4 @@ V25 is a rules-contract and compatibility foundation. It does **not** complete t
 3. The SRD profile establishes the default DC and house-rule boundary. It does not, by itself, prove complete 2024 feature parity across all classes, subclasses, spells, feats, equipment, monsters, or encounter rules.
 4. Automated Node regression tests do not replace browser/device QA, multiplayer sessions on separate devices, or human tabletop playtesting.
 
-The next implementation work should route every live d20 call through the typed contract, then expand the rules registry into versioned class, feature, spell, condition, monster, and action definitions with per-feature acceptance tests.
+The next implementation work should complete the monolith call-site audit and route the remaining player weapon/spell attack and specialized save calls through the typed contract, then expand the rules registry into versioned class, feature, spell, condition, monster, and action definitions with per-feature acceptance tests. Ability/proficiency services are now extracted, but condition application and damage mitigation order remain in existing V18 services.
