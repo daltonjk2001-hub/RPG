@@ -36,6 +36,11 @@ pass('Standalone remains a self-contained single-script application', mainScript
 pass('PWA contains the same game runtime plus its service-worker registration', pwaScripts.length === 2 && pwaScripts[0] === mainScripts[0] && pwaScripts[1].includes("serviceWorker.register('./sw.js')"));
 pass('GitHub Pages HTML is byte-identical to the canonical PWA entry point', docs === pwa && docsScripts.length === 2 && docsScripts[0] === mainScripts[0]);
 
+pass('V21 player-stage hardening is assembled into standalone, PWA and Pages runtimes',
+  mainScripts[0].includes("const SR21_VERSION='21.0.0';") && pwaScripts[0] === mainScripts[0] && docsScripts[0] === mainScripts[0]);
+pass('V21 skill, difficulty, roll and objective controls are shipped in all player-facing builds',
+  ['sr21-skill','sr21-difficulty','sr21-roll-mode','sr21-objective'].every(id => main.includes(id) && pwa.includes(id) && docs.includes(id)));
+
 for (const feature of ['Your first adventure', 'sr20-challenge', 'sr20-skill', 'sr20-roll-state', 'Legacy renown', 'Legend of the Realms']) {
   pass('Standalone, PWA and Pages all include ' + feature,
     main.includes(feature) && pwa.includes(feature) && docs.includes(feature));
