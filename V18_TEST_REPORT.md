@@ -1,6 +1,6 @@
 # Solo Realms V18 test report
 
-**Result: 423 / 423 automated assertions passed.**
+**Result: 431 / 431 automated assertions passed.**
 
 Tested on the packaged V18 source in a Node.js VM with simulated browser DOM, localStorage, IndexedDB and download/network fixtures. The run command is `bash tests/run_v18.sh`. The runner now invokes `tools/build_v18.py` first, so the tested HTML/PWA artifacts are regenerated from the tracked repository source files on every run.
 
@@ -44,3 +44,11 @@ V18 implements a broad data-driven spell resolver and stat-block combat layer, n
 ## Repository packaging note
 
 The GitHub repository package tracks only the V17 HTML shell required by the build under `build-inputs/`. Other historical HTML backups, archived version documents, and captured test-output logs are excluded.
+
+## V18.1.2 cross-system hardening verification
+
+GitHub Actions run [#45532271595](https://github.com/daltonjk2001-hub/RPG/actions/runs/45532271595) completed successfully on the consolidated hardening branch. The workflow rebuilt the standalone game, PWA and GitHub Pages mirror, then ran all ten regression suites: **431 / 431 assertions passed**.
+
+New focused checks cover ranged stat-block attack parsing, preserving melee-only Parry reactions, recharge cooldown tracking, recovery from a transient IndexedDB initialization failure, retrying the database open, and completing a save write after the retry. The existing progression, NPC/companion memory, spell, world, legacy campaign, multiplayer and PWA suites also passed.
+
+This is automated regression evidence in a simulated browser environment. It does not replace live browser/device checks, two-device multiplayer playtesting, or a long-running campaign compatibility test using a user's real save files.
