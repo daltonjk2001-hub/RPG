@@ -22,7 +22,9 @@ function sr20EnsureCampaign(){
  g.clock=g.clock&&typeof g.clock==='object'?g.clock:{watch:0,actions:0};
  g.survival=g.survival&&typeof g.survival==='object'?g.survival:{fatigue:0,exposure:0,foodShortages:0,waterShortages:0};
  g.survival.fatigue=sr20Clamp(g.survival.fatigue,0,6);
- for(const k of ['objectives','leads','consequences','records'])g[k]=Array.isArray(g[k])?g[k]:[];
+ for(const k of ['objectives','leads','consequences','records','archive'])g[k]=Array.isArray(g[k])?g[k]:[];
+ g.legacy=g.legacy&&typeof g.legacy==='object'?g.legacy:{renown:0,titles:[],milestones:[],completedObjectives:0};
+ g.legacy.renown=Math.max(0,Number(g.legacy.renown)||0);g.legacy.titles=Array.isArray(g.legacy.titles)?g.legacy.titles:[];g.legacy.milestones=Array.isArray(g.legacy.milestones)?g.legacy.milestones:[];
  g.social=g.social&&typeof g.social==='object'?g.social:{};
  g.tactical=g.tactical&&typeof g.tactical==='object'?g.tactical:{stance:'balanced',intent:'',round:0};
  g.momentum=Math.max(0,Number(g.momentum)||0);
@@ -43,11 +45,19 @@ function sr20ClassIdentity(ch=state?.character){
 }
 function sr20InferMode(text){
  const t=String(text||'').toLowerCase();
- if(/\b(attack|fight|combat|ambush|flank|cover|guard|parry|disarm|withdraw|retreat|enemy|opponent)\b/.test(t))return 'tactical';
- if(/\b(talk|ask|convince|persuade|negotiate|lie|deceive|threaten|intimidate|befriend|bargain|interrogate|charm|apologize)\b/.test(t))return 'social';
+ // Classify intent verbs, not nouns such as "guard", "enemy" or "opponent".
+ const tactical=/\b(attack|fight|strike|combat|ambush|flank|parry|disarm|withdraw|retreat|defend|take cover|hide from|sneak past|outmaneuver)\b/.test(t);
+ const social=/\b(talk|speak|ask|question|convince|persuade|negotiate|lie|deceive|threaten|intimidate|befriend|bargain|interrogate|charm|apologize|plead|bribe)\b/.test(t);
+ if(social&&!tactical)return 'social';
+ if(tactical&&!social)return 'tactical';
+ if(social&&tactical){
+  const si=t.search(/\b(talk|speak|ask|question|convince|persuade|negotiate|lie|deceive|threaten|intimidate|befriend|bargain|interrogate|charm|apologize|plead|bribe)\b/);
+  const ti=t.search(/\b(attack|fight|strike|combat|ambush|flank|parry|disarm|withdraw|retreat|defend|take cover|hide from|sneak past|outmaneuver)\b/);
+  return si<=ti?'social':'tactical';
+ }
  if(/\b(camp|make camp|rest|sleep|take a rest|short rest|long rest)\b/.test(t))return 'survival';
  if(/\b(cook|craft|repair|build|forage|hunt|fish|gather|harvest|treat|medicine|prepare|weather|cold|heat|hunger|thirst|refill|purify|collect|boil|survive)\b/.test(t))return 'survival';
- if(/\b(travel|journey|march|hike|cross|sail|ride|watch|set out|move camp)\b/.test(t))return 'travel';
+ if(/\b(travel|journey|march|hike|cross|sail|ride|set out|move camp)\b/.test(t))return 'travel';
  if(/\b(search|explore|scout|track|inspect|investigate|discover|clue|examine|map|survey|listen|look around|find)\b/.test(t))return 'exploration';
  return 'campaign';
 }
@@ -68,9 +78,13 @@ function sr20AbilityMod(ch,skill){
  const ability=SR20_SKILL_ABILITIES[String(skill||'').toLowerCase().replace(/[\s_-]/g,'')]||'INT';
  return Math.floor((Number(ch?.stats?.[ability]??ch?.stats?.[ability.toLowerCase()]??10)-10)/2);
 }
+function sr20Expertise(ch,skill){
+ const norm=s=>String(s||'').toLowerCase().replace(/[^a-z]/g,'');
+ return [ch?.expertise,ch?.expertiseSkills,ch?.skills?.expertise].some(a=>Array.isArray(a)&&a.some(x=>norm(typeof x==='string'?x:x?.name)===norm(skill)));
+}
 function sr20SkillBonus(ch,skill){
- const level=Math.max(1,Number(ch?.level)||1),prof=2+Math.floor((level-1)/4),trained=sr20Proficient(ch,skill),edge=sr20ClassEdge(skill,ch),ability=sr20AbilityMod(ch,skill);
- return {ability,proficiency:trained?prof:0,classEdge:edge?1:0,total:ability+(trained?prof:0)+(edge?1:0),trained,edge};
+ const level=Math.max(1,Number(ch?.level)||1),prof=2+Math.floor((level-1)/4),trained=sr20Proficient(ch,skill),expertise=trained&&sr20Expertise(ch,skill),edge=sr20ClassEdge(skill,ch),ability=sr20AbilityMod(ch,skill),proficiency=trained?prof:0,expertiseBonus=expertise?prof:0;
+ return {ability,proficiency,expertiseBonus,classEdge:edge?1:0,total:ability+proficiency+expertiseBonus+(edge?1:0),trained,expertise,edge};
 }
 function sr20FindNPC(target,text){
  const list=state?.campaign?.npcs||[],q=String(target||'').trim().toLowerCase(),t=String(text||'').toLowerCase();
@@ -108,13 +122,15 @@ function sr20AddConsequence(text,kind='complication'){
  if(typeof sr18AddWorldEvent==='function')sr18AddWorldEvent('gameplay-consequence',item.text,{consequenceId:item.id,kind});return item;
 }
 function sr20TokenMatch(a,b){
- const words=s=>String(s||'').toLowerCase().match(/[a-z]{4,}/g)||[],right=new Set(words(b));return words(a).some(w=>right.has(w));
+ const words=s=>[...new Set(String(s||'').toLowerCase().match(/[a-z]{4,}/g)||[])],left=words(a),right=new Set(words(b));
+ if(!left.length||!right.size)return false;const overlap=left.filter(w=>right.has(w)).length;
+ return overlap>=2||(left.length===1&&right.has(left[0])&&String(b||'').toLowerCase().includes(String(a||'').toLowerCase()));
 }
 function sr20AdvanceAdventure(text,mode,success){
  const g=sr20EnsureCampaign(),c=state?.campaign;if(!g||!c)return;
  if(success){
   g.momentum++;const objective=g.objectives.find(o=>o.status==='active'&&sr20TokenMatch(text,(o.title||'')+' '+(o.detail||'')));
-  if(objective){objective.progress=Math.min(Math.max(1,Number(objective.goal)||1),(Number(objective.progress)||0)+1);if(objective.progress>=Math.max(1,Number(objective.goal)||1))objective.status='completed';if(objective.type==='main'&&c.mainQuest){c.mainQuest.progress=objective.progress;if(objective.status==='completed'){c.flags=c.flags||{};c.flags.sr20MainObjectiveCompleted=true;}}}
+  if(objective){objective.progress=Math.min(Math.max(1,Number(objective.goal)||1),(Number(objective.progress)||0)+1);if(objective.progress>=Math.max(1,Number(objective.goal)||1))objective.status='completed';if(objective.type==='main'&&c.mainQuest){c.mainQuest.progress=objective.progress;if(objective.status==='completed'){c.flags=c.flags||{};c.flags.sr20MainObjectiveCompleted=true;}}if(objective.status==='completed'&&!objective.legacyAwarded){objective.legacyAwarded=true;g.legacy.completedObjectives++;g.legacy.renown+=10;const title=g.legacy.completedObjectives>=20?'Legend of the Realms':g.legacy.completedObjectives>=10?'Worldshaper':g.legacy.completedObjectives>=5?'Seasoned Hero':'Oathkeeper';if(!g.legacy.titles.includes(title))g.legacy.titles.push(title);g.legacy.milestones.push({type:'objective-completed',title:objective.title,day:sr20CampaignDay(),renown:10});}}
   if(g.momentum>=3){g.momentum=0;sr20AddLead('An opportunity opens because of the party’s recent progress: '+String(text||'their latest success').slice(0,120)+'.','campaign-opening');}
  }else{
   sr20AddConsequence('The failed approach leaves an unresolved complication: '+String(text||'the party’s plan').slice(0,130)+'.',mode);
@@ -135,7 +151,7 @@ function sr20ResolvePlayerAction(text,options={}){
  if(!state?.character||!state?.campaign)throw new Error('Start a campaign before taking a gameplay action.');
  const g=sr20EnsureCampaign(),ch=state.character,mode=SR20_MODES.includes(options.mode)&&options.mode!=='auto'?options.mode:sr20InferMode(action);
  let decision=null;try{if(typeof sr18ImprovisationDecision==='function')decision=sr18ImprovisationDecision(action);}catch(e){}
- const skill=sr20SkillFor(mode,action,decision),bonus=sr20SkillBonus(ch,skill),dc=Math.max(5,Math.min(30,Number(options.dc||decision?.dc)||({travel:11,survival:12,exploration:12,social:13,tactical:13,campaign:12}[mode]||12)));
+ const skill=sr20SkillFor(mode,action,decision),bonus=sr20SkillBonus(ch,skill),baseDC=Number(options.dc||decision?.dc)||({travel:11,survival:12,exploration:12,social:13,tactical:13,campaign:12}[mode]||12),challenge=({routine:-5,standard:0,difficult:5,expert:10,legendary:15}[options.challenge]??0),dc=Math.max(5,Math.min(30,baseDC+challenge));
  const noRoll=options.noRoll===true||/\b(camp|make camp|short rest|long rest|take a rest|sleep for the night)\b/i.test(action);
  const adv=!!options.advantage&&!options.disadvantage,dis=!!options.disadvantage&&!options.advantage;
  const die1=noRoll?null:(Number.isInteger(options.roll)?Math.max(1,Math.min(20,options.roll)):Math.floor(Math.random()*20)+1);
@@ -143,14 +159,16 @@ function sr20ResolvePlayerAction(text,options={}){
  const die=noRoll?null:die2===null?die1:adv?Math.max(die1,die2):Math.min(die1,die2);
  const fatiguePenalty=g.survival.fatigue>=4&&(mode==='travel'||mode==='survival')?-2:0,total=noRoll?null:die+bonus.total+fatiguePenalty,success=noRoll?true:total>=dc;
  const target=sr20FindNPC(options.target,action);
- const outcome={id:sr20Id(),day:sr20CampaignDay(),mode,action,skill,dc,die,die2,advantage:adv,disadvantage:dis,bonus,total,success,noRoll,narrative:sr20ActionNarrative(mode,success),target:target?.name||'',className:sr20ClassIdentity(ch).className,createdAt:new Date().toISOString()};
- g.clock.actions++;g.clock.watch=Math.floor(g.clock.actions/6);
+ const outcome={id:sr20Id(),day:sr20CampaignDay(),mode,action,skill,dc,challenge:options.challenge||'standard',die,die2,advantage:adv,disadvantage:dis,bonus,total,success,noRoll,narrative:sr20ActionNarrative(mode,success),target:target?.name||'',className:sr20ClassIdentity(ch).className,createdAt:new Date().toISOString()};
+ g.clock.actions++;
  if(mode==='travel'){
+  g.clock.watch++;
   const food=sr20ConsumeSupply(/\b(rations?|food|trail meals?|provisions?)\b/i),water=sr20ConsumeSupply(/\b(water|waterskins?|canteens?)\b/i);
   if(!food){g.survival.foodShortages++;g.survival.fatigue=sr20Clamp(g.survival.fatigue+1,0,6);}
   if(!water){g.survival.waterShortages++;g.survival.fatigue=sr20Clamp(g.survival.fatigue+1,0,6);}
   g.survival.exposure++;try{if(typeof sr18AdvanceWorld==='function')sr18AdvanceWorld('travel',1);}catch(e){}
  }else if(mode==='survival'&&/\b(camp|rest|sleep)\b/i.test(action)){
+  g.clock.watch+=2; // Eight-hour long rest = two four-hour watches.
   const meal=sr20ConsumeSupply(/\b(rations?|food|trail meals?|provisions?)\b/i);
   g.survival.fatigue=sr20Clamp(g.survival.fatigue-(meal?2:1),0,6);g.survival.exposure=Math.max(0,g.survival.exposure-1);
   try{if(typeof sr18AdvanceWorld==='function')sr18AdvanceWorld('long_rest',1);}catch(e){}
@@ -179,14 +197,14 @@ function sr20ResolvePlayerAction(text,options={}){
  }
  if(mode==='exploration'&&success)sr20AddLead('A discovery connected to the party’s investigation: '+action.slice(0,150)+'.','exploration');
  if(!success&&!['campaign','exploration','social'].includes(mode))sr20AddConsequence(outcome.narrative+' Attempt: '+action.slice(0,130)+'.',mode);
- sr20AdvanceAdventure(action,mode,success);
+ sr20AdvanceAdventure(action,mode,success&&!noRoll);
  if(typeof sr19ApplyActionBehavior==='function'){
   const kind=mode==='social'?(/\b(lie|deceiv|bluff)\b/i.test(action)?'deception':/\b(threat|intimidat)\b/i.test(action)?'intimidation':'negotiation'):mode==='exploration'?'investigation':mode==='tactical'?'violence':mode==='travel'?'travel':'open-ended';
   try{sr19ApplyActionBehavior({kind,text:action,target:target?.name||options.target||'',success});}catch(e){}
  }
  const rollText=noRoll?'No check required':'d20 '+die+(die2===null?'':' / '+die2)+' '+(bonus.total>=0?'+':'')+bonus.total+(fatiguePenalty?' '+fatiguePenalty:'')+' = '+total+' vs DC '+dc;
  outcome.narrative+=' '+rollText+(bonus.edge?' · class edge +1':'')+'.';
- g.lastOutcome=outcome;g.records.push(outcome);g.records=g.records.slice(-40);
+ g.lastOutcome=outcome;g.records.push(outcome);if(g.records.length>40){const archived=g.records.splice(0,g.records.length-40);g.archive.push(...archived.map(x=>({id:x.id,day:x.day,mode:x.mode,action:x.action,success:x.success,skill:x.skill,total:x.total,dc:x.dc,createdAt:x.createdAt})));if(g.archive.length>1000)g.archive=g.archive.slice(-1000);}
  if(!Array.isArray(state.log))state.log=[];state.log.push({day:outcome.day,msg:(success?'Success':'Complication')+' · '+mode+': '+action+' — '+rollText+'.'});if(state.log.length>300)state.log=state.log.slice(-300);
  try{if(typeof save==='function')save();}catch(e){}
  return outcome;
