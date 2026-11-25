@@ -118,7 +118,7 @@ function sr21ObjectiveKeywords(objective){
 }
 function sr21FindObjective(action,options,g){
  const id=String(options?.objectiveId||'auto'),words=new Set(String(action||'').toLowerCase().match(/[a-z]{3,}/g)||[]);
- const relevant=o=>{const keys=sr21ObjectiveKeywords(o);return keys.some(w=>words.has(w));};
+ const relevant=o=>{const keys=sr21ObjectiveKeywords(o),hits=keys.filter(w=>words.has(w)).length;return hits>=Math.min(2,keys.length);};
  if(id&&id!=='auto'){const selected=g.objectives.find(x=>x.id===id&&x.status==='active');return selected&&relevant(selected)?selected:null;}
  return g.objectives.find(o=>o.status==='active'&&relevant(o))||null;
 }
