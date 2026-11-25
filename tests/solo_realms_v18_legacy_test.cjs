@@ -23,16 +23,16 @@ context.globalThis=context;
  free.prime();
  const provider=free.providerUI(),page=free.aiPage(),decision=free.makeDecision('sneak past the guard','action');
  const checks=[...report.results.map(x=>({name:x.name,pass:x.pass})),
-  {name:'Free mode is active and external AI is disabled',pass:free.isFree()},
-  {name:'No API key, endpoint, or provider controls appear in AI settings',pass:!provider.includes('srAIKey')&&!provider.includes('srAIEndpoint')&&!provider.includes('type=\"password\"')&&!provider.includes('OpenAI')},
-  {name:'AI settings clearly state offline mode has no subscription or internet requirement',pass:provider.includes('No API key')&&provider.includes('internet connection is required')},
+  {name:'Free mode remains active when no secure AI gateway is configured',pass:free.isFree()},
+  {name:'AI settings expose only a gateway URL, never a browser API key field',pass:provider.includes('id=\"srAIEndpoint\"')&&!provider.includes('id=\"srAIKey\"')&&!provider.includes('type=\"password\"')},
+  {name:'AI settings clearly state that offline play remains available without exposing provider credentials',pass:provider.includes('offline Director remains playable')&&provider.includes('provider API key stays on that server')},
   {name:'AI Director retains difficulty and weirdness controls',pass:page.includes('Difficulty preset')&&page.includes('Chaos / weirdness')&&page.includes('Allow weird character combinations')},
   {name:'Procedural Director returns campaign scene and multiple choices',pass:!!decision.narration&&decision.choices.length>=3&&typeof decision.memory==='string'},
   {name:'Procedural Director provides context-aware DM chat',pass:free.chat('what is my objective').includes('current lead')||free.chat('what is my objective').includes('strongest current lead')},
   {name:'Simulated browser boots and renders the app',pass:app.innerHTML.length>1000},
   {name:'Game makes no network requests during offline boot and local Director generation',pass:calls.length===0}
  ];
- try{await free.apiCall();checks.push({name:'External AI call is blocked',pass:false})}catch(e){checks.push({name:'External AI call is blocked',pass:String(e.message).includes('disabled')})}
+ try{const result=await free.apiCall();checks.push({name:'No gateway configured leaves AI transport idle without a network request',pass:result===null&&calls.length===0})}catch(e){checks.push({name:'No gateway configured leaves AI transport idle without a network request',pass:false})}
  const passed=checks.filter(x=>x.pass).length;
  for(const c of checks)console.log(`${c.pass?'PASS':'FAIL'} ${c.name}`);
  console.log(`\nRESULT ${passed}/${checks.length} checks passed · V10 Living Table Free (V7 progression regression)`);
