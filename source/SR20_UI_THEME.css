@@ -1979,3 +1979,29 @@ body {
   #app .main[data-screen="stronghold"] > .page-head,
   #app .main[data-screen="consequences"] > .page-head { grid-column: 1; }
 }
+
+
+/* Campaign dossier and roadmap are a first-class player destination. */
+#app .main[data-screen="campaign"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(255px, .82fr);
+  gap: var(--screen-gap);
+  align-items: start;
+}
+#app .main[data-screen="campaign"] > .page-head { grid-column: 1 / -1; }
+#app .main[data-screen="campaign"] > .card:first-of-type {
+  grid-column: 1 / -1;
+  border-color: var(--sr-line-strong);
+  background: linear-gradient(145deg, #22343d, #15232b 78%);
+}
+#app .main[data-screen="campaign"] .questline,
+#app .main[data-screen="campaign"] .rule-box {
+  padding: 12px 14px;
+  background: rgba(8, 14, 19, .25);
+  border: 1px solid rgba(198, 160, 99, .15);
+  border-radius: 11px;
+}
+@media (max-width: 760px) {
+  #app .main[data-screen="campaign"] { grid-template-columns: minmax(0, 1fr); }
+  #app .main[data-screen="campaign"] > .card:first-of-type { grid-column: 1; }
+}
