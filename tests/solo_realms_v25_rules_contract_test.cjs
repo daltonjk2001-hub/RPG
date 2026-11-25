@@ -103,13 +103,29 @@ try{
  assert('Attack-record adapter preserves natural-1 misses despite a high modified total',!liveMiss.success&&liveMiss.automaticMiss);
  assert('Attack-record adapter resolves ordinary hits from modified total against AC',liveNormal.success&&!liveNormal.critical);
  const liveRuntimeCalls=html.split('sr25AttackSuccess(').length-1;
- assert('Build routes all thirteen retained player, enemy, spell and opportunity attack comparisons through V25',liveRuntimeCalls>=14,`observed calls=${liveRuntimeCalls}`);
- assert('No retained V17 attack-vs-AC comparison bypasses the V25 attack adapter',[
+ assert('Build routes all thirteen retained shared-roll attack comparisons through V25',liveRuntimeCalls>=14,`observed calls=${liveRuntimeCalls}`);
+ const companionCrit=T25.resolveAttackTotal(25,5,99);
+ const companionMiss=T25.resolveAttackTotal(101,100,10);
+ const companionNormal=T25.resolveAttackTotal(16,4,16);
+ assert('Direct-total attack adapter preserves natural-20 critical hits',companionCrit?.success&&companionCrit.critical);
+ assert('Direct-total attack adapter preserves natural-1 automatic misses',!companionMiss?.success&&companionMiss?.automaticMiss);
+ assert('Direct-total attack adapter uses the modified total against AC',companionNormal?.success&&!companionNormal?.critical);
+ const directAttackCalls=html.split('sr25AttackTotalSuccess(').length-1;
+ assert('Build routes all ten direct-die companion and class-feature attack checks through V25',directAttackCalls>=11,`observed calls=${directAttackCalls}`);
+ assert('No inventoried legacy shared-roll or direct-total attack comparison bypasses the V25 adapters',[
   'roll.r===20||(roll.r!==1&&roll.total>=ac)',
   'roll.r===20||(roll.r!==1&&roll.total>=e.ac)',
   'r.r===20||(r.r!==1&&r.total>=ac)',
   'r.r===20||(r.r!==1&&r.total>=e.ac)',
-  'r.r!==1&&(r.r===20||r.total>=e.ac)'
+  'r.r!==1&&(r.r===20||r.total>=e.ac)',
+  'let r=die(20)+p.attack;if(r>=enemy.ac)',
+  'let r=die(20)+p.attack+(c.nextAttackBonus||0);if(r>=enemy.ac)',
+  'const r=die(20)+p.attack;if(r>=e.ac)',
+  'const r=die(20)+ally.attack;if(r>=target.ac)',
+  'const r=die(20)+(p.attack||0);if(r>=target.ac)',
+  'const r=die(20)+p.attack;if(r>=enemy.ac)',
+  'const r=die(20)+mod(c.stats.DEX)+profBonus();if(r>=e.ac)',
+  'const r=die(20)+(Number(p.attack)||0);if(r>=e.ac)'
  ].every(pattern=>!html.includes(pattern)));
  const protectedHelper=T25.resolveAbilityCheck([20],0,21,{mechanic:'attack',targetNumber:1});
  assert('Typed ability-check helper cannot be overridden into an attack or a different target number',protectedHelper.mechanic==='ability-check'&&protectedHelper.targetNumber===21&&!protectedHelper.success);
