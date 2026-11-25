@@ -130,7 +130,7 @@ function sr20ResolvePlayerAction(text,options={}){
  const outcome={id:sr20Id(),day:sr20CampaignDay(),mode,action,skill,dc,die,die2,advantage:adv,disadvantage:dis,bonus,total,success,noRoll,narrative:sr20ActionNarrative(mode,success),target:target?.name||'',className:sr20ClassIdentity(ch).className,createdAt:new Date().toISOString()};
  g.clock.actions++;g.clock.watch=Math.floor(g.clock.actions/6);
  if(mode==='travel'){
-  const food=sr20ConsumeSupply(/\b(ration|food|trail meal|provision)\b/i),water=sr20ConsumeSupply(/\b(water|waterskin|canteen)\b/i);
+  const food=sr20ConsumeSupply(/\b(rations?|food|trail meals?|provisions?)\b/i),water=sr20ConsumeSupply(/\b(water|waterskins?|canteens?)\b/i);
   if(!food){g.survival.foodShortages++;g.survival.fatigue=sr20Clamp(g.survival.fatigue+1,0,6);}
   if(!water){g.survival.waterShortages++;g.survival.fatigue=sr20Clamp(g.survival.fatigue+1,0,6);}
   g.survival.exposure++;try{if(typeof sr18AdvanceWorld==='function')sr18AdvanceWorld('travel',1);}catch(e){}
