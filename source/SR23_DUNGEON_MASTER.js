@@ -269,6 +269,10 @@ function sr23DirectorPanel() {
     'Choose an approach, or let the Director decide.',
     'Describe what your character tries. The Director handles the rules and the roll.'
   );
+  html = html.replace(
+    '<li>Choose an approach, or let the Director decide.</li>',
+    '<li>Tell the Director what you want to do. The Director handles the rules and the roll.</li>'
+  );
 
   const moved = [];
   for (const id of ['sr20-action-mode', 'sr20-challenge', 'sr20-skill', 'sr20-roll-state', 'sr20-action-target']) {
