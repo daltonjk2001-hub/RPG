@@ -282,11 +282,9 @@ function sr25ResolveSavingThrow(rolls, modifier, dc, options = {}) {
 function sr25HasSaveAbility(target, ability) {
   const key = String(ability || '').toUpperCase();
   const stats = target?.stats || target?.abilityScores;
-  if (!SR25_ABILITIES.includes(key) || !sr25IsRecord(stats)) return false;
-  const score = Object.prototype.hasOwnProperty.call(stats, key)
-    ? stats[key]
-    : stats[key.toLowerCase()];
-  return score !== undefined && score !== null && Number.isFinite(Number(score));
+  return SR25_ABILITIES.includes(key) && sr25IsRecord(stats) &&
+    Object.prototype.hasOwnProperty.call(stats, key) &&
+    Number.isFinite(Number(stats[key]));
 }
 function sr25ResolveCreatureSavingThrow(target, ability, rolls, modifier, dc, options = {}) {
   const autoFail = options.autoFail === true || !sr25HasSaveAbility(target, ability);
