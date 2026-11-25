@@ -4077,10 +4077,34 @@ function sr12ClassPower(player){
   toast('No class power is ready.');return false;
 }
 function sr12DeathSave(player){
-  const c=player.character;if(c.hp>0&&!c.mpDowned){toast('You are not making death saves.');return false;}
-  const r=die(20);if(r===20){c.hp=1;c.mpDead=false;c.mpDowned=false;c.stable=false;c.deathSuccess=0;c.deathFailure=0;sr131ClearDowned(c);log(`${player.name} rolls a natural 20 and regains 1 HP.`,'goodlog');}
-  else if(r>=10){c.deathSuccess=(c.deathSuccess||0)+1;log(`${player.name} succeeds on a death save (${c.deathSuccess}/3).`,'goodlog');if(c.deathSuccess>=3){c.mpDowned=false;c.deathSuccess=3;log(`${player.name} is stable.`,'goodlog');}}
-  else{c.deathFailure=(c.deathFailure||0)+1;log(`${player.name} fails a death save (${c.deathFailure}/3).`,'badlog');if(c.deathFailure>=3){c.mpDead=true;c.mpDowned=true;log(`${player.name} has died. Revivify or a later campaign event may restore them.`,'badlog');}}
+  const c=player.character;
+  if(c.hp>0&&!c.mpDowned){toast('You are not making death saves.');return false;}
+  const r=die(20);
+  const recordFailure=count=>{
+    c.deathFailure=(c.deathFailure||0)+count;
+    if(count===2)log(player.name+' rolls a natural 1 and suffers two death save failures ('+c.deathFailure+'/3).','badlog');
+    else log(player.name+' fails a death save ('+c.deathFailure+'/3).','badlog');
+    if(c.deathFailure>=3){
+      c.mpDead=true;c.mpDowned=true;
+      log(player.name+' has died. Revivify or a later campaign event may restore them.','badlog');
+    }
+  };
+  if(r===20){
+    c.hp=1;c.mpDead=false;c.mpDowned=false;c.stable=false;c.deathSuccess=0;c.deathFailure=0;
+    sr131ClearDowned(c);
+    log(player.name+' rolls a natural 20 and regains 1 HP.','goodlog');
+  }
+  else if(r===1){
+    recordFailure(2);
+  }
+  else if(r>=10){
+    c.deathSuccess=(c.deathSuccess||0)+1;
+    log(player.name+' succeeds on a death save ('+c.deathSuccess+'/3).','goodlog');
+    if(c.deathSuccess>=3){c.mpDowned=false;c.deathSuccess=3;log(player.name+' is stable.','goodlog');}
+  }
+  else{
+    recordFailure(1);
+  }
   return true;
 }
 function sr12HeroAction(player,action,spellName,targetId,data={}){

@@ -247,12 +247,16 @@ function sr25ResolveD20(input) {
   }
   rolls = rolls.map((roll, index) => sr25FiniteInteger(roll, 'd20 result ' + (index + 1), 1, 20));
   const die = advantage ? Math.max(...rolls) : disadvantage ? Math.min(...rolls) : rolls[0];
+  if (input.autoFail !== undefined && typeof input.autoFail !== 'boolean') {
+    throw new Error('Automatic save failure must be a boolean.');
+  }
+  const autoFail = mechanic === 'saving-throw' && input.autoFail === true;
   const total = die + modifier;
   const critical = mechanic === 'attack' && die === 20;
   const automaticMiss = mechanic === 'attack' && die === 1;
   const success = mechanic === 'attack'
     ? critical || (!automaticMiss && total >= targetNumber)
-    : total >= targetNumber;
+    : !autoFail && total >= targetNumber;
   return {
     schema: SR25_RESULT_SCHEMA,
     mechanic,
@@ -265,6 +269,7 @@ function sr25ResolveD20(input) {
     success,
     critical,
     automaticMiss,
+    autoFail,
     natural: die
   };
 }
@@ -273,6 +278,30 @@ function sr25ResolveAbilityCheck(rolls, modifier, dc, options = {}) {
 }
 function sr25ResolveSavingThrow(rolls, modifier, dc, options = {}) {
   return sr25ResolveD20({ ...options, mechanic: 'saving-throw', rolls, modifier, targetNumber: dc });
+}
+function sr25HasSaveAbility(target, ability) {
+  const key = String(ability || '').toUpperCase();
+  const stats = target?.stats || target?.abilityScores;
+  return SR25_ABILITIES.includes(key) && sr25IsRecord(stats) &&
+    Object.prototype.hasOwnProperty.call(stats, key) &&
+    Number.isFinite(Number(stats[key])) && Number(stats[key]) >= 1 && Number(stats[key]) <= 30;
+}
+function sr25ResolveCreatureSavingThrow(target, ability, rolls, modifier, dc, options = {}) {
+  const autoFail = options.autoFail === true || !sr25HasSaveAbility(target, ability);
+  return sr25ResolveSavingThrow(rolls, modifier, dc, { ...options, autoFail });
+}
+function sr25ResolveSavingThrowTotal(total, modifier, dc, options = {}) {
+  const normalizedTotal = Number(total);
+  const normalizedModifier = Number(modifier);
+  if (!Number.isFinite(normalizedTotal) || !Number.isFinite(normalizedModifier)) return null;
+  try {
+    return sr25ResolveSavingThrow([normalizedTotal - normalizedModifier], normalizedModifier, dc, options);
+  } catch (error) {
+    return null;
+  }
+}
+function sr25SavingThrowTotalSuccess(total, modifier, dc, options = {}) {
+  return sr25ResolveSavingThrowTotal(total, modifier, dc, options)?.success === true;
 }
 function sr25ResolveAttack(rolls, modifier, ac, options = {}) {
   return sr25ResolveD20({ ...options, mechanic: 'attack', rolls, modifier, targetNumber: ac });
@@ -343,21 +372,23 @@ function sr25SkillBonus(character, skill, options = {}) {
     edge: classEdge > 0
   };
 }
-function sr25NormalizeLegacyD20Result(result, targetNumber, mechanic) {
+function sr25NormalizeLegacyD20Result(result, targetNumber, mechanic, options = {}) {
   if (!sr25IsRecord(result)) return result;
   const die = Number(result.roll ?? result.r ?? result.die ?? result.d20 ?? result.r1);
   if (!Number.isInteger(die) || die < 1 || die > 20) return result;
   const dc = Number(targetNumber);
   const total = Number(result.total);
   const bonus = Number.isFinite(total) ? total - die : Number(result.bonus || 0);
+  const autoFail = mechanic === 'saving-throw' && options.autoFail === true;
   const canonical = sr25ResolveD20({
-    mechanic, roll: die, modifier: bonus, targetNumber: dc
+    mechanic, roll: die, modifier: bonus, targetNumber: dc, autoFail
   });
   return {
     ...result,
     roll: die,
     total: canonical.total,
     success: canonical.success,
+    autoFail: canonical.autoFail,
     mechanic,
     targetNumber: dc,
     natural: die,
@@ -570,9 +601,40 @@ if (typeof sr14AbilityCheck === 'function') {
 if (typeof sr14SavingThrow === 'function') {
   const sr25SavingThrowBase = sr14SavingThrow;
   sr14SavingThrow = function(character, ability, dc, options = {}) {
+    const key = String(ability || '').toUpperCase();
+    const conditions = Array.isArray(character?.conditions)
+      ? character.conditions.map(item => String(typeof item === 'string' ? item : item?.name || '').toLowerCase())
+      : [];
+    const autoFail = !sr25HasSaveAbility(character, key) ||
+      (['STR', 'DEX'].includes(key) && (conditions.includes('paralyzed') || conditions.includes('unconscious')));
     return sr25NormalizeLegacyD20Result(
-      sr25SavingThrowBase(character, ability, dc, options), dc, 'saving-throw'
+      sr25SavingThrowBase(character, ability, dc, options), dc, 'saving-throw', { autoFail }
     );
+  };
+}
+if (typeof sr133HeroSave === 'function') {
+  const sr25HeroSaveBase = sr133HeroSave;
+  sr133HeroSave = function(character, ability, player, attacker) {
+    const result = sr25HeroSaveBase(character, ability, player, attacker);
+    const key = String(ability || '').toUpperCase();
+    const rolls = result.advantage || result.disadvantage
+      ? [result.d1, result.d2]
+      : [result.d1];
+    const autoFail = !!result.autoFail || !sr25HasSaveAbility(character, key);
+    const dc = Number(attacker?.saveDC) || 0;
+    const canonical = sr25ResolveSavingThrow(rolls, Number(result.bonus || 0) + Number(result.cover || 0),
+      dc, {
+        advantage: !!result.advantage,
+        disadvantage: !!result.disadvantage,
+        autoFail
+      });
+    return {
+      ...result,
+      dc,
+      total: autoFail ? -Infinity : canonical.total,
+      success: canonical.success,
+      autoFail: canonical.autoFail
+    };
   };
 }
 
@@ -661,7 +723,26 @@ globalThis.__SR25_TEST = {
   resolveD20: sr25ResolveD20,
   resolveAbilityCheck: sr25ResolveAbilityCheck,
   resolveSavingThrow: sr25ResolveSavingThrow,
+  resolveCreatureSavingThrow: sr25ResolveCreatureSavingThrow,
+  resolveSavingThrowTotal: sr25ResolveSavingThrowTotal,
+  savingThrowTotalSuccess: sr25SavingThrowTotalSuccess,
+  hasSaveAbility: sr25HasSaveAbility,
+  heroSave: sr133HeroSave,
   resolveAttack: sr25ResolveAttack,
+  withD20Rolls: function(rolls, action) {
+    if (!Array.isArray(rolls) || typeof action !== 'function' || !rolls.length) {
+      throw new Error('A d20 roll sequence and callback are required.');
+    }
+    const queue = rolls.slice();
+    const original = Math.random;
+    Math.random = function() {
+      if (!queue.length) return original();
+      const die = Number(queue.shift());
+      if (!Number.isInteger(die) || die < 1 || die > 20) throw new Error('Mock d20 results must be integers from 1 to 20.');
+      return (die - 0.000001) / 20;
+    };
+    try { return action(); } finally { Math.random = original; }
+  },
   resolveAttackRecord: sr25ResolveAttackRecord,
   attackSuccess: sr25AttackSuccess,
   resolveAttackTotal: sr25ResolveAttackTotal,

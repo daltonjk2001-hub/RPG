@@ -162,7 +162,22 @@ sr14AbilityCheck=function(c,skill,dc,opts={}){
  return r;
 };
 const sr18SavingThrowBase=sr14SavingThrow;
-sr14SavingThrow=function(c,ability,dc,opts={}){const effects=sr18ActiveEffect(c),matching=effects.some(x=>x.saveAdvantage),applicable=effects.filter(x=>x.bonusType==='save'||x.bonusType==='attackSave'),bonus=applicable.reduce((n,x)=>n+Number(x.bonus||0)+(x.bonusDice?rollDice(x.bonusDice):0),0),mode=matching?(opts.mode==='disadvantage'?'normal':'advantage'):(opts.mode||'normal');const r=sr18SavingThrowBase(c,ability,dc,{...opts,mode});if(bonus){r.bonus+=bonus;r.total+=bonus;r.success=r.total>=dc;}for(const x of applicable.filter(x=>x.once)){c.activeEffects=c.activeEffects.filter(y=>y!==x);if(c.concentration?.spell===x.name)c.concentration=null;}return r;};
+sr14SavingThrow=function(c,ability,dc,opts={}){
+ const effects=sr18ActiveEffect(c),matching=effects.some(x=>x.saveAdvantage),
+ applicable=effects.filter(x=>x.bonusType==='save'||x.bonusType==='attackSave'),
+ bonus=applicable.reduce((n,x)=>n+Number(x.bonus||0)+(x.bonusDice?rollDice(x.bonusDice):0),0),
+ mode=matching?(opts.mode==='disadvantage'?'normal':'advantage'):(opts.mode||'normal');
+ const r=sr18SavingThrowBase(c,ability,dc,{...opts,mode});
+ if(bonus){
+  r.bonus+=bonus;r.total+=bonus;
+  const canonical=typeof sr25ResolveSavingThrow==='function'
+   ?sr25ResolveSavingThrow([r.roll],r.bonus,dc,{autoFail:r.autoFail===true})
+   :{success:r.total>=dc,autoFail:false};
+  r.success=canonical.success;r.autoFail=canonical.autoFail;
+ }
+ for(const x of applicable.filter(x=>x.once)){c.activeEffects=c.activeEffects.filter(y=>y!==x);if(c.concentration?.spell===x.name)c.concentration=null;}
+ return r;
+};
 const sr18AttackBase=sr11RollAttack;
 sr11RollAttack=function(base,actor,target,melee=false){
  let extra=0,spellAdv=false;for(const e of sr18ActiveEffect(actor)){if(e.bonusType==='attack'||e.bonusType==='attackSave')extra+=Number(e.bonus||0)+(e.bonusDice?rollDice(e.bonusDice):0);if(e.attackAdvantage)spellAdv=true;}
