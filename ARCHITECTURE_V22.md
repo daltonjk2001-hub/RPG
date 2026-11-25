@@ -66,7 +66,7 @@ V23 moves adjudication to the Director while preserving the V18/V21 deterministi
 - Safe travel and rests still advance world time and use existing resource rules.
 - Existing V21 mechanics remain authoritative for rolls, character bonuses, NPC/faction updates, objectives, and world state.
 - A bounded campaign.sr23.events log records actions and outcomes; lexical/recency retrieval supplies a small continuity window.
-- Optional configured AI can narrate the already-resolved outcome. It has no authority to change numbers, rewards, inventory, damage, objectives, or campaign state.
+- Optional configured AI can propose a bounded pre-roll ruling, then narrate the already-resolved outcome. Rulings are validated against the allowed activity modes, skill list, and typical DC ladder; malformed results fall back locally. The connected model has no authority to roll dice or change rewards, inventory, damage, objectives, or campaign state.
 
 V23 currently uses a compatibility adapter around the V20/V21 function boundary. The long-term refactor should move the resolver into a separately testable orchestration API and reduce reliance on global function replacement, without breaking existing game entry points.
 
