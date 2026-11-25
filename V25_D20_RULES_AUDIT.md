@@ -30,7 +30,7 @@ The natural-1/natural-20 rules above follow the 2024 Basic Rules / SRD 5.2.1. Th
 
 | Finding | Earlier evidence | V25 action | Status |
 |---|---|---|---|
-| Natural 1/20 were incorrectly treated as automatic ability-check/save results in legacy V18 expectations | `tests/solo_realms_v18_rules_campaign_test.cjs` assertions for four combinations | Replaced with total-vs-DC assertions; V25 normalizes legacy runtime result objects | Corrected in source/tests; CI pending |
+| Natural 1/20 were incorrectly treated as automatic ability-check/save results in legacy V18 expectations and an embedded V14 self-test | `tests/solo_realms_v18_rules_campaign_test.cjs` plus `__SR14_TEST.tests()` legacy checks | Replaced external assertions and adapted the embedded self-test hook to rerun each affected mechanic against the V25 total-vs-DC contract | Corrected in source/tests; CI pending |
 | V21 ability-check suite already expected total-vs-DC semantics | `tests/solo_realms_v21_hardening_test.cjs` natural 1 and 20 assertions | Preserved and now selects the Enhanced profile explicitly for legacy feature tests | Test compatibility addressed; CI pending |
 | Custom DC presets (5/8/12/16/20/25) were mixed with the official typical DC ladder (5/10/15/20/25/30) | V21 presets and V23 Director guidance | Separate persisted profile settings and labels; strict profile uses the 2024 typical scale | Corrected at V25 rules-contract boundary; broader DC text interpretation remains partial |
 | “Very easy” could match “easy” first | `sr23DifficultyDC` pattern order | Reordered and added regression tests for DC 5 vs DC 10 | Corrected in source/tests; CI pending |
