@@ -89,6 +89,9 @@ function sr25NormalizeProfile(value, fallbackId) {
   if (!sr25IsRecord(value)) return sr25ProfileDefaults(fallbackId);
   const id = String(value.id || fallbackId);
   const normalized = sr25ProfileDefaults(id);
+  if (value.houseRules !== undefined && !sr25IsRecord(value.houseRules)) {
+    throw new Error('Campaign house rules must be a plain object.');
+  }
   if (value.schema !== undefined && value.schema !== SR25_RULESET_SCHEMA) {
     throw new Error('Campaign ruleset schema is not supported.');
   }
@@ -356,6 +359,20 @@ if (typeof sr20ChallengeDC === 'function') {
       : Math.max(5, Math.min(30, Number(baseDC) || 12));
   };
 }
+if (typeof sr21SituationDC === 'function') {
+  const sr25SituationDCBase = sr21SituationDC;
+  sr21SituationDC = function(text, mode, decision) {
+    if (sr25HouseRuleEnabled('customDCPresets')) {
+      return sr25SituationDCBase(text, mode, decision);
+    }
+    const suggested = Number(decision?.dc);
+    if (Number.isFinite(suggested) && suggested >= 5 && suggested <= 30) return suggested;
+    const action = String(text || '').toLowerCase();
+    const risk = /\b(under fire|while pursued|during a storm|deadly|fortified|expertly guarded|unstable|collapsing|legendary|ancient ward|time is running out|one chance)\b/.test(action);
+    const simple = /\b(unlocked|unopposed|obvious|routine|familiar|simple|ordinary|at leisure)\b/.test(action);
+    return risk ? 20 : simple ? 10 : 15;
+  };
+}
 if (typeof sr21ResolveOptions === 'function') {
   const sr25ResolveOptionsBase = sr21ResolveOptions;
   sr21ResolveOptions = function(options = {}) {
@@ -515,6 +532,7 @@ globalThis.__SR25_TEST = {
   challengeDC: sr20ChallengeDC,
   explicitDifficulty: sr21ExplicitDifficulty,
   difficultyOptions: sr21DifficultyOptions,
+  situationDC: sr21SituationDC,
   rulesetPanel: sr25RulesetPanel,
   directorContext: srAIContext
 };
