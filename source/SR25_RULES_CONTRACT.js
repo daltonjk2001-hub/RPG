@@ -330,7 +330,7 @@ function sr25LegendaryResistanceSpecification(target, options = {}) {
   const explicitObject = sr25IsRecord(explicit) ? explicit : {};
   const daily = [...text.matchAll(/(\d+)\s*\/\s*day/gi)].map(match => Number(match[1]));
   const configured = explicitObject.maxUses ?? explicitObject.usesPerDay ?? explicitObject.perDay ??
-    explicitObject.max ?? (typeof explicit === 'number' ? explicit : undefined);
+    explicitObject.max ?? stored?.maxUses ?? (typeof explicit === 'number' ? explicit : undefined);
   const baseUses = Number(configured ?? daily[0] ?? 3);
   const parsedBase = Number.isFinite(baseUses) && baseUses > 0 ? Math.floor(baseUses) : (daily[0] || 3);
   const lairMatch = text.match(/(\d+)\s*\/\s*day\s+in\s+(?:its\s+)?lair/i);
@@ -351,8 +351,12 @@ function sr25LegendaryResistanceStatus(target, options = {}) {
   if (!specification) return { available: false, maxUses: 0, remainingUses: 0, usedUses: 0, reset: 'long-rest' };
   let resource = target._sr25LegendaryResistance;
   if (!sr25IsRecord(resource)) {
+    const explicitResource = sr25IsRecord(target.legendaryResistance)
+      ? target.legendaryResistance
+      : sr25IsRecord(target.legendary_resistance) ? target.legendary_resistance : {};
     const importedRemaining = Number(target.legendaryResistanceRemaining ??
-      target.legendary_resistance_remaining ?? target.legendary_resistance_uses_remaining);
+      target.legendary_resistance_remaining ?? target.legendary_resistance_uses_remaining ??
+      explicitResource.remainingUses ?? explicitResource.remaining_uses);
     const remainingUses = Number.isFinite(importedRemaining)
       ? Math.max(0, Math.min(specification.maxUses, Math.floor(importedRemaining)))
       : specification.maxUses;
