@@ -72,7 +72,7 @@ for (const relative of pwaFiles) {
 }
 
 const serviceWorker = fs.readFileSync(path.join(pwaDir, 'sw.js'), 'utf8');
-pass('Service worker cache namespace is content-versioned for the V18 systems build', /^const CACHE_NAME = 'solo-realms-systems-v18-[0-9a-f]{16}';$/m.test(serviceWorker));
+pass('Service worker cache namespace is content-versioned for the V23 Director-first build', /^const CACHE_NAME = 'solo-realms-systems-v23-[0-9a-f]{16}';$/m.test(serviceWorker));
 for (const [name, dimension] of [['icon-192.png', 192], ['icon-512.png', 512]]) {
   const icon = fs.readFileSync(path.join(pwaDir, 'icons', name));
   pass(name + ' has the expected square PNG dimensions',

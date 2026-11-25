@@ -21,6 +21,7 @@ BEHAVIOR = ROOT / "source" / "SR19_REACTIVE_WORLD.js"
 GAMEPLAY = ROOT / "source" / "SR20_GAMEPLAY_ENGINE.js"
 SCREEN_LAYOUT = ROOT / "source" / "SR20_SCREEN_LAYOUT.js"
 PLAYTEST_HARDENING = ROOT / "source" / "SR21_PLAYTEST_HARDENING.js"
+DIRECTOR = ROOT / "source" / "SR23_DUNGEON_MASTER.js"
 SAVE_GUARD = ROOT / "source" / "SR22_SAVE_GUARD.js"
 LEGACY_LEDGER = ROOT / "source" / "SR22_LEGACY_LEDGER.js"
 THEME_CSS = ROOT / "source" / "SR20_UI_THEME.css"
@@ -67,6 +68,7 @@ def build_runtime() -> str:
     gameplay = GAMEPLAY.read_text(encoding="utf-8").rstrip()
     screen_layout = SCREEN_LAYOUT.read_text(encoding="utf-8").rstrip()
     playtest_hardening = PLAYTEST_HARDENING.read_text(encoding="utf-8").rstrip()
+    director = DIRECTOR.read_text(encoding="utf-8").rstrip()
     save_guard = SAVE_GUARD.read_text(encoding="utf-8").rstrip()
     legacy_ledger = LEGACY_LEDGER.read_text(encoding="utf-8").rstrip()
 
@@ -110,12 +112,13 @@ def build_runtime() -> str:
     base = base.replace("reliable-v17", "systems-v18")
     base = base.replace("Solo Realms V17 character and client.", "Solo Realms V18 character and client.")
 
-    combined = base + save_guard + "\n\n" + legacy_ledger + "\n\n" + layer + "\n\n" + studio + "\n\n" + behavior + "\n\n" + gameplay + "\n\n" + screen_layout + "\n\n" + playtest_hardening + "\n\n})();\n"
+    combined = base + save_guard + "\n\n" + legacy_ledger + "\n\n" + layer + "\n\n" + studio + "\n\n" + behavior + "\n\n" + gameplay + "\n\n" + screen_layout + "\n\n" + playtest_hardening + "\n\n" + director + "\n\n})();\n"
     required_contracts = {
         "six four-hour watches per calendar day": "const SR18_WATCHES_PER_DAY=6;",
         "V21 four-hour watch integration": "const SR21_WORLD_CLOCK_CONTRACT='four-hour-watches-v1';",
         "namespaced save validation module": "const SR22SaveGuard = (() => {",
         "namespaced legacy reward ledger": "const SR22LegacyLedger = (() => {",
+        "V23 Director-first gameplay module": "const SR23_VERSION = '23.0.0';",
     }
     missing = [label for label, marker in required_contracts.items() if marker not in combined]
     if missing:
@@ -124,7 +127,7 @@ def build_runtime() -> str:
 
 
 def main() -> None:
-    for path in (SRC, SAVE_GUARD, LEGACY_LEDGER, LAYER, STUDIO, BEHAVIOR, GAMEPLAY, SCREEN_LAYOUT, PLAYTEST_HARDENING, THEME_CSS, BASE_HTML, MANIFEST, SERVICE_WORKER):
+    for path in (SRC, SAVE_GUARD, LEGACY_LEDGER, LAYER, STUDIO, BEHAVIOR, GAMEPLAY, SCREEN_LAYOUT, PLAYTEST_HARDENING, DIRECTOR, THEME_CSS, BASE_HTML, MANIFEST, SERVICE_WORKER):
         require_file(path)
 
     combined = build_runtime()
@@ -205,7 +208,7 @@ def main() -> None:
         cache_digest.update(bytes([0]))
         cache_digest.update(asset.read_bytes())
         cache_digest.update(bytes([0]))
-    cache_name = f"solo-realms-systems-v18-{cache_digest.hexdigest()[:16]}"
+    cache_name = f"solo-realms-systems-v23-{cache_digest.hexdigest()[:16]}"
 
     sw_text = SERVICE_WORKER.read_text(encoding="utf-8")
     cache_pattern = re.compile(r"(?m)^const CACHE_NAME = .+;$")
@@ -228,7 +231,7 @@ def main() -> None:
 
     print(f"Built {PWA_HTML.relative_to(ROOT)} ({PWA_HTML.stat().st_size:,} bytes)")
     print(f"Synchronized {DOCS_DIR.relative_to(ROOT)}/ from {PWA_DIR.relative_to(ROOT)}/")
-    print("Assembled V18 rules, V19 Director, V20 gameplay/layout, and V21 player-stage hardening.")
+    print("Assembled V18 rules, V19 Director/world, V20 gameplay/layout, V21 hardening, and V23 Director-first gameplay.")
 
 
 if __name__ == "__main__":

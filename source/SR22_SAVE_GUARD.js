@@ -156,6 +156,7 @@ const SR22SaveGuard = (() => {
       [campaign.sr20?.consequences, 200, 'Campaign consequences'],
       [campaign.sr20?.records, 1000, 'Recent action records'],
       [campaign.sr20?.archive, 5000, 'Archived action records'],
+      [campaign.sr23?.events, 240, 'Director continuity events'],
       [character.sr21Legacy?.milestones, 500, 'Legacy milestone history'],
       [character.sr21Legacy?.archivedCampaigns, 50, 'Legacy campaign archive']
     ];

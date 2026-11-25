@@ -5,10 +5,11 @@ on:
     branches:
       - main
       - "hardening/**"
+      - "research/**"
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: v18-hardening-${{ github.workflow }}-${{ github.ref }}
@@ -31,3 +32,16 @@ jobs:
           node-version: "20"
       - name: Rebuild standalone, PWA, and Pages mirror; run all regression suites
         run: bash tests/run_v18.sh
+
+      - name: Commit rebuilt standalone, PWA, and Pages assets on branch pushes
+        if: github.event_name == 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Solo_Realms_V18_Main.html source/solo_realms_v18.js pwa docs
+          if git diff --cached --quiet; then
+            echo "Generated release files are already current."
+          else
+            git commit -m "Build Solo Realms release assets [skip ci]"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi

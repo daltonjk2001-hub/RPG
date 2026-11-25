@@ -12,6 +12,7 @@ node "tests/solo_realms_v20_gameplay_test.cjs"
 node "tests/solo_realms_v21_hardening_test.cjs"
 node "tests/solo_realms_v21_stress_test.cjs"
 node "tests/solo_realms_v22_data_integrity_test.cjs"
+node "tests/solo_realms_v23_director_test.cjs"
 node "tests/solo_realms_v20_layout_test.cjs"
 node "tests/solo_realms_v20_screen_layout_test.cjs"
 node "tests/solo_realms_v20_release_integrity_test.cjs"
@@ -23,7 +24,7 @@ const pwa=fs.readFileSync('pwa/index.html','utf8');
 const sw=fs.readFileSync('pwa/sw.js','utf8');
 const scripts=s=>[...s.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(m=>m[1].trim());
 if(manifest.short_name!=='Solo Realms V18'||manifest.display!=='standalone')throw Error('Invalid V18 PWA manifest');
-if(!sw.includes('solo-realms-systems-v18'))throw Error('V18 service worker cache namespace missing');
+if(!sw.includes('solo-realms-systems-v23-'))throw Error('V23 service worker cache namespace missing');
 const mainScripts=scripts(main),pwaScripts=scripts(pwa);
 if(mainScripts.length!==1||/<script\s+src=/i.test(main))throw Error('Main HTML is not a single self-contained script document');
 if(pwaScripts.length!==2||!pwaScripts[1].includes("serviceWorker.register('./sw.js')"))throw Error('PWA app or service-worker registration script missing');
