@@ -96,6 +96,21 @@ try{
  const miss=T25.resolveAttack([1],100,10);
  assert('Natural 20 on an attack automatically hits and is critical',crit.success&&crit.critical&&crit.targetType==='armor-class');
  assert('Natural 1 on an attack automatically misses despite a high modifier',!miss.success&&miss.automaticMiss);
+ const liveCrit=T25.resolveAttackRecord({r:20,total:-50},30);
+ const liveMiss=T25.resolveAttackRecord({r:1,total:100},10);
+ const liveNormal=T25.resolveAttackRecord({r:12,total:17},17);
+ assert('Attack-record adapter preserves natural-20 criticals regardless of AC',liveCrit.success&&liveCrit.critical&&liveCrit.total===-50);
+ assert('Attack-record adapter preserves natural-1 misses despite a high modified total',!liveMiss.success&&liveMiss.automaticMiss);
+ assert('Attack-record adapter resolves ordinary hits from modified total against AC',liveNormal.success&&!liveNormal.critical);
+ const liveRuntimeCalls=(html.match(/sr25AttackSuccess\\(/g)||[]).length;
+ assert('Build routes all thirteen retained player, enemy, spell and opportunity attack comparisons through V25',liveRuntimeCalls>=14,`observed calls=${liveRuntimeCalls}`);
+ assert('No retained V17 attack-vs-AC comparison bypasses the V25 attack adapter',[
+  'roll.r===20||(roll.r!==1&&roll.total>=ac)',
+  'roll.r===20||(roll.r!==1&&roll.total>=e.ac)',
+  'r.r===20||(r.r!==1&&r.total>=ac)',
+  'r.r===20||(r.r!==1&&r.total>=e.ac)',
+  'r.r!==1&&(r.r===20||r.total>=e.ac)'
+ ].every(pattern=>!html.includes(pattern)));
  const protectedHelper=T25.resolveAbilityCheck([20],0,21,{mechanic:'attack',targetNumber:1});
  assert('Typed ability-check helper cannot be overridden into an attack or a different target number',protectedHelper.mechanic==='ability-check'&&protectedHelper.targetNumber===21&&!protectedHelper.success);
  const attackCharacter=hero('Fighter');attackCharacter.hp=40;attackCharacter.maxHp=40;
