@@ -69,13 +69,18 @@ function sr21ArchiveCampaign(){
 }
 function sr21InferMode(text){
  const t=String(text||'').toLowerCase();
- if(/\b(talk|speak|ask|tell|convince|persuade|negotiate|lie|deceive|bluff|bargain|interrogate|apologize|charm|threaten|intimidate|parley|question)\b/.test(t))return 'social';
- if(/\b(attack|fight|strike|shoot|stab|slash|cast at|charge|flank|take cover|cover from|defend myself|parry|disarm|ambush|retreat|withdraw|battle|combat|grapple|trip the enemy)\b/.test(t))return 'tactical';
- if(/\b(make camp|camp|rest|sleep|short rest|long rest|forage|hunt|fish|gather food|gather water|collect water|purify|boil water|cook|repair gear|treat wounds|survive)\b/.test(t))return 'survival';
- if(/\b(travel|journey|march|hike|cross|sail|ride|set out|move camp|continue down the road|travel onward)\b/.test(t))return 'travel';
- if(/\b(search|explore|scout|track|inspect|investigate|discover|clue|examine|map|survey|listen|look around|find|sneak past|sneak by|hide from|pick the lock|follow tracks)\b/.test(t))return 'exploration';
- return 'campaign';
+ const rules=[
+  ['social',/\b(talk|speak|ask|tell|convince|persuade|negotiate|lie|deceive|bluff|bargain|interrogate|apologize|charm|threaten|intimidate|parley|question|bribe|plead)\b/],
+  ['tactical',/\b(attack|fight|strike|shoot|stab|slash|cast at|charge|flank|take cover|cover from|defend myself|parry|disarm|ambush|retreat|withdraw|battle|combat|grapple|trip the enemy|outmaneuver)\b/],
+  ['survival',/\b(make camp|camp|rest|sleep|short rest|long rest|forage|hunt|fish|gather food|gather water|collect water|purify|boil water|cook|repair gear|treat wounds|survive)\b/],
+  ['travel',/\b(travel|journey|march|hike|cross|sail|ride|set out|move camp|continue down the road|travel onward)\b/],
+  ['exploration',/\b(search|explore|scout|track|inspect|investigate|discover|clue|examine|map|survey|listen|look around|find|sneak past|sneak by|hide from|pick the lock|follow tracks)\b/]
+ ];
+ let best=null;
+ for(const [mode,pattern] of rules){const match=pattern.exec(t);if(match&&(!best||match.index<best.index))best={mode,index:match.index};}
+ return best?.mode||'campaign';
 }
+
 function sr21SkillFor(mode,text,decision,chosen){
  const requested=String(chosen||'').trim();
  if(requested&&requested.toLowerCase()!=='auto')return SR21_SKILLS.find(x=>sr21Norm(x)===sr21Norm(requested))||requested;
@@ -173,7 +178,7 @@ function sr21ResolvePlayerAction(text,options={}){
  const skill=sr21SkillFor(mode,action,decision,opts.skill);
  const explicitDC=Number.isFinite(Number(opts.dc))&&Number(opts.dc)>=5&&Number(opts.dc)<=30?Number(opts.dc):sr21ExplicitDifficulty(opts.difficulty);
  const dc=explicitDC||sr21SituationDC(action,mode,decision);
- const noRoll=opts.noRoll===true||/\b(make camp|camp|rest|sleep|short rest|long rest|take a rest|sleep for the night)\b/i.test(action);
+ const noRoll=opts.noRoll===true||(mode==='survival'&&/\b(make camp|camp|rest|sleep|short rest|long rest|take a rest|sleep for the night)\b/i.test(action));
  const fatiguePenalty=g.survival.fatigue>=4&&(mode==='travel'||mode==='survival')?-2:0;
  const check=noRoll?null:sr21CanonicalCheck(ch,skill,dc,opts,fatiguePenalty);
  const success=noRoll?true:!!check.success,total=noRoll?null:check.total,die=noRoll?null:check.roll;
