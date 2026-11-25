@@ -1,6 +1,6 @@
 # V25 — D20 Rules Discrepancy Inventory
 
-Audit scope: the live V18–V24 code layers and their retained regression suites, with the V25 resolver layered last by the reproducible build. This is the initial inventory for backlog task S0.1; it identifies the known active call paths and known contradictory tests. It is not a claim that every possible branch in the retained V17 monolith has been exhaustively enumerated.
+Audit scope: the live V18–V27 code layers and their retained regression suites, with the V25 typed resolver layered last by the reproducible build. This is the initial inventory for backlog task S0.1; it identifies the known active call paths and known contradictory tests. It is not a claim that every possible branch in the retained V17 monolith has been exhaustively enumerated.
 
 ## Authoritative mechanic matrix
 
@@ -17,9 +17,9 @@ The natural-1/natural-20 rules above follow the 2024 Basic Rules / SRD 5.2.1. Th
 
 | Code owner / path | Observed role | V25 disposition | Remaining gap |
 |---|---|---|---|
-| `source/solo_realms_v17.js` | Retained base implementations for `sr11RollAttack`, `sr14AbilityCheck`, and `sr14SavingThrow` | Compatibility adapters remain; V25 normalizes legacy ability-check/save outcomes | Base monolith still needs a complete call-site-level inventory and phased replacement |
+| `source/solo_realms_v17.js` | Retained base implementations for `sr11RollAttack`, `sr14AbilityCheck`, and `sr14SavingThrow` | V26 routes 23 inventoried attack comparisons; V27 routes six direct ordinary save paths plus the player/monster save service wrappers | Base monolith still needs a complete call-site-level inventory; unlisted feature-specific saves remain unverified |
 | `source/SR18_SYSTEMS_LAYER.js` — `sr18ResolveMonsterAction` | Monster save-based actions and monster attack-vs-AC resolution | Monster attack comparison calls `sr25ResolveAttack`; natural 20 adds a critical damage die; natural 1 misses. Saving throws flow through the normalized save adapter | Direct-roll attack handlers and specialized save paths remain to be inventoried |
-| `source/SR18_SYSTEMS_LAYER.js` — spell effects | Saving throws, concentration saves, condition and damage effects | Existing save calls receive V25 total-vs-DC normalization | Spell-specific exception catalog and full damage/effect service extraction remain incomplete |
+| `source/SR18_SYSTEMS_LAYER.js` — spell effects | Saving throws, concentration saves, condition and damage effects | V27 routes the V18 active-save-bonus wrapper back through the typed save resolver; V17 spell save paths are migrated by the reproducible build | Legendary Resistance, voluntary failure UI, spell-specific exceptions and damage/effect transaction remain incomplete; see `V27_SAVING_THROW_PIPELINE.md` |
 | `source/SR20_GAMEPLAY_ENGINE.js` — `sr20ResolvePlayerAction` | Integrated skill, travel, tactical and campaign checks | House-rule effects are now profile-gated | Older V20 action resolver still has its own calculation path; it is retained for Enhanced compatibility |
 | `source/SR21_PLAYTEST_HARDENING.js` — `sr21CanonicalCheck` | Main V21 ability-check resolution, advantage/disadvantage and fatigue integration | Final check now uses `sr25ResolveAbilityCheck`; ability/proficiency/skill modifiers are exposed as pure services | Group checks, contests, and feature-granted d20 exceptions are not yet extracted |
 | `source/SR21_PLAYTEST_HARDENING.js` — `sr21ResolvePlayerAction` | Converts Director/player intent to checks, no-roll outcomes and campaign consequences | Records ruleset ID and DC provenance; V25 controls strict vs Enhanced DC guidance | No-roll contract, failure-consequence envelope and action transaction still require typed integration |
@@ -48,10 +48,14 @@ V25 currently provides a 2024 SRD 5.2.1 core profile and a Solo Realms Enhanced 
 4. Add seeded end-to-end cases for spell attacks, contests/group checks, death saves, condition expiry, damage resistance/immunity/vulnerability, and save/load round-trips.
 5. Keep any untraced or untested path marked partial until its source, unit tests, integration tests, persistence tests and player-facing result are all present.
 
+## V27 ordinary saving-throw routing update
+
+V27 adds typed save adapters for records and legacy totals, missing-ability automatic failure, and the Paralyzed/Unconscious Strength/Dexterity rule. The builder routes six audited manual save sites in grapple/shove, area save-control, both spell-target save closures, save-damage spell resolution, and Turn Undead. Player saves against monster effects are adapted through `sr133HeroSave`; `sr14SavingThrow` is normalized after V18 active save bonuses. Death saves remain on `sr12DeathSave`, outside the ordinary save resolver. See `V27_SAVING_THROW_PIPELINE.md`.
+
 ## V26 attack-vs-AC routing update
 
-V26 adds a reproducible-build migration for 13 shared-roll attack-vs-AC call sites. The build fails if any of the five expected legacy expression shapes changes count. See `V26_ATTACK_PIPELINE.md` for the caller-by-caller mapping and explicitly partial direct-roll paths.
+V26 adds a reproducible-build migration for 13 shared-roll plus ten direct-total attack-vs-AC call sites. The build fails if any of the expected legacy expression counts change. See `V26_ATTACK_PIPELINE.md` for the caller-by-caller mapping and remaining direct-roll paths.
 
 ## Current validation state
 
-Source and regression changes are committed on `feature/sr25-rules-contract` and proposed in [PR #27](https://github.com/daltonjk2001-hub/RPG/pull/27). The GitHub PR head has not yet reported a workflow run or status check. Therefore no V25 test is represented here as passed until the repository CI executes it.
+V25 and V26 are merged to `main`. V27 is proposed separately; its CI result, test count and merge status are recorded in [PR #29](https://github.com/daltonjk2001-hub/RPG/pull/29) after the current branch is opened.
