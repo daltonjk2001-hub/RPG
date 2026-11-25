@@ -114,7 +114,7 @@ try {
   assert('V23 Director module is included in the GitHub Pages runtime', pagesHtml.includes("const SR23_VERSION = '23.0.0';"));
   assert('V23 Director source is included in the canonical assembled runtime', runtimeSource.includes("const SR23_VERSION = '23.0.0';"));
   assert('The PWA service worker uses a fresh V25 cache namespace', /solo-realms-systems-v25-[a-f0-9]+/.test(pwaServiceWorker));
-  assert('GitHub Pages receives the same V23 service-worker cache namespace', pagesServiceWorker === pwaServiceWorker);
+  assert('GitHub Pages receives the same V25 service-worker cache namespace', pagesServiceWorker === pwaServiceWorker);
   assert('Negated attack is ignored when the player chooses persuasion instead', T.inferIntent("I don't attack the guard; I try to persuade him to let us pass.").mode === 'social');
   assert('A direct attack is classified as tactical', T.inferIntent('I attack the bandit').mode === 'tactical');
   assert('Weapon attacks are not adjudicated as ability checks in the free-form action form', T.requiresDedicatedCombatAction('I attack the bandit'));
