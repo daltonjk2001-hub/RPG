@@ -282,9 +282,11 @@ function sr25ResolveSavingThrow(rolls, modifier, dc, options = {}) {
 function sr25HasSaveAbility(target, ability) {
   const key = String(ability || '').toUpperCase();
   const stats = target?.stats || target?.abilityScores;
-  return SR25_ABILITIES.includes(key) && sr25IsRecord(stats) &&
-    Object.prototype.hasOwnProperty.call(stats, key) &&
-    Number.isFinite(Number(stats[key]));
+  if (!SR25_ABILITIES.includes(key) || !sr25IsRecord(stats)) return false;
+  const score = Object.prototype.hasOwnProperty.call(stats, key)
+    ? stats[key]
+    : stats[key.toLowerCase()];
+  return score !== undefined && score !== null && Number.isFinite(Number(score));
 }
 function sr25ResolveCreatureSavingThrow(target, ability, rolls, modifier, dc, options = {}) {
   const autoFail = options.autoFail === true || !sr25HasSaveAbility(target, ability);
@@ -727,6 +729,20 @@ globalThis.__SR25_TEST = {
   hasSaveAbility: sr25HasSaveAbility,
   heroSave: sr133HeroSave,
   resolveAttack: sr25ResolveAttack,
+  withD20Rolls: function(rolls, action) {
+    if (!Array.isArray(rolls) || typeof action !== 'function' || !rolls.length) {
+      throw new Error('A d20 roll sequence and callback are required.');
+    }
+    const queue = rolls.slice();
+    const original = Math.random;
+    Math.random = function() {
+      if (!queue.length) return original();
+      const die = Number(queue.shift());
+      if (!Number.isInteger(die) || die < 1 || die > 20) throw new Error('Mock d20 results must be integers from 1 to 20.');
+      return (die - 0.000001) / 20;
+    };
+    try { return action(); } finally { Math.random = original; }
+  },
   resolveAttackRecord: sr25ResolveAttackRecord,
   attackSuccess: sr25AttackSuccess,
   resolveAttackTotal: sr25ResolveAttackTotal,
