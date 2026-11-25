@@ -1,0 +1,28 @@
+const fs=require('node:fs');
+const path=require('node:path');
+const root=path.join(__dirname,'..');
+const css=fs.readFileSync(path.join(root,'source','SR20_UI_THEME.css'),'utf8');
+const main=fs.readFileSync(path.join(root,'Solo_Realms_V18_Main.html'),'utf8');
+const pwa=fs.readFileSync(path.join(root,'pwa','index.html'),'utf8');
+const docs=fs.readFileSync(path.join(root,'docs','index.html'),'utf8');
+const checks=[];
+const ok=(name,pass)=>checks.push({name,pass:!!pass});
+const theme=html=>html.match(/<style id="sr20-ui-theme">([\s\S]*?)<\/style>/i)?.[1]||'';
+const mainTheme=theme(main),pwaTheme=theme(pwa),docsTheme=theme(docs);
+
+ok('Theme stylesheet is injected into the standalone game head',!!mainTheme&&main.indexOf(mainTheme)<main.indexOf('</head>'));
+ok('PWA receives the same standalone theme',!!pwaTheme&&pwaTheme===mainTheme);
+ok('GitHub Pages docs build receives the same theme',!!docsTheme&&docsTheme===mainTheme);
+ok('Theme source and generated HTML stay synchronized',mainTheme.trim()===css.trim());
+ok('Design system defines shared background, surface, border, text and accent tokens',['--sr-bg:','--sr-panel:','--sr-line:','--sr-parchment:','--sr-brass:'].every(x=>css.includes(x)));
+ok('Top bar and primary navigation receive distinct shell treatments',css.includes('.simple-topbar')&&css.includes('.simple-sidebar')&&css.includes('[aria-current="page"]'));
+ok('Common campaign panels and content rows share consistent spacing and surfaces',css.includes('#app .card')&&css.includes('#app .two-col')&&css.includes('#app .item-row'));
+ok('Adventure action composer receives a deliberate responsive form layout',css.includes('#sr20-action-form')&&css.includes('grid-template-columns'));
+ok('Phone layout collapses paired panels and action fields into one column',/@media\s*\(max-width:\s*760px\)/.test(css)&&css.includes('#app .two-col { grid-template-columns: minmax(0, 1fr)'));
+ok('Keyboard focus remains visible across app navigation and controls',css.includes(':focus-visible')&&css.includes('--sr-focus'));
+ok('Reduced-motion preference is respected',css.includes('prefers-reduced-motion: reduce'));
+ok('Theme is self-contained and does not fetch remote styles or fonts',!/@import\s+url|https?:\/\//i.test(css));
+ok('Theme is installed once in generated standalone output', (main.match(/id="sr20-ui-theme"/g)||[]).length===1);
+for(const x of checks)console.log(`${x.pass?'PASS':'FAIL'} ${x.name}`);
+console.log(`\nRESULT ${checks.filter(x=>x.pass).length}/${checks.length} V20 layout regression checks passed`);
+if(checks.some(x=>!x.pass))process.exitCode=1;
