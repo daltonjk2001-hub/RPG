@@ -185,8 +185,9 @@ function sr21ResolvePlayerAction(text,options={}){
  const mode=SR20_MODES.includes(opts.mode)&&opts.mode!=='auto'?opts.mode:sr21InferMode(action);
  let decision=null;try{if(typeof sr18ImprovisationDecision==='function')decision=sr18ImprovisationDecision(action);}catch(e){}
  const skill=sr21SkillFor(mode,action,decision,opts.skill);
- const explicitDC=Number.isFinite(Number(opts.dc))&&Number(opts.dc)>=5&&Number(opts.dc)<=30?Number(opts.dc):sr21ExplicitDifficulty(opts.difficulty);
- const dc=explicitDC||sr21SituationDC(action,mode,decision);
+ const presetDC=sr21ExplicitDifficulty(opts.difficulty);
+ const baseDC=Number.isFinite(Number(opts.dc))&&Number(opts.dc)>=5&&Number(opts.dc)<=30?Number(opts.dc):(Number(decision?.dc)||sr21SituationDC(action,mode,decision));
+ const dc=presetDC??sr20ChallengeDC(baseDC,opts.challenge||'standard');
  const noRoll=opts.noRoll===true||(mode==='survival'&&/\b(make camp|camp|rest|sleep|short rest|long rest|take a rest|sleep for the night)\b/i.test(action));
  const fatiguePenalty=g.survival.fatigue>=4&&(mode==='travel'||mode==='survival')?-2:0;
  const check=noRoll?null:sr21CanonicalCheck(ch,skill,dc,opts,fatiguePenalty);
