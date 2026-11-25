@@ -263,7 +263,7 @@ function sr20RunTests(){
   ok('Talking about a guard is classified as social, not tactical',sr20InferMode('I talk to the guard about the missing cart')==='social');
   ok('Asking a guard for directions remains a social action',sr20InferMode('I ask the guard where the road leads')==='social');
   const expertBonus=sr20SkillBonus({level:5,classId:'Wizard',stats:{INT:14},proficiencies:['Investigation'],expertise:['Investigation']},'Investigation');
-  ok('Expertise doubles proficiency in the V20 check calculation',expertBonus.expertise&&expertBonus.total===8);
+  ok('Expertise doubles proficiency in the V20 check calculation',expertBonus.expertise&&expertBonus.total===9);
   ok('Routine through legendary challenge tiers apply predictable DC offsets',sr20ChallengeDC(12,'routine')===7&&sr20ChallengeDC(12,'standard')===12&&sr20ChallengeDC(12,'difficult')===17&&sr20ChallengeDC(12,'expert')===22&&sr20ChallengeDC(12,'legendary')===27);
   ok('Objective matching requires meaningful overlap instead of one incidental word',!sr20TokenMatch('I rest near the old watchtower','Find the lost map')&&sr20TokenMatch('I recover the lost map','Find the lost map'));
   ok('Main campaign objective is exposed in the gameplay ledger',g.objectives.length===1&&g.objectives[0].type==='main');
@@ -298,14 +298,14 @@ function sr20RunTests(){
    ok('Cover is applied by the existing V18 monster attack resolver',unprotectedHit&&state.character.hp===hpBeforeCover);
   }finally{sr11RollAttack=oldAttackRoll;}
   const travel=sr20ResolvePlayerAction('We travel onward for one watch',{mode:'travel',roll:12,dc:10});
-  ok('Travel consumes carried provisions and advances exposure state',travel.success&&g.survival.exposure===1&&state.character.inventory.length===0);
+  ok('Travel consumes carried provisions, advances exposure and records one four-hour watch',travel.success&&g.survival.exposure===1&&g.clock.watch===1&&state.character.inventory.length===0);
   state.character.inventory=[{name:'Rations',type:'supply',count:3,desc:'A day of food.'},{name:'Waterskin',type:'supply',count:2,desc:'A filled waterskin.'}];
   sr20ResolvePlayerAction('We travel onward along the pass for one watch',{mode:'travel',roll:12,dc:10});
   const rationStack=state.character.inventory.find(x=>x.name==='Rations'),waterStack=state.character.inventory.find(x=>x.name==='Waterskin');
-  ok('Travel decrements one unit from stacked food and water supplies',rationStack?.count===2&&waterStack?.count===1);
+  ok('Travel decrements one unit from stacked food and water supplies',rationStack?.count===2&&waterStack?.count===1&&g.clock.watch===2);
   g.survival.fatigue=2;const foodShortagesBefore=g.survival.foodShortages,waterShortagesBefore=g.survival.waterShortages;
   const autoRest=sr20ResolvePlayerAction('We make camp and rest for the night',{mode:'auto',roll:20});
-  ok('Auto-routed rest reduces fatigue without consuming travel water or creating shortages',autoRest.mode==='survival'&&autoRest.noRoll&&g.survival.fatigue===0&&g.survival.foodShortages===foodShortagesBefore&&g.survival.waterShortages===waterShortagesBefore&&state.character.inventory.find(x=>x.name==='Waterskin')?.count===1);
+  ok('Auto-routed rest reduces fatigue, advances two watches and avoids travel shortages',autoRest.mode==='survival'&&autoRest.noRoll&&g.survival.fatigue===0&&g.clock.watch===4&&g.survival.foodShortages===foodShortagesBefore&&g.survival.waterShortages===waterShortagesBefore&&state.character.inventory.find(x=>x.name==='Waterskin')?.count===1&&g.consequences.length===0);
   const forage=sr20ResolvePlayerAction('I forage for berries and collect water from the stream',{mode:'auto',roll:20,dc:10});
   const gainedRations=state.character.inventory.find(x=>x?.name==='Rations'),gainedWater=state.character.inventory.find(x=>x?.name==='Waterskin');
   ok('Successful survival checks add proper stackable inventory records',forage.success&&gainedRations?.type==='supply'&&gainedRations.count===2&&gainedWater?.type==='supply'&&gainedWater.count===2);
