@@ -95,9 +95,17 @@ const SR22SaveGuard = (() => {
     const treeError = inspectTree(source);
     if (treeError) return fail(treeError);
 
-    const state = source;
+    let state;
+    try {
+      state = JSON.parse(JSON.stringify(source));
+    } catch (error) {
+      return fail('Save could not be safely copied: ' + String(error?.message || error));
+    }
     const character = state.character;
     const campaign = state.campaign;
+    if (!Array.isArray(campaign.companions)) campaign.companions = [];
+    if (!Array.isArray(campaign.npcs)) campaign.npcs = [];
+    if (!Array.isArray(campaign.sideQuests)) campaign.sideQuests = [];
     if (!isRecord(character) || !isRecord(campaign)) {
       return fail('Save is missing a character or campaign.');
     }
@@ -152,7 +160,8 @@ const SR22SaveGuard = (() => {
       [character.sr21Legacy?.archivedCampaigns, 50, 'Legacy campaign archive']
     ];
     for (const [array, limit, label] of campaignArrays) {
-      if (array !== undefined && array !== null && !Array.isArray(array)) continue;
+      if (array === undefined || array === null) continue;
+      if (!Array.isArray(array)) return fail(label + ' is not a valid list.');
       const arrayError = checkArray(array, limit, label);
       if (arrayError) return fail(arrayError);
     }
@@ -165,18 +174,8 @@ const SR22SaveGuard = (() => {
       }
     }
 
-    let normalized;
-    try {
-      normalized = JSON.parse(JSON.stringify(state));
-    } catch (error) {
-      return fail('Save could not be safely copied: ' + String(error?.message || error));
-    }
-    const normalizedCampaign = normalized.campaign;
-    if (!Array.isArray(normalizedCampaign.companions)) normalizedCampaign.companions = [];
-    if (!Array.isArray(normalizedCampaign.npcs)) normalizedCampaign.npcs = [];
-    if (!Array.isArray(normalizedCampaign.sideQuests)) normalizedCampaign.sideQuests = [];
-    normalized.log = Array.isArray(normalized.log) ? normalized.log.slice(-300) : [];
-    return { ok: true, state: normalized };
+    state.log = Array.isArray(state.log) ? state.log.slice(-300) : [];
+    return { ok: true, state };
   }
 
   return Object.freeze({ version: '22.0.0', limits: LIMITS, validate });
