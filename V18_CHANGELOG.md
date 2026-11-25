@@ -51,3 +51,11 @@ V18 is an expanded procedural rules engine. It does not claim a hand-coded bespo
 - Corrected the README attribution link to `V18_ATTRIBUTION.md`.
 - Updated the regression runner to rebuild before testing and verify build parity, manifest, service-worker registration, icons and attribution paths.
 - No gameplay logic or save format changes are intended in this maintenance release.
+
+
+## V18.1.1 — Existing-system hardening
+
+- The build now regenerates `docs/` as an exact mirror of canonical `pwa/` output for GitHub Pages.
+- The PWA regression suite checks that every deployable file exists in both directories with byte-for-byte identical contents.
+- Updated architecture and project-layout documentation to reflect the actual `build-inputs/` template path and generated publication directory.
+- No gameplay logic, multiplayer protocol, or save format changes.

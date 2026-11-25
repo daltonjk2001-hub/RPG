@@ -5,7 +5,8 @@ Solo Realms is a free, offline-first D&D-inspired campaign app. V18 expands the 
 ## Repository contents
 
 - `Solo_Realms_V18_Main.html` — standalone single-file game for local browser play.
-- `pwa/` — installable Progressive Web App. Publish the **contents** of this folder to an HTTPS static host; GitHub Pages can host it.
+- `pwa/` — canonical installable Progressive Web App source.
+- `docs/` — generated exact mirror of `pwa/`, used as the GitHub Pages publication directory. Do not edit `docs/` independently; the build regenerates it.
 - `source/` — V17 base runtime, V18 additive systems layer, and assembled V18 runtime.
 - `build-inputs/Solo_Realms_V17_Main.html` — the one retained V17 HTML shell required by the reproducible build. Other historical release backups are intentionally excluded.
 - `tools/build_v18.py` — rebuilds the standalone HTML, assembled runtime, and PWA entry point from the tracked inputs.
@@ -32,7 +33,7 @@ Requirements: Python 3 and Node.js. From the repository root, run:
 bash tests/run_v18.sh
 ```
 
-The runner rebuilds the release outputs before executing the automated regression suites. A successful automated run does not replace Android installation testing, real two-device multiplayer testing, or extended human playtesting. See `V18_TEST_REPORT.md` for the current verification scope.
+The runner rebuilds the standalone and PWA outputs, synchronizes `docs/` from `pwa/`, and then executes the automated regression suites. A successful automated run does not replace Android installation testing, real two-device multiplayer testing, or extended human playtesting. See `V18_TEST_REPORT.md` for the current verification scope.
 
 ## Cost and connectivity
 

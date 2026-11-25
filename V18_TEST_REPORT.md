@@ -1,6 +1,6 @@
 # Solo Realms V18 test report
 
-**Result: 422 / 422 automated assertions passed.**
+**Result: 423 / 423 automated assertions passed.**
 
 Tested on the packaged V18 source in a Node.js VM with simulated browser DOM, localStorage, IndexedDB and download/network fixtures. The run command is `bash tests/run_v18.sh`. The runner now invokes `tools/build_v18.py` first, so the tested HTML/PWA artifacts are regenerated from the tracked repository source files on every run.
 
@@ -9,13 +9,13 @@ Tested on the packaged V18 source in a Node.js VM with simulated browser DOM, lo
 | Multiplayer / initiative | 179 | 179 | Versioned protocol 20, authenticated joins, shared state and initiative ordering regressions |
 | Legacy progression / Director | 37 | 37 | Inherited character progression, campaign flow and procedural offline Director baseline |
 | UI | 19 | 19 | Simplified navigation, combat controls, rendered V18 identity and Save Center entry |
-| PWA | 14 | 14 | Manifest, install shell, V18 service-worker cache, icons and offline navigation contract |
+| PWA | 15 | 15 | Manifest, install shell, V18 service-worker cache, icons, offline navigation contract, and exact GitHub Pages mirror validation |
 | Rules / campaign | 58 | 58 | Retained V14 rules, spells, creatures, classes, progression and campaign behavior |
 | Character resources | 30 | 30 | Retained V15.2 class resources and Hit Dice coverage |
 | Reactive DM | 19 | 19 | Retained V16 NPC memory, companion behavior, consequences, rivals and protocol compatibility |
 | Library reliability | 28 | 28 | V17 library install/restore, reference downloads, JSON backup import and restart behavior |
 | V18 integrated systems | 38 | 38 | Spell effect inference, typed damage, monster Multiattack execution, improvisation, world state, eight save slots, recovery, restore/import and invalid-save rejection |
-| **Total** | **422** | **422** | |
+| **Total** | **423** | **423** | |
 
 Additional checks passed:
 - `node --check source/solo_realms_v18.js`
@@ -25,6 +25,10 @@ Additional checks passed:
 - Main HTML and PWA entry both identify V18.
 - Standalone and PWA application scripts are byte-for-byte identical after each build.
 - The build completes from the clean repository inputs without relying on a generated V18 HTML file.
+
+## V18.1.1 hardening verification
+
+The build now regenerates the GitHub Pages `docs/` directory as an exact mirror of canonical `pwa/` output. The PWA suite verifies the complete file list and byte-for-byte equality, preventing a successful source build from leaving the published site stale. Project documentation now identifies `build-inputs/` as the retained V17 shell location.
 
 ## V18.1 maintenance verification
 

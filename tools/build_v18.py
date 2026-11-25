@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Rebuild the Solo Realms V18 standalone and PWA files from packaged sources.
 
-The canonical V17 HTML shell is intentionally kept in backup/ as the immutable
+The canonical V17 HTML shell is intentionally kept in build-inputs/ as the immutable
 base template. The game runtime is assembled from source/ and injected into
 that shell, so rebuilding never depends on a previously generated V18 file.
 """
@@ -10,13 +10,16 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
+import shutil
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "source" / "solo_realms_v17.js"
 LAYER = ROOT / "source" / "SR18_SYSTEMS_LAYER.js"
 BASE_HTML = ROOT / "build-inputs" / "Solo_Realms_V17_Main.html"
 MAIN_HTML = ROOT / "Solo_Realms_V18_Main.html"
-PWA_HTML = ROOT / "pwa" / "index.html"
+PWA_DIR = ROOT / "pwa"
+PWA_HTML = PWA_DIR / "index.html"
+DOCS_DIR = ROOT / "docs"
 MANIFEST = ROOT / "pwa" / "manifest.webmanifest"
 SERVICE_WORKER = ROOT / "pwa" / "sw.js"
 
@@ -155,7 +158,15 @@ def main() -> None:
 
     print(f"Built {MAIN_HTML.relative_to(ROOT)} ({MAIN_HTML.stat().st_size:,} bytes)")
     print(f"Built source/solo_realms_v18.js ({len(combined.encode('utf-8')):,} bytes)")
-    print(f"Built pwa/index.html ({PWA_HTML.stat().st_size:,} bytes)")
+    # GitHub Pages publishes /docs. Keep it as a generated mirror of the
+    # canonical PWA directory so the live site cannot silently lag behind a
+    # successful build. docs/ is reserved for deployable PWA assets.
+    if DOCS_DIR.exists():
+        shutil.rmtree(DOCS_DIR)
+    shutil.copytree(PWA_DIR, DOCS_DIR)
+
+    print(f"Built {PWA_HTML.relative_to(ROOT)} ({PWA_HTML.stat().st_size:,} bytes)")
+    print(f"Synchronized {DOCS_DIR.relative_to(ROOT)}/ from {PWA_DIR.relative_to(ROOT)}/")
     print("Patched two solo spell-damage bypasses; multiplayer protocol is 20.")
 
 
