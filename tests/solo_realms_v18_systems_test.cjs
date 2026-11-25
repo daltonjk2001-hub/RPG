@@ -61,6 +61,14 @@ const campaign=()=>({chapter:1,day:1,location:'Ashenbrook',region:'Green March',
  assert('Recovery ring writes and retrieves latest autosave separately from manual slots',recovery?.reason==='unit test recovery'&&recovery.state?.character?.name==='Changed Hero');
  T.state.character.name='Replacement Hero';await T.restore(loaded.state,'slot round-trip');
  assert('Restore loads the slot without losing character or world memory',T.state.character.name==='Ari Vale'&&T.state.campaign.sr18?.factions?.length>=4);
+ // A failed recovery write must block destructive restore and preserve the active campaign.
+ const recoveryDb=await T.openDB(),originalTransaction=recoveryDb.transaction,originalSetItem=context.localStorage.setItem;
+ recoveryDb.transaction=function(store,mode){if(store==='recovery')throw new Error('simulated recovery archive write failure');return originalTransaction.call(this,store,mode);};
+ context.localStorage.setItem=function(key,value){if(String(key).startsWith('sr18-recovery-'))throw new Error('simulated local recovery storage failure');return originalSetItem.call(this,key,value);};
+ T.state.character.name='Protected Current Campaign';let restoreBlocked=false;
+ try{await T.restore(loaded.state,'restore guard regression');}catch(error){restoreBlocked=/could not be backed up|cancelled to protect/i.test(String(error?.message||error));}
+ recoveryDb.transaction=originalTransaction;context.localStorage.setItem=originalSetItem;
+ assert('Restore refuses to replace the active campaign when recovery storage fails',restoreBlocked&&T.state.character.name==='Protected Current Campaign');
  T.state.character.name='Import Target';const importPayload=JSON.stringify(baseSave);const imported=await T.importFile({size:importPayload.length,text:async()=>importPayload});
  assert('JSON campaign import validates and restores a portable save',imported===true&&T.state.character.name==='Ari Vale'&&T.state.campaign.sr18?.factions?.length>=4);
  await T.storeSlot(2,'Delete test');await T.deleteSlot(2);assert('Manual save slots can be deleted independently',await T.readSlot(2)===null);
