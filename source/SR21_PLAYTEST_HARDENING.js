@@ -32,8 +32,7 @@ function sr21EnsureCampaign(){
 }
 function sr21EnsureLegacy(){
  const ch=state?.character;if(!ch)return null;
- ch.sr21Legacy=ch.sr21Legacy&&typeof ch.sr21Legacy==='object'?ch.sr21Legacy:{};
- const l=ch.sr21Legacy;l.version=SR21_VERSION;l.xp=Math.max(0,Number(l.xp)||0);
+ const l=SR22LegacyLedger.ensure(ch,SR21_VERSION);l.xp=Math.max(0,Number(l.xp)||0);
  l.archivedCampaigns=Array.isArray(l.archivedCampaigns)?l.archivedCampaigns:[];
  l.milestones=Array.isArray(l.milestones)?l.milestones:[];l.reputation=l.reputation&&typeof l.reputation==='object'?l.reputation:{};
  l.rank=SR21_LEGACY_RANKS.reduce((rank,r,i)=>l.xp>=r.xp?i+1:rank,0);
@@ -41,9 +40,8 @@ function sr21EnsureLegacy(){
 }
 function sr21AwardLegacyXP(amount,reason,id){
  const ch=state?.character;if(!ch||Number(ch.level)<20)return false;
- const l=sr21EnsureLegacy(),key=String(id||reason||'legacy-event');
- if(l.milestones.some(x=>x.id===key))return false;
- const gained=Math.max(0,Math.floor(Number(amount)||0));if(!gained)return false;
+ const l=sr21EnsureLegacy(),key=String(id||reason||'legacy-event').trim();
+ const gained=Math.max(0,Math.floor(Number(amount)||0));if(!gained||!SR22LegacyLedger.claim(l,key))return false;
  l.xp+=gained;l.milestones.unshift({id:key,reason:String(reason||'Milestone'),xp:gained,at:new Date().toISOString()});l.milestones=l.milestones.slice(0,100);
  const before=l.rank;l.rank=SR21_LEGACY_RANKS.reduce((rank,r,i)=>l.xp>=r.xp?i+1:rank,0);
  l.title=l.rank?SR21_LEGACY_RANKS[l.rank-1].title:'Unrecorded';
