@@ -63,6 +63,10 @@ try{
  T25.setNextSavingThrowChoice(legacyChoice,'fail');
  const legacy=T14.savingThrow(legacyChoice,'DEX',10);
  assert('Legacy character saving-throw adapter honors a queued voluntary failure without rolling',legacy.chosenToFail&&!legacy.success&&legacy.roll===null);
+ const heroChoice=creature();
+ T25.setNextSavingThrowChoice(heroChoice,'fail');
+ const heroResult=T25.heroSave(heroChoice,'CON',null,{saveDC:15});
+ assert('Player-versus-monster save adapter supports an explicit no-roll voluntary failure',heroResult.chosenToFail&&!heroResult.success&&heroResult.d1===null);
  const invalidChoiceRejected=(()=>{try{T25.setNextSavingThrowChoice(creature(),'succeed');return false;}catch(e){return true;}})();
  assert('Queued save-choice API rejects unsupported choices',invalidChoiceRejected);
  const integration=html.split('sr25ResolveCreatureSavingThrow(').length-1;
