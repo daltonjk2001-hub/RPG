@@ -69,6 +69,7 @@ assert('Settings form shows a gateway URL and no browser API key input',
 assert('Settings form explains server-side provider key storage', T.settingsForm().includes('provider API key stays on that server'));
 assert('No configured gateway keeps offline mode active', T.connectionAvailable() === false);
 assert('Offline call returns safely without fetch', await T.call('conversation', 'hello') === null);
+assert('Legacy connection-test task name remains compatible offline', await T.call('test', 'hello') === null);
 assert('Unsupported task names are rejected', await T.call('unknown-task', 'hello').then(() => false, () => true));
 
 const sampleState = {

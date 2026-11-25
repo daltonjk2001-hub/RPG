@@ -71,7 +71,8 @@ function sr24BuildPlanPrompt(action, fallback, context, memories) {
 }
 async function sr24Call(kind, input) {
   const allowed = ['adjudication', 'narration', 'conversation', 'connection test', 'new-scene', 'twist', 'quest', 'encounter', 'treasure', 'action'];
-  const task = String(kind || 'conversation');
+  const requestedTask = String(kind || 'conversation');
+  const task = requestedTask === 'test' ? 'connection test' : requestedTask;
   if (!allowed.includes(task)) throw new Error('The Dungeon Master does not support that task.');
   const endpoint = sr24StoredEndpoint();
   if (!endpoint) return null;

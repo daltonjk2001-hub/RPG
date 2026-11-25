@@ -287,7 +287,8 @@ async function handle(request, env) {
   try { payload = JSON.parse(raw); } catch (error) {
     return json({ ok: false, error: 'Request body must be valid JSON.' }, 400, request, env);
   }
-  const kind = String(payload?.kind || '');
+  const requestedKind = String(payload?.kind || '');
+  const kind = requestedKind === 'test' ? 'connection test' : requestedKind;
   const input = typeof payload?.input === 'string' ? payload.input : '';
   if (!ALLOWED_KINDS.has(kind)) return json({ ok: false, error: 'Unsupported Dungeon Master task.' }, 400, request, env);
   if (!input.trim() || input.length > 24000) return json({ ok: false, error: 'The prompt is empty or too long.' }, 400, request, env);
