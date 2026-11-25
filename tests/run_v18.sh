@@ -5,7 +5,7 @@ cd "$ROOT"
 python3 tools/build_v18.py
 node --check source/solo_realms_v18.js
 node --check pwa/sw.js
-for suite in multiplayer legacy ui pwa rules_campaign resource reactive reliability systems; do
+for suite in multiplayer legacy ui pwa rules_campaign resource reactive reliability systems save_db; do
   node "tests/solo_realms_v18_${suite}_test.cjs"
 done
 node - <<'NODE'
