@@ -36,7 +36,7 @@ The local Director always works without a network connection. It classifies inte
 
 When a player has explicitly configured a model connection, that model may optionally provide a second-pass narration after the deterministic result exists. The prompt treats the rules result and campaign state as read-only. The model cannot roll dice, award items/XP/gold, inflict damage, alter inventory, advance objectives, introduce NPCs, or change the scene state. A late response is ignored when a newer action has replaced the outcome being narrated. Failures fall back to the already-saved offline result.
 
-A GitHub Pages deployment cannot provide a private provider key or run a persistent model server by itself. A real hosted AI deployment needs a separately operated HTTPS server-side proxy with authentication, rate limits, request validation, logging policy, and secret management. Client-side API keys must not be embedded in the public app.
+The V23 build also moves the PWA cache to a content-hashed solo-realms-systems-v23 namespace. Activation removes the prior Solo Realms cache so an installed client does not keep serving the old V18 shell; the build tests require the PWA and Pages workers to match. A GitHub Pages deployment cannot provide a private provider key or run a persistent model server by itself. A real hosted AI deployment needs a separately operated HTTPS server-side proxy with authentication, rate limits, request validation, logging policy, and secret management. Client-side API keys must not be embedded in the public app.
 
 ## Continuity memory
 
