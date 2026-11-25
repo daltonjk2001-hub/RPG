@@ -1,0 +1,382 @@
+/* SOLO REALMS V25 — versioned campaign ruleset contract and typed d20 services.
+ * Additive compatibility layer. V24 saves are migrated without silently changing their house rules.
+ */
+const SR25_VERSION = '25.0.0';
+const SR25_RULESET_SCHEMA = 'solo-realms-campaign-rules-v1';
+const SR25_REQUEST_SCHEMA = 'solo-realms-mechanic-request-v1';
+const SR25_RESULT_SCHEMA = 'solo-realms-mechanic-result-v1';
+const SR25_D20_MECHANICS = Object.freeze(['ability-check', 'saving-throw', 'attack']);
+const SR25_MECHANICS = Object.freeze([
+  'none', 'ability-check', 'saving-throw', 'attack', 'contest',
+  'spell', 'resource-time', 'clarification', 'unsupported'
+]);
+const SR25_ABILITIES = Object.freeze(['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA']);
+const SR25_HOUSE_RULES = Object.freeze([
+  'classIdentityEdge', 'flankingACBonus', 'travelFatiguePenalty', 'customDCPresets'
+]);
+const SR25_DC_LADDER = Object.freeze([
+  Object.freeze({ dc: 5, label: 'Very easy' }),
+  Object.freeze({ dc: 10, label: 'Easy' }),
+  Object.freeze({ dc: 15, label: 'Medium' }),
+  Object.freeze({ dc: 20, label: 'Hard' }),
+  Object.freeze({ dc: 25, label: 'Very hard' }),
+  Object.freeze({ dc: 30, label: 'Nearly impossible' })
+]);
+const SR25_PROFILE_DEFAULTS = Object.freeze({
+  'dnd-2024-srd-5.2.1': Object.freeze({
+    id: 'dnd-2024-srd-5.2.1',
+    edition: '2024',
+    sourceName: 'Dungeons & Dragons Systems Reference Document',
+    sourceVersion: '5.2.1',
+    dcScale: '2024-typical',
+    houseRules: Object.freeze({
+      classIdentityEdge: false,
+      flankingACBonus: false,
+      travelFatiguePenalty: false,
+      customDCPresets: false
+    })
+  }),
+  'solo-realms-v24-enhanced': Object.freeze({
+    id: 'solo-realms-v24-enhanced',
+    edition: '2024-compatible',
+    sourceName: 'Solo Realms V24 enhanced rules profile',
+    sourceVersion: '24.0.0',
+    dcScale: 'solo-realms-custom',
+    houseRules: Object.freeze({
+      classIdentityEdge: true,
+      flankingACBonus: true,
+      travelFatiguePenalty: true,
+      customDCPresets: true
+    })
+  })
+});
+const SR25_OLD_CUSTOM_DC_PRESETS = Object.freeze({
+  trivial: 5, routine: 8, standard: 12, hard: 16, expert: 20, legendary: 25
+});
+
+function sr25IsRecord(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+function sr25ClampString(value, maximum, label, required = false) {
+  const result = String(value ?? '').trim();
+  if (required && !result) throw new Error(label + ' is required.');
+  if (result.length > maximum) throw new Error(label + ' exceeds ' + maximum + ' characters.');
+  return result;
+}
+function sr25FiniteInteger(value, label, minimum, maximum) {
+  const number = Number(value);
+  if (!Number.isInteger(number) || number < minimum || number > maximum) {
+    throw new Error(label + ' must be an integer from ' + minimum + ' to ' + maximum + '.');
+  }
+  return number;
+}
+function sr25ProfileDefaults(id) {
+  const source = SR25_PROFILE_DEFAULTS[id];
+  if (!source) throw new Error('Unsupported campaign ruleset: ' + id);
+  return {
+    schema: SR25_RULESET_SCHEMA,
+    id: source.id,
+    edition: source.edition,
+    sourceName: source.sourceName,
+    sourceVersion: source.sourceVersion,
+    dcScale: source.dcScale,
+    houseRules: { ...source.houseRules }
+  };
+}
+function sr25NormalizeProfile(value, fallbackId) {
+  if (!sr25IsRecord(value)) return sr25ProfileDefaults(fallbackId);
+  const id = String(value.id || fallbackId);
+  const normalized = sr25ProfileDefaults(id);
+  if (value.schema !== undefined && value.schema !== SR25_RULESET_SCHEMA) {
+    throw new Error('Campaign ruleset schema is not supported.');
+  }
+  for (const key of SR25_HOUSE_RULES) {
+    if (value.houseRules && Object.prototype.hasOwnProperty.call(value.houseRules, key)) {
+      if (typeof value.houseRules[key] !== 'boolean') {
+        throw new Error('Campaign house-rule flag ' + key + ' must be true or false.');
+      }
+      normalized.houseRules[key] = value.houseRules[key];
+    }
+  }
+  return normalized;
+}
+function sr25EnsureCampaignRules(campaign, options = {}) {
+  if (!sr25IsRecord(campaign)) throw new Error('A campaign is required to establish its ruleset.');
+  let profile = campaign.ruleset;
+  if (!profile) {
+    const hasPriorV20Rules = !!(campaign.sr20 && campaign.sr20.version);
+    const legacy = options.legacy === true || (options.legacy === undefined && hasPriorV20Rules);
+    const id = legacy ? 'solo-realms-v24-enhanced' : 'dnd-2024-srd-5.2.1';
+    profile = sr25ProfileDefaults(id);
+  } else {
+    const fallback = String(profile.id || 'dnd-2024-srd-5.2.1');
+    profile = sr25NormalizeProfile(profile, fallback);
+  }
+  campaign.ruleset = profile;
+  return profile;
+}
+function sr25MigrateSaveState(value) {
+  if (!sr25IsRecord(value) || !sr25IsRecord(value.campaign)) {
+    throw new Error('Save is missing a campaign for ruleset migration.');
+  }
+  const hadV20Profile = !!(value.campaign.sr20 && value.campaign.sr20.version);
+  sr25EnsureCampaignRules(value.campaign, { legacy: hadV20Profile });
+  return value;
+}
+function sr25SetCampaignProfile(campaign, profileId) {
+  if (!Object.prototype.hasOwnProperty.call(SR25_PROFILE_DEFAULTS, profileId)) {
+    throw new Error('Choose a supported rules profile.');
+  }
+  campaign.ruleset = sr25ProfileDefaults(profileId);
+  return campaign.ruleset;
+}
+function sr25SetHouseRule(campaign, key, enabled) {
+  if (!SR25_HOUSE_RULES.includes(key)) throw new Error('Unknown house-rule option: ' + key);
+  if (typeof enabled !== 'boolean') throw new Error('House-rule selection must be true or false.');
+  const profile = sr25EnsureCampaignRules(campaign);
+  profile.houseRules[key] = enabled;
+  return profile;
+}
+function sr25HouseRuleEnabled(key, campaign = state?.campaign) {
+  if (!SR25_HOUSE_RULES.includes(key) || !sr25IsRecord(campaign)) return false;
+  try {
+    return sr25EnsureCampaignRules(campaign).houseRules[key] === true;
+  } catch (error) {
+    return false;
+  }
+}
+function sr25DCReference() {
+  return SR25_DC_LADDER.map(item => ({ dc: item.dc, label: item.label }));
+}
+function sr25DCSource(options = {}) {
+  if (options.dcSource) return String(options.dcSource);
+  if (options.difficulty && options.difficulty !== 'auto') return 'solo-realms-custom-preset';
+  if (options.challenge && options.challenge !== 'standard') return 'solo-realms-custom-offset';
+  return '2024-typical-or-director';
+}
+
+function sr25ValidateMechanicRequest(value) {
+  try {
+    if (!sr25IsRecord(value)) throw new Error('Mechanic request must be an object.');
+    if (value.schema !== SR25_REQUEST_SCHEMA) throw new Error('Mechanic request schema is not supported.');
+    const mechanic = String(value.mechanic || '');
+    if (!SR25_MECHANICS.includes(mechanic)) throw new Error('Mechanic type is not supported.');
+    const actorId = sr25ClampString(value.actorId, 120, 'Actor ID', true);
+    const action = sr25ClampString(value.action, 500, 'Action', true);
+    const targetId = sr25ClampString(value.targetId, 120, 'Target ID');
+    const rulesetId = String(value.rulesetId || '');
+    if (!Object.prototype.hasOwnProperty.call(SR25_PROFILE_DEFAULTS, rulesetId)) {
+      throw new Error('Mechanic request must identify a supported campaign ruleset.');
+    }
+    const campaignRevision = sr25FiniteInteger(value.campaignRevision ?? 0, 'Campaign revision', 0, 2147483647);
+    const ability = value.ability == null || value.ability === '' ? null : String(value.ability).toUpperCase();
+    if (ability && !SR25_ABILITIES.includes(ability)) throw new Error('Ability must be one of the six ability scores.');
+    const skill = value.skill == null || value.skill === '' ? null : sr25ClampString(value.skill, 40, 'Skill');
+    const actionCost = value.actionCost == null ? null : value.actionCost;
+    if (actionCost !== null) {
+      if (!sr25IsRecord(actionCost) || !['action', 'bonus-action', 'reaction', 'movement', 'free', 'spell', 'resource', 'time'].includes(String(actionCost.kind))) {
+        throw new Error('Action cost is not a supported structured cost.');
+      }
+    }
+    const context = value.context == null ? {} : value.context;
+    if (!sr25IsRecord(context)) throw new Error('Mechanic context must be a plain object.');
+    const contextText = JSON.stringify(context);
+    if (contextText.length > 20000) throw new Error('Mechanic context exceeds 20,000 characters.');
+    return {
+      ok: true,
+      request: {
+        schema: SR25_REQUEST_SCHEMA,
+        id: sr25ClampString(value.id || 'request', 120, 'Request ID', true),
+        mechanic, actorId, targetId, action, ability, skill, actionCost,
+        rulesetId, campaignRevision, context: JSON.parse(contextText)
+      }
+    };
+  } catch (error) {
+    return { ok: false, reason: String(error?.message || error) };
+  }
+}
+function sr25CreateMechanicRequest(input, campaign = state?.campaign) {
+  try {
+    if (!sr25IsRecord(input)) throw new Error('Mechanic request input must be an object.');
+    const profile = sr25EnsureCampaignRules(campaign);
+    const candidate = {
+      schema: SR25_REQUEST_SCHEMA,
+      id: input.id || (typeof sr20Id === 'function' ? sr20Id() : 'request'),
+      mechanic: input.mechanic,
+      actorId: input.actorId || state?.character?.id || state?.character?.name || 'player',
+      targetId: input.targetId || '',
+      action: input.action,
+      ability: input.ability || null,
+      skill: input.skill || null,
+      actionCost: input.actionCost ?? null,
+      rulesetId: input.rulesetId || profile.id,
+      campaignRevision: input.campaignRevision ?? campaign.revision ?? 0,
+      context: input.context || {}
+    };
+    return sr25ValidateMechanicRequest(candidate);
+  } catch (error) {
+    return { ok: false, reason: String(error?.message || error) };
+  }
+}
+function sr25ResolveD20(input) {
+  if (!sr25IsRecord(input)) throw new Error('A typed d20 resolution request is required.');
+  const mechanic = String(input.mechanic || '');
+  if (!SR25_D20_MECHANICS.includes(mechanic)) {
+    throw new Error('The d20 resolver supports ability checks, saving throws and attack rolls only.');
+  }
+  const targetNumber = Number(input.targetNumber);
+  const modifier = Number(input.modifier ?? 0);
+  if (!Number.isFinite(targetNumber) || targetNumber < 0 || targetNumber > 1000) {
+    throw new Error('Target number must be a finite value from 0 to 1000.');
+  }
+  if (!Number.isFinite(modifier) || Math.abs(modifier) > 1000) {
+    throw new Error('Modifier must be a finite value between -1000 and 1000.');
+  }
+  const advantage = !!input.advantage && !input.disadvantage;
+  const disadvantage = !!input.disadvantage && !input.advantage;
+  let rolls = input.rolls;
+  if (!Array.isArray(rolls)) rolls = input.roll === undefined ? [] : [input.roll];
+  const required = advantage || disadvantage ? 2 : 1;
+  if (rolls.length !== required) {
+    throw new Error((required === 2 ? 'Advantage or disadvantage requires exactly two d20 results.' : 'A normal d20 test requires exactly one d20 result.'));
+  }
+  rolls = rolls.map((roll, index) => sr25FiniteInteger(roll, 'd20 result ' + (index + 1), 1, 20));
+  const die = advantage ? Math.max(...rolls) : disadvantage ? Math.min(...rolls) : rolls[0];
+  const total = die + modifier;
+  const critical = mechanic === 'attack' && die === 20;
+  const automaticMiss = mechanic === 'attack' && die === 1;
+  const success = mechanic === 'attack'
+    ? critical || (!automaticMiss && total >= targetNumber)
+    : total >= targetNumber;
+  return {
+    schema: SR25_RESULT_SCHEMA,
+    mechanic,
+    dice: rolls.slice(),
+    die,
+    modifier,
+    total,
+    targetNumber,
+    targetType: mechanic === 'attack' ? 'armor-class' : 'difficulty-class',
+    success,
+    critical,
+    automaticMiss,
+    natural: die
+  };
+}
+function sr25ResolveAbilityCheck(rolls, modifier, dc, options = {}) {
+  return sr25ResolveD20({ mechanic: 'ability-check', rolls, modifier, targetNumber: dc, ...options });
+}
+function sr25ResolveSavingThrow(rolls, modifier, dc, options = {}) {
+  return sr25ResolveD20({ mechanic: 'saving-throw', rolls, modifier, targetNumber: dc, ...options });
+}
+function sr25ResolveAttack(rolls, modifier, ac, options = {}) {
+  return sr25ResolveD20({ mechanic: 'attack', rolls, modifier, targetNumber: ac, ...options });
+}
+function sr25NormalizeLegacyD20Result(result, targetNumber, mechanic) {
+  if (!sr25IsRecord(result)) return result;
+  const die = Number(result.roll ?? result.r ?? result.die ?? result.d20 ?? result.r1);
+  if (!Number.isInteger(die) || die < 1 || die > 20) return result;
+  const dc = Number(targetNumber);
+  const total = Number(result.total);
+  const bonus = Number.isFinite(total) ? total - die : Number(result.bonus || 0);
+  const canonical = sr25ResolveD20({
+    mechanic, roll: die, modifier: bonus, targetNumber: dc
+  });
+  return {
+    ...result,
+    roll: die,
+    total: canonical.total,
+    success: canonical.success,
+    mechanic,
+    targetNumber: dc,
+    natural: die,
+    critical: canonical.critical
+  };
+}
+
+// Legacy saves with V20/V21 campaign records retain their documented Enhanced profile.
+// New campaigns and pre-V20 saves default to the strict 2024 SRD 5.2.1 profile.
+if (typeof sr20EnsureCampaign === 'function') {
+  const sr25EnsureCampaignBase = sr20EnsureCampaign;
+  sr20EnsureCampaign = function() {
+    const hadV20 = !!(state?.campaign?.sr20 && state.campaign.sr20.version);
+    const result = sr25EnsureCampaignBase();
+    if (state?.campaign) sr25EnsureCampaignRules(state.campaign, { legacy: hadV20 });
+    return result;
+  };
+}
+if (typeof sr21EnsureCampaign === 'function') {
+  const sr25EnsurePlayerCampaignBase = sr21EnsureCampaign;
+  sr21EnsureCampaign = function() {
+    const result = sr25EnsurePlayerCampaignBase();
+    if (state?.campaign) sr25EnsureCampaignRules(state.campaign);
+    return result;
+  };
+}
+if (typeof sr20ClassEdge === 'function') {
+  const sr25ClassEdgeBase = sr20ClassEdge;
+  sr20ClassEdge = function(skill, character) {
+    if (!sr25HouseRuleEnabled('classIdentityEdge')) return false;
+    return sr25ClassEdgeBase(skill, character);
+  };
+}
+if (typeof sr14AbilityCheck === 'function') {
+  const sr25AbilityCheckBase = sr14AbilityCheck;
+  sr14AbilityCheck = function(character, skill, dc, options = {}) {
+    return sr25NormalizeLegacyD20Result(
+      sr25AbilityCheckBase(character, skill, dc, options), dc, 'ability-check'
+    );
+  };
+}
+if (typeof sr14SavingThrow === 'function') {
+  const sr25SavingThrowBase = sr14SavingThrow;
+  sr14SavingThrow = function(character, ability, dc, options = {}) {
+    return sr25NormalizeLegacyD20Result(
+      sr25SavingThrowBase(character, ability, dc, options), dc, 'saving-throw'
+    );
+  };
+}
+
+// The imported-save validator is pure. Migrate only its normalized copy, never the caller's object.
+if (typeof sr18ValidateSave === 'function') {
+  const sr25ValidateSaveBase = sr18ValidateSave;
+  sr18ValidateSave = function(value) {
+    const result = sr25ValidateSaveBase(value);
+    if (!result?.ok) return result;
+    try {
+      sr25MigrateSaveState(result.state);
+      return result;
+    } catch (error) {
+      return { ok: false, reason: String(error?.message || error) };
+    }
+  };
+}
+if (typeof globalThis.__SR14_TEST === 'object' && globalThis.__SR14_TEST) {
+  globalThis.__SR14_TEST.abilityCheck = sr14AbilityCheck;
+  globalThis.__SR14_TEST.savingThrow = sr14SavingThrow;
+}
+if (typeof globalThis.__SR18_TEST === 'object' && globalThis.__SR18_TEST) {
+  globalThis.__SR18_TEST.validateSave = sr18ValidateSave;
+}
+if (typeof globalThis.__SR21_TEST === 'object' && globalThis.__SR21_TEST) {
+  globalThis.__SR21_TEST.skillBonus = sr21SkillBonus;
+}
+globalThis.__SR25_TEST = {
+  version: SR25_VERSION,
+  rulesetSchema: SR25_RULESET_SCHEMA,
+  ensureCampaignRules: sr25EnsureCampaignRules,
+  migrateSaveState: sr25MigrateSaveState,
+  setProfile: sr25SetCampaignProfile,
+  setHouseRule: sr25SetHouseRule,
+  houseRuleEnabled: sr25HouseRuleEnabled,
+  dcReference: sr25DCReference,
+  customDCPresets: { ...SR25_OLD_CUSTOM_DC_PRESETS },
+  mechanics: SR25_MECHANICS.slice(),
+  createRequest: sr25CreateMechanicRequest,
+  validateRequest: sr25ValidateMechanicRequest,
+  resolveD20: sr25ResolveD20,
+  resolveAbilityCheck: sr25ResolveAbilityCheck,
+  resolveSavingThrow: sr25ResolveSavingThrow,
+  resolveAttack: sr25ResolveAttack,
+  normalizeLegacyResult: sr25NormalizeLegacyD20Result
+};
