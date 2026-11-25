@@ -107,6 +107,8 @@ function sr20AdvanceAdventure(text,mode,success){
   g.momentum++;const objective=g.objectives.find(o=>o.status==='active'&&sr20TokenMatch(text,(o.title||'')+' '+(o.detail||'')));
   if(objective){objective.progress=Math.min(Math.max(1,Number(objective.goal)||1),(Number(objective.progress)||0)+1);if(objective.progress>=Math.max(1,Number(objective.goal)||1))objective.status='completed';if(objective.type==='main'&&c.mainQuest){c.mainQuest.progress=objective.progress;if(objective.status==='completed'){c.flags=c.flags||{};c.flags.sr20MainObjectiveCompleted=true;}}}
   if(g.momentum>=3){g.momentum=0;sr20AddLead('An opportunity opens because of the party’s recent progress: '+String(text||'their latest success').slice(0,120)+'.','campaign-opening');}
+ }else{
+  sr20AddConsequence('The failed approach leaves an unresolved complication: '+String(text||'the party’s plan').slice(0,130)+'.',mode);
  }
 }
 function sr20ActionNarrative(mode,success){
