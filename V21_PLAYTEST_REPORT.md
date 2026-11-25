@@ -41,6 +41,12 @@ The player-stage suite also probes repeated same-day objective actions, unrelate
 
 The new suites are wired into `bash tests/run_v18.sh`. The release-integrity suite verifies that the V21 runtime and controls ship identically in standalone, PWA, and Pages builds. On the final tested PR revision, the full regression passed **663/663 numbered assertions** and the independent V18 hardening workflow also passed **663/663**. Across the two independent CI runtimes (Node 22 and Node 20), that is **1,326 successful assertion executions**, with the release-integrity suite passing in both. The V21-specific results were **58/58 player-stage assertions** and **15/15 long-session stress assertions** per run.
 
+## V22 data-integrity hardening
+
+The follow-on repository audit adds a compatibility-aware save guard and a persistent legacy reward ledger. Validation works on a deep copy, checks finite/ranged character data, bounds nested lists and total structure depth, rejects reserved object keys and circular data, and retains the V3/V17 optional-field normalization path. Legacy reward IDs are stored separately from the 100-entry display history and survive JSON round trips, so pruning old display entries cannot make a reward claimable again.
+
+The focused suite covers V3/V17 compatibility, invalid stats/classes/levels, oversized inventory/NPC lists, malformed nested lists, deep/circular/reserved-key structures, non-finite values, oversized imports, source immutability, active-campaign preservation, legacy-history migration, and permanent deduplication after 125 awards.
+
 ## Non-blocking CI notices
 
 The successful GitHub Actions runs still emit the Node `punycode` deprecation notice and a warning that some GitHub actions currently target Node 20. These did not fail either workflow and are separate maintenance items.

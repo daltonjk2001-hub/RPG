@@ -21,6 +21,8 @@ BEHAVIOR = ROOT / "source" / "SR19_REACTIVE_WORLD.js"
 GAMEPLAY = ROOT / "source" / "SR20_GAMEPLAY_ENGINE.js"
 SCREEN_LAYOUT = ROOT / "source" / "SR20_SCREEN_LAYOUT.js"
 PLAYTEST_HARDENING = ROOT / "source" / "SR21_PLAYTEST_HARDENING.js"
+SAVE_GUARD = ROOT / "source" / "SR22_SAVE_GUARD.js"
+LEGACY_LEDGER = ROOT / "source" / "SR22_LEGACY_LEDGER.js"
 THEME_CSS = ROOT / "source" / "SR20_UI_THEME.css"
 BASE_HTML = ROOT / "build-inputs" / "Solo_Realms_V17_Main.html"
 MAIN_HTML = ROOT / "Solo_Realms_V18_Main.html"
@@ -65,6 +67,8 @@ def build_runtime() -> str:
     gameplay = GAMEPLAY.read_text(encoding="utf-8").rstrip()
     screen_layout = SCREEN_LAYOUT.read_text(encoding="utf-8").rstrip()
     playtest_hardening = PLAYTEST_HARDENING.read_text(encoding="utf-8").rstrip()
+    save_guard = SAVE_GUARD.read_text(encoding="utf-8").rstrip()
+    legacy_ledger = LEGACY_LEDGER.read_text(encoding="utf-8").rstrip()
 
     if not base.rstrip().endswith("})();"):
         raise SystemExit("Unexpected V17 IIFE wrapper; refusing unsafe concatenation.")
@@ -106,10 +110,12 @@ def build_runtime() -> str:
     base = base.replace("reliable-v17", "systems-v18")
     base = base.replace("Solo Realms V17 character and client.", "Solo Realms V18 character and client.")
 
-    combined = base + layer + "\n\n" + studio + "\n\n" + behavior + "\n\n" + gameplay + "\n\n" + screen_layout + "\n\n" + playtest_hardening + "\n\n})();\n"
+    combined = base + save_guard + "\n\n" + legacy_ledger + "\n\n" + layer + "\n\n" + studio + "\n\n" + behavior + "\n\n" + gameplay + "\n\n" + screen_layout + "\n\n" + playtest_hardening + "\n\n})();\n"
     required_contracts = {
         "six four-hour watches per calendar day": "const SR18_WATCHES_PER_DAY=6;",
         "V21 four-hour watch integration": "const SR21_WORLD_CLOCK_CONTRACT='four-hour-watches-v1';",
+        "namespaced save validation module": "const SR22SaveGuard = (() => {",
+        "namespaced legacy reward ledger": "const SR22LegacyLedger = (() => {",
     }
     missing = [label for label, marker in required_contracts.items() if marker not in combined]
     if missing:
@@ -118,7 +124,7 @@ def build_runtime() -> str:
 
 
 def main() -> None:
-    for path in (SRC, LAYER, STUDIO, BEHAVIOR, GAMEPLAY, SCREEN_LAYOUT, PLAYTEST_HARDENING, THEME_CSS, BASE_HTML, MANIFEST, SERVICE_WORKER):
+    for path in (SRC, SAVE_GUARD, LEGACY_LEDGER, LAYER, STUDIO, BEHAVIOR, GAMEPLAY, SCREEN_LAYOUT, PLAYTEST_HARDENING, THEME_CSS, BASE_HTML, MANIFEST, SERVICE_WORKER):
         require_file(path)
 
     combined = build_runtime()

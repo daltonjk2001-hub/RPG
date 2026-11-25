@@ -36,6 +36,10 @@ pass('Standalone remains a self-contained single-script application', mainScript
 pass('PWA contains the same game runtime plus its service-worker registration', pwaScripts.length === 2 && pwaScripts[0] === mainScripts[0] && pwaScripts[1].includes("serviceWorker.register('./sw.js')"));
 pass('GitHub Pages HTML is byte-identical to the canonical PWA entry point', docs === pwa && docsScripts.length === 2 && docsScripts[0] === mainScripts[0]);
 
+pass('V22 bounded save guard and permanent legacy ledger are assembled into every player-facing runtime',
+  mainScripts[0].includes('const SR22SaveGuard = (() => {') &&
+  mainScripts[0].includes('const SR22LegacyLedger = (() => {') &&
+  pwaScripts[0] === mainScripts[0] && docsScripts[0] === mainScripts[0]);
 pass('V21 player-stage hardening is assembled into standalone, PWA and Pages runtimes',
   mainScripts[0].includes("const SR21_VERSION='21.0.0';") && pwaScripts[0] === mainScripts[0] && docsScripts[0] === mainScripts[0]);
 for (const [label, marker] of [

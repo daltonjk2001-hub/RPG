@@ -36,7 +36,7 @@ Use the **Save Center** button in the top bar.
 - **Download campaign backup (.json)** creates a portable campaign file.
 - **Import campaign backup** validates the file before restoring it.
 
-V18 can read the V3/V17 localStorage slot formats when the old slot data exists and passes validation. Keep exported JSON backups before clearing browser data or changing devices. Browser-local IndexedDB is not synchronized between devices.
+V18 can read the V3/V17 localStorage slot formats when the old slot data exists and passes validation. The V22 validator checks character identity and ability ranges, bounds nested arrays and serialized data, rejects cyclic/reserved-key structures, and normalizes optional older campaign fields on a copy before restore. Failed or malformed imports do not replace the active campaign. Keep exported JSON backups before clearing browser data or changing devices. Browser-local IndexedDB is not synchronized between devices.
 
 ## 5. Rules and combat behavior
 
