@@ -98,6 +98,15 @@ try{
  assert('Natural 1 on an attack automatically misses despite a high modifier',!miss.success&&miss.automaticMiss);
  const protectedHelper=T25.resolveAbilityCheck([20],0,21,{mechanic:'attack',targetNumber:1});
  assert('Typed ability-check helper cannot be overridden into an attack or a different target number',protectedHelper.mechanic==='ability-check'&&protectedHelper.targetNumber===21&&!protectedHelper.success);
+ const attackCharacter=hero('Fighter');attackCharacter.hp=40;attackCharacter.maxHp=40;
+ T21.state={character:attackCharacter,campaign:campaign(false),log:[],combat:null,view:'adventure'};T21.ensure();
+ const enemy={name:'Test Ogre',attack:0},claw={name:'Claw',description:'Melee Weapon Attack: +0 to hit, reach 5 ft.',damage:[{dice:'1d4',type:'slashing'}]};
+ const attackTarget={player:{name:attackCharacter.name,character:attackCharacter},pos:null};
+ T25.withAttackRoll(()=>({r:20,total:-50}),()=>T18.resolveMonsterAction(enemy,claw,attackTarget));
+ assert('Live monster attack path uses typed natural-20 auto-hit and critical damage',attackCharacter.hp<40);
+ attackCharacter.hp=40;
+ T25.withAttackRoll(()=>({r:1,total:100}),()=>T18.resolveMonsterAction(enemy,claw,attackTarget));
+ assert('Live monster attack path uses typed natural-1 automatic miss',attackCharacter.hp===40);
  const advantage=T25.resolveD20({mechanic:'ability-check',rolls:[4,18],advantage:true,modifier:0,targetNumber:15});
  const disadvantage=T25.resolveD20({mechanic:'ability-check',rolls:[4,18],disadvantage:true,modifier:0,targetNumber:15});
  assert('Advantage keeps the higher of two d20 rolls',advantage.die===18&&advantage.success);
