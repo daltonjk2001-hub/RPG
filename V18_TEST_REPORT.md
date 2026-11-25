@@ -1,6 +1,6 @@
 # Solo Realms V18 test report
 
-**Result: 432 / 432 automated assertions passed.**
+**Expected result after the follow-up deep checks: 433 automated assertions.**
 
 Tested on the packaged V18 source in a Node.js VM with simulated browser DOM, localStorage, IndexedDB and download/network fixtures. The run command is `bash tests/run_v18.sh`. The runner now invokes `tools/build_v18.py` first, so the tested HTML/PWA artifacts are regenerated from the tracked repository source files on every run.
 
@@ -14,9 +14,9 @@ Tested on the packaged V18 source in a Node.js VM with simulated browser DOM, lo
 | Character resources | 30 | 30 | Retained V15.2 class resources and Hit Dice coverage |
 | Reactive DM | 19 | 19 | Retained V16 NPC memory, companion behavior, consequences, rivals and protocol compatibility |
 | Library reliability | 28 | 28 | V17 library install/restore, reference downloads, JSON backup import and restart behavior |
-| V18 integrated systems | 44 | 44 | Spell effect inference, typed damage, monster Multiattack execution, ranged attacks and Parry, recharge cooldowns, improvisation, world state, eight save slots, recovery, restore/import, restore safety and invalid-save rejection |
+| V18 integrated systems | 45 | 45 | Spell effect inference, typed damage, monster Multiattack execution, ranged attacks and Parry, recharge cooldowns, improvisation, world state, eight save slots, recovery, restore/import, restore safety and invalid-save rejection |
 | Save database resilience | 3 | 3 | IndexedDB initialization retry, transient failure recovery and post-retry save write |
-| **Total** | **432** | **432** | |
+| **Total** | **433** | **433** | |
 
 Additional checks passed:
 - `node --check source/solo_realms_v18.js`
@@ -59,6 +59,6 @@ This is automated regression evidence in a simulated browser environment. It doe
 
 After merge commit [ee04cce](https://github.com/daltonjk2001-hub/RPG/commit/ee04cce42c733b31e2fa806e5aeda8038ac26a23), the main-branch GitHub Actions run [#45532721593](https://github.com/daltonjk2001-hub/RPG/actions/runs/45532721593) rebuilt the standalone game, PWA and GitHub Pages mirror and passed all ten suites. The post-merge suite totals were 179, 37, 19, 15, 58, 30, 19, 28, 43 and 3 assertions respectively (**431 / 431**).
 
-A further regression assertion was then added to exercise the destructive-restore guard under simultaneous IndexedDB recovery-write failure and localStorage fallback failure. The expected behavior is that restore rejects and leaves the currently active campaign unchanged. This raises the V18 integrated systems suite to 44 checks and the complete suite total to **432 / 432** once the follow-up verification workflow passes.
+A further regression assertion was then added to exercise the destructive-restore guard under simultaneous IndexedDB recovery-write failure and localStorage fallback failure. The expected behavior is that restore rejects and leaves the currently active campaign unchanged. A further combat review found that a recharge ability included in a monster's Multiattack sequence could bypass the cooldown filter. The solo and multiplayer Multiattack paths now omit recharge actions that have not recharged, while still allowing other ready attacks in the sequence. A dedicated regression assertion covers that case. Together these changes raise the V18 integrated systems suite to 45 checks and the complete suite total to **433**; the follow-up verification workflow must pass before these are reported as passed.
 
 The GitHub Pages deployment workflow [#45532721292](https://github.com/daltonjk2001-hub/RPG/actions/runs/45532721292) also completed successfully for the merge commit. The external Pages URL could not be independently fetched by the available browser inspection service, so successful deployment is confirmed by GitHub Actions, while direct browser rendering remains a manual check.
