@@ -131,7 +131,7 @@ try{
  T25.setProfile(T21.state.campaign,'solo-realms-v24-enhanced');
  travel=T21.state.campaign.sr20;travel.survival.fatigue=5;
  const enhancedTravel=T21.resolve('We travel down the old road for one watch',{mode:'travel',roll:15,dc:14});
- assert('Core profile does not apply the Enhanced high-fatigue −2 check penalty',strictTravel.total===15&&strictTravel.success);
+ assert('Core profile does not apply the Enhanced high-fatigue −2 check penalty',strictTravel.total===15&&strictTravel.success,JSON.stringify({strictTravel,profile:T21.state.campaign.ruleset,fatigue:T21.state.campaign.sr20?.survival?.fatigue,houseRule:T25.houseRuleEnabled('travelFatiguePenalty',T21.state.campaign)}));
  assert('Enhanced profile applies the high-fatigue −2 check penalty',enhancedTravel.total===13&&!enhancedTravel.success);
 
  T21.state=freshState('Fighter',false);T21.state.combat={round:1,enemies:[{name:'Training Dummy',hp:20,ac:15}]};T21.ensure();
@@ -148,8 +148,8 @@ try{
  T25.setProfile(T21.state.campaign,'solo-realms-v24-enhanced');
  assert('Enhanced profile applies the legacy +2 AC cover benefit',T20.coverActive()===true);
 
- assert('Custom DC presets are disabled under the 2024 core profile',T25.explicitDifficulty('routine')===null&&T25.challengeDC(12,'difficult')===12);
- assert('Core profile fallback covers all six typical DC bands',T25.situationDC('I inspect the watchtower','exploration',null)===15&&T25.situationDC('I attempt a very easy task','exploration',null)===5&&T25.situationDC('I complete an easy task','exploration',null)===10&&T25.situationDC('I cross the collapsing bridge while pursued','exploration',null)===20&&T25.situationDC('I complete a very hard task','exploration',null)===25&&T25.situationDC('I attempt a nearly impossible feat','exploration',null)===30);
+ assert('Custom DC presets are disabled under the 2024 core profile',T25.explicitDifficulty('routine')===null&&T25.challengeDC(12,'difficult')===12,JSON.stringify({explicit:T25.explicitDifficulty('routine'),offset:T25.challengeDC(12,'difficult'),profile:T21.state.campaign.ruleset,houseRule:T25.houseRuleEnabled('customDCPresets',T21.state.campaign)}));
+ assert('Core profile fallback covers all six typical DC bands',T25.situationDC('I inspect the watchtower','exploration',null)===15&&T25.situationDC('I attempt a very easy task','exploration',null)===5&&T25.situationDC('I complete an easy task','exploration',null)===10&&T25.situationDC('I cross the collapsing bridge while pursued','exploration',null)===20&&T25.situationDC('I complete a very hard task','exploration',null)===25&&T25.situationDC('I attempt a nearly impossible feat','exploration',null)===30,JSON.stringify(['I inspect the watchtower','I attempt a very easy task','I complete an easy task','I cross the collapsing bridge while pursued','I complete a very hard task','I attempt a nearly impossible feat'].map(x=>[x,T25.situationDC(x,'exploration',null)]).concat([['profile',T21.state.campaign.ruleset],['enabled',T25.houseRuleEnabled('customDCPresets',T21.state.campaign)]])));
  assert('Custom DC presets remain available under the Enhanced profile',T25.explicitDifficulty('routine')===8&&T25.challengeDC(12,'difficult')===17&&T25.situationDC('I inspect the watchtower','exploration',null)===12);
  T25.setProfile(T21.state.campaign,'dnd-2024-srd-5.2.1');
  assert('Core-profile Adventure UI presents the Director DC option without custom preset values',T25.difficultyOptions().includes('2024 typical DC')&&!T25.difficultyOptions().includes('Routine'));
