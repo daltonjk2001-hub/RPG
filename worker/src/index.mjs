@@ -185,8 +185,10 @@ async function callOpenAI(env, kind, input, system, signal) {
     headers: { 'Authorization': 'Bearer ' + env.AI_API_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: env.AI_MODEL || 'gpt-6.2-sol',
-      instructions: system,
-      input: [{ role: 'user', content: input }],
+      input: [
+        { role: 'developer', content: system },
+        { role: 'user', content: input }
+      ],
       max_output_tokens: outputBudget(kind),
       store: false,
       text: { format: { type: 'json_object' } }

@@ -69,7 +69,7 @@ The Wrangler configuration deploys a Durable Object-backed per-IP rate limiter (
 6. The client validates adjudication again and sends the approved plan into the deterministic rules engine.
 7. Narration runs only after the engine has completed the action and is guarded against stale responses.
 
-The Worker does not persist prompts. OpenAI requests set store=false. Provider retention and account settings are governed by your selected provider’s current terms and controls.
+The Worker does not persist prompts. OpenAI Responses requests set store=false and put the persistent Dungeon Master contract in the first developer input message, before player text. This follows GPT-6.2’s current Responses API guidance for instruction ordering and stable prompt prefixes. Provider retention and account settings are governed by your selected provider’s current terms and controls.
 
 ## Evaluation contract
 

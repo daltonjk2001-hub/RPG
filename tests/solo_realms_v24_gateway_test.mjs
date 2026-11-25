@@ -56,10 +56,12 @@ try {
   assert('Worker never forwards API key in request body', !JSON.stringify(upstream.body).includes('test-secret'));
   assert('OpenAI Responses requests are non-stored', upstream.body.store === false);
   assert('Trusted DM policy is separate from player text',
-    upstream.body.instructions.includes('PLAYER AGENCY') &&
-    upstream.body.input[0].content.includes('I persuade the gate guard'));
+    upstream.body.input[0].role === 'developer' &&
+    upstream.body.input[0].content.includes('PLAYER AGENCY') &&
+    upstream.body.input[1].role === 'user' &&
+    upstream.body.input[1].content.includes('I persuade the gate guard'));
   assert('Client cannot choose a different provider or model',
-    upstream.body.model === 'gpt-6.2-sol' && upstream.body.instructions.includes('mechanical state'));
+    upstream.body.model === 'gpt-6.2-sol' && upstream.body.input[0].content.includes('mechanical state'));
 
   response = await call('/api/director', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
