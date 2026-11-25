@@ -82,7 +82,9 @@ try{
  assert('V21 state survives the existing Save Center JSON snapshot and validation',!!valid.ok&&valid.state.campaign.sr21.version==='21.0.0'&&!!valid.state.character.sr21Legacy,JSON.stringify({reason:valid.reason,classId:round.state.character?.classId,ancestry:round.state.character?.ancestry,stats:round.state.character?.stats,inventory:Array.isArray(round.state.character?.inventory),proficiencies:Array.isArray(round.state.character?.proficiencies),log:Array.isArray(round.state.log)}));
  reset(1);T.state.campaign.sr21.onboarding={step:0,complete:false,hidden:false};
  assert('New-player first-session guide is optional and visible',T.tutorial().includes('First-session guide'));
- for(const [i,[text,mode]] of ['I search the old tower for a clue','I talk to the guard about the bridge','We travel onward for one watch','We make camp and rest for the night'].entries().map((x,i)=>[i,[x,['exploration','social','travel','survival'][i]]])){
+ const tutorialActions=[['I search the old tower for a clue','exploration'],['I talk to the guard about the bridge','social'],['We travel onward for one watch','travel'],['We make camp and rest for the night','survival']];
+ for(let i=0;i<tutorialActions.length;i++){
+  const [text,mode]=tutorialActions[i];
   T.resolve(text,{mode,roll:18,dc:5,target:mode==='social'?'Town Guard':undefined});
   assert('Tutorial stage '+(i+1)+' progresses after '+mode+' action',T.state.campaign.sr21.onboarding.step===i+1);
  }
