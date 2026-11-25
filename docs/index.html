@@ -8094,6 +8094,7 @@ try{render();}catch(e){console.warn('V19 Director Studio initial render:',e);}
  * Adds persistent personality-weighted behavior. V18 remains authoritative for mechanics.
  */
 const SR19_BEHAVIOR_VERSION='19.1.0';
+function sr19TopInfluences(mix=sr19Normalize(sr19GetSettings().personalityMix),threshold=10){return SR19_KEYS.filter(k=>mix[k]>=threshold).sort((a,b)=>mix[b]-mix[a]);}
 function sr19EnsureBehaviorWorld(){
  const w=sr18EnsureWorld();if(!w)return null;
  w.directorStudio=w.directorStudio&&typeof w.directorStudio==='object'?w.directorStudio:{};
