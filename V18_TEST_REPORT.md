@@ -1,6 +1,6 @@
 # Solo Realms V18 test report
 
-**Result: 431 / 431 automated assertions passed.**
+**Result: 432 / 432 automated assertions passed.**
 
 Tested on the packaged V18 source in a Node.js VM with simulated browser DOM, localStorage, IndexedDB and download/network fixtures. The run command is `bash tests/run_v18.sh`. The runner now invokes `tools/build_v18.py` first, so the tested HTML/PWA artifacts are regenerated from the tracked repository source files on every run.
 
@@ -14,8 +14,9 @@ Tested on the packaged V18 source in a Node.js VM with simulated browser DOM, lo
 | Character resources | 30 | 30 | Retained V15.2 class resources and Hit Dice coverage |
 | Reactive DM | 19 | 19 | Retained V16 NPC memory, companion behavior, consequences, rivals and protocol compatibility |
 | Library reliability | 28 | 28 | V17 library install/restore, reference downloads, JSON backup import and restart behavior |
-| V18 integrated systems | 38 | 38 | Spell effect inference, typed damage, monster Multiattack execution, improvisation, world state, eight save slots, recovery, restore/import and invalid-save rejection |
-| **Total** | **423** | **423** | |
+| V18 integrated systems | 44 | 44 | Spell effect inference, typed damage, monster Multiattack execution, ranged attacks and Parry, recharge cooldowns, improvisation, world state, eight save slots, recovery, restore/import, restore safety and invalid-save rejection |
+| Save database resilience | 3 | 3 | IndexedDB initialization retry, transient failure recovery and post-retry save write |
+| **Total** | **432** | **432** | |
 
 Additional checks passed:
 - `node --check source/solo_realms_v18.js`
@@ -47,8 +48,17 @@ The GitHub repository package tracks only the V17 HTML shell required by the bui
 
 ## V18.1.2 cross-system hardening verification
 
-GitHub Actions run [#45532271595](https://github.com/daltonjk2001-hub/RPG/actions/runs/45532271595) completed successfully on the consolidated hardening branch. The workflow rebuilt the standalone game, PWA and GitHub Pages mirror, then ran all ten regression suites: **431 / 431 assertions passed**.
+GitHub Actions run [#45532271595](https://github.com/daltonjk2001-hub/RPG/actions/runs/45532271595) completed successfully on the consolidated hardening branch. The workflow rebuilt the standalone game, PWA and GitHub Pages mirror, then ran all ten regression suites: **431 / 431 assertions passed** in the original V18.1.2 hardening run.
 
 New focused checks cover ranged stat-block attack parsing, preserving melee-only Parry reactions, recharge cooldown tracking, recovery from a transient IndexedDB initialization failure, retrying the database open, and completing a save write after the retry. The existing progression, NPC/companion memory, spell, world, legacy campaign, multiplayer and PWA suites also passed.
 
 This is automated regression evidence in a simulated browser environment. It does not replace live browser/device checks, two-device multiplayer playtesting, or a long-running campaign compatibility test using a user's real save files.
+
+
+## Post-merge deep verification
+
+After merge commit [ee04cce](https://github.com/daltonjk2001-hub/RPG/commit/ee04cce42c733b31e2fa806e5aeda8038ac26a23), the main-branch GitHub Actions run [#45532721593](https://github.com/daltonjk2001-hub/RPG/actions/runs/45532721593) rebuilt the standalone game, PWA and GitHub Pages mirror and passed all ten suites. The post-merge suite totals were 179, 37, 19, 15, 58, 30, 19, 28, 43 and 3 assertions respectively (**431 / 431**).
+
+A further regression assertion was then added to exercise the destructive-restore guard under simultaneous IndexedDB recovery-write failure and localStorage fallback failure. The expected behavior is that restore rejects and leaves the currently active campaign unchanged. This raises the V18 integrated systems suite to 44 checks and the complete suite total to **432 / 432** once the follow-up verification workflow passes.
+
+The GitHub Pages deployment workflow [#45532721292](https://github.com/daltonjk2001-hub/RPG/actions/runs/45532721292) also completed successfully for the merge commit. The external Pages URL could not be independently fetched by the available browser inspection service, so successful deployment is confirmed by GitHub Actions, while direct browser rendering remains a manual check.
