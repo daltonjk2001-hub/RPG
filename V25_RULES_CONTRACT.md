@@ -83,9 +83,9 @@ The existing V20 and V21 regression suites explicitly select the Enhanced profil
 
 V25 is a rules-contract and compatibility foundation. It does **not** complete the entire D&D rules engine. In particular:
 
-1. The new typed attack resolver is a tested deterministic service, but every existing weapon/spell/monster attack call has not yet been refactored to submit a typed V25 request.
+1. V26 routes the 13 inventoried shared-roll paths (solo/multiplayer weapon attacks, opportunity attacks, class-granted attacks, spell attacks, monster special attacks and multiattack) through the typed V25 attack resolver. Older direct-die/companion/feature handlers remain under audit; see `V26_ATTACK_PIPELINE.md`.
 2. The broader action request schema is a contract for future mechanics; contest resolution, spell/action economy, conditions, reactions, and resource transactions still need feature-specific deterministic services.
 3. The SRD profile establishes the default DC and house-rule boundary. It does not, by itself, prove complete 2024 feature parity across all classes, subclasses, spells, feats, equipment, monsters, or encounter rules.
 4. Automated Node regression tests do not replace browser/device QA, multiplayer sessions on separate devices, or human tabletop playtesting.
 
-The next implementation work should complete the monolith call-site audit and route the remaining player weapon/spell attack and specialized save calls through the typed contract, then expand the rules registry into versioned class, feature, spell, condition, monster, and action definitions with per-feature acceptance tests. Ability/proficiency services are now extracted, but condition application and damage mitigation order remain in existing V18 services.
+The next implementation work should complete the remaining direct-roll attack and specialized-save audit, then extend typed transactions to condition, damage, resource and action-economy effects. Ability/proficiency services are extracted, but condition application and damage mitigation order remain in existing V18 services.

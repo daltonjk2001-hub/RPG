@@ -18,7 +18,7 @@ The natural-1/natural-20 rules above follow the 2024 Basic Rules / SRD 5.2.1. Th
 | Code owner / path | Observed role | V25 disposition | Remaining gap |
 |---|---|---|---|
 | `source/solo_realms_v17.js` | Retained base implementations for `sr11RollAttack`, `sr14AbilityCheck`, and `sr14SavingThrow` | Compatibility adapters remain; V25 normalizes legacy ability-check/save outcomes | Base monolith still needs a complete call-site-level inventory and phased replacement |
-| `source/SR18_SYSTEMS_LAYER.js` — `sr18ResolveMonsterAction` | Monster save-based actions and monster attack-vs-AC resolution | Monster attack comparison now calls `sr25ResolveAttack`; natural 20 adds a critical damage die; natural 1 misses. Saving throws flow through the normalized save adapter | Player weapon attacks and all spell attack callers still need a unified call-site audit |
+| `source/SR18_SYSTEMS_LAYER.js` — `sr18ResolveMonsterAction` | Monster save-based actions and monster attack-vs-AC resolution | Monster attack comparison calls `sr25ResolveAttack`; natural 20 adds a critical damage die; natural 1 misses. Saving throws flow through the normalized save adapter | Direct-roll attack handlers and specialized save paths remain to be inventoried |
 | `source/SR18_SYSTEMS_LAYER.js` — spell effects | Saving throws, concentration saves, condition and damage effects | Existing save calls receive V25 total-vs-DC normalization | Spell-specific exception catalog and full damage/effect service extraction remain incomplete |
 | `source/SR20_GAMEPLAY_ENGINE.js` — `sr20ResolvePlayerAction` | Integrated skill, travel, tactical and campaign checks | House-rule effects are now profile-gated | Older V20 action resolver still has its own calculation path; it is retained for Enhanced compatibility |
 | `source/SR21_PLAYTEST_HARDENING.js` — `sr21CanonicalCheck` | Main V21 ability-check resolution, advantage/disadvantage and fatigue integration | Final check now uses `sr25ResolveAbilityCheck`; ability/proficiency/skill modifiers are exposed as pure services | Group checks, contests, and feature-granted d20 exceptions are not yet extracted |
@@ -47,6 +47,10 @@ V25 currently provides a 2024 SRD 5.2.1 core profile and a Solo Realms Enhanced 
 3. Route remaining attack/save callers through typed V25 requests without bypassing range, cover, advantage, resources or action economy.
 4. Add seeded end-to-end cases for spell attacks, contests/group checks, death saves, condition expiry, damage resistance/immunity/vulnerability, and save/load round-trips.
 5. Keep any untraced or untested path marked partial until its source, unit tests, integration tests, persistence tests and player-facing result are all present.
+
+## V26 attack-vs-AC routing update
+
+V26 adds a reproducible-build migration for 13 shared-roll attack-vs-AC call sites. The build fails if any of the five expected legacy expression shapes changes count. See `V26_ATTACK_PIPELINE.md` for the caller-by-caller mapping and explicitly partial direct-roll paths.
 
 ## Current validation state
 

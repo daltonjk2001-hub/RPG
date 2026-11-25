@@ -95,6 +95,56 @@ def build_runtime() -> str:
         "sr12ApplyDamage(e,amount,effect.type||sp.damageType||'force')",
     )
 
+    # Route the retained V17/V11/V12 attack-vs-AC call sites through the V25
+    # typed attack resolver. The legacy roll function still owns condition,
+    # advantage/disadvantage and feature bonuses; this adapter owns the final
+    # hit/critical/miss rule against the already computed AC.
+    attack_checks = [
+        ("roll.r===20||(roll.r!==1&&roll.total>=ac)", "sr25AttackSuccess(roll,ac)", 4),
+        ("roll.r===20||(roll.r!==1&&roll.total>=e.ac)", "sr25AttackSuccess(roll,e.ac)", 2),
+        ("r.r===20||(r.r!==1&&r.total>=ac)", "sr25AttackSuccess(r,ac)", 3),
+        ("r.r===20||(r.r!==1&&r.total>=e.ac)", "sr25AttackSuccess(r,e.ac)", 3),
+        ("r.r!==1&&(r.r===20||r.total>=e.ac)", "sr25AttackSuccess(r,e.ac)", 1),
+    ]
+    for old_check, new_check, expected_count in attack_checks:
+        actual_count = base.count(old_check)
+        if actual_count != expected_count:
+            raise SystemExit(
+                f"Expected {expected_count} legacy attack checks for {old_check!r}, "
+                f"found {actual_count}; inspect V17 call sites before rebuilding."
+            )
+        base = base.replace(old_check, new_check)
+
+    # Migrate direct-die companion and class-feature attack totals which do not
+    # use sr11RollAttack. These expressions include the selected d20 plus the
+    # exact modifier already calculated by their caller.
+    direct_attack_checks = [
+        ("let r=die(20)+p.attack;if(r>=enemy.ac)",
+         "let r=die(20)+p.attack;if(sr25AttackTotalSuccess(r,p.attack,enemy.ac))", 2),
+        ("let r=die(20)+p.attack+(c.nextAttackBonus||0);if(r>=enemy.ac)",
+         "let r=die(20)+p.attack+(c.nextAttackBonus||0);if(sr25AttackTotalSuccess(r,p.attack+(c.nextAttackBonus||0),enemy.ac))", 1),
+        ("const r=die(20)+p.attack;if(r>=e.ac)",
+         "const r=die(20)+p.attack;if(sr25AttackTotalSuccess(r,p.attack,e.ac))", 2),
+        ("const r=die(20)+ally.attack;if(r>=target.ac)",
+         "const r=die(20)+ally.attack;if(sr25AttackTotalSuccess(r,ally.attack,target.ac))", 1),
+        ("const r=die(20)+(p.attack||0);if(r>=target.ac)",
+         "const r=die(20)+(p.attack||0);if(sr25AttackTotalSuccess(r,(p.attack||0),target.ac))", 1),
+        ("const r=die(20)+p.attack;if(r>=enemy.ac)",
+         "const r=die(20)+p.attack;if(sr25AttackTotalSuccess(r,p.attack,enemy.ac))", 1),
+        ("const r=die(20)+mod(c.stats.DEX)+profBonus();if(r>=e.ac)",
+         "const r=die(20)+mod(c.stats.DEX)+profBonus();if(sr25AttackTotalSuccess(r,mod(c.stats.DEX)+profBonus(),e.ac))", 1),
+        ("const r=die(20)+(Number(p.attack)||0);if(r>=e.ac)",
+         "const r=die(20)+(Number(p.attack)||0);if(sr25AttackTotalSuccess(r,(Number(p.attack)||0),e.ac))", 1),
+    ]
+    for old_check, new_check, expected_count in direct_attack_checks:
+        actual_count = base.count(old_check)
+        if actual_count != expected_count:
+            raise SystemExit(
+                f"Expected {expected_count} direct-die attack checks for {old_check!r}, "
+                f"found {actual_count}; inspect V17 companion/feature paths before rebuilding."
+            )
+        base = base.replace(old_check, new_check)
+
     # Advance the multiplayer handshake while leaving the independent V15
     # resource protocol's own version marker intact.
     replacements = [

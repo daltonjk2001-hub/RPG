@@ -277,6 +277,30 @@ function sr25ResolveSavingThrow(rolls, modifier, dc, options = {}) {
 function sr25ResolveAttack(rolls, modifier, ac, options = {}) {
   return sr25ResolveD20({ ...options, mechanic: 'attack', rolls, modifier, targetNumber: ac });
 }
+
+function sr25ResolveAttackRecord(rollRecord, armorClass) {
+  if (!sr25IsRecord(rollRecord)) throw new Error('An attack roll record is required.');
+  const die = Number(rollRecord.r ?? rollRecord.roll ?? rollRecord.die);
+  const total = Number(rollRecord.total);
+  if (!Number.isFinite(total)) throw new Error('Attack roll total must be finite.');
+  return sr25ResolveAttack([die], total - die, armorClass);
+}
+function sr25AttackSuccess(rollRecord, armorClass) {
+  return sr25ResolveAttackRecord(rollRecord, armorClass).success;
+}
+function sr25ResolveAttackTotal(total, modifier, armorClass) {
+  const normalizedTotal = Number(total);
+  const normalizedModifier = Number(modifier);
+  if (!Number.isFinite(normalizedTotal) || !Number.isFinite(normalizedModifier)) return null;
+  try {
+    return sr25ResolveAttack([normalizedTotal - normalizedModifier], normalizedModifier, armorClass);
+  } catch (error) {
+    return null;
+  }
+}
+function sr25AttackTotalSuccess(total, modifier, armorClass) {
+  return sr25ResolveAttackTotal(total, modifier, armorClass)?.success === true;
+}
 function sr25AbilityModifier(score) {
   const value = Number(score ?? 10);
   return Math.floor(((Number.isFinite(value) ? value : 10) - 10) / 2);
@@ -638,6 +662,10 @@ globalThis.__SR25_TEST = {
   resolveAbilityCheck: sr25ResolveAbilityCheck,
   resolveSavingThrow: sr25ResolveSavingThrow,
   resolveAttack: sr25ResolveAttack,
+  resolveAttackRecord: sr25ResolveAttackRecord,
+  attackSuccess: sr25AttackSuccess,
+  resolveAttackTotal: sr25ResolveAttackTotal,
+  attackTotalSuccess: sr25AttackTotalSuccess,
   normalizeLegacyResult: sr25NormalizeLegacyD20Result,
   abilityModifier: sr25AbilityModifier,
   proficiencyBonus: sr25ProficiencyBonus,
