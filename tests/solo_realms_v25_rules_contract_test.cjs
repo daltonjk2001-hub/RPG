@@ -78,6 +78,12 @@ try{
  assert('Oversized mechanic context is rejected',!T25.validateRequest({...request.request,context:{notes:'x'.repeat(20001)}}).ok);
  assert('Unstructured action-cost values are rejected',!T25.validateRequest({...request.request,actionCost:'action'}).ok);
 
+ assert('Ability modifier service follows the score-to-modifier formula',T25.abilityModifier(8)===-1&&T25.abilityModifier(10)===0&&T25.abilityModifier(16)===3);
+ assert('Proficiency service follows the level 1–20 progression',[[1,2],[5,3],[9,4],[13,5],[17,6],[20,6]].every(([level,bonus])=>T25.proficiencyBonus(level)===bonus));
+ const pureSkill=T25.skillBonus(hero('Rogue'),'Stealth',{houseRules:{classIdentityEdge:false}});
+ const enhancedPureSkill=T25.skillBonus(hero('Rogue'),'Stealth',{houseRules:{classIdentityEdge:true}});
+ assert('Pure skill service stacks ability, proficiency and expertise without a class-edge house rule',pureSkill.ability===3&&pureSkill.proficiency===3&&pureSkill.expertiseBonus===3&&pureSkill.classEdge===0&&pureSkill.total===9);
+ assert('Pure skill service applies a class-edge only when the ruleset explicitly enables it',enhancedPureSkill.classEdge===1&&enhancedPureSkill.total===10);
  const nat20Check=T25.resolveAbilityCheck([20],0,21);
  const nat1Check=T25.resolveAbilityCheck([1],10,11);
  assert('Natural 20 on an ability check still compares the modified total to the DC',nat20Check.die===20&&!nat20Check.success&&!nat20Check.critical);
