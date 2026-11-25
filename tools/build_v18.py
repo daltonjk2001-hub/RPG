@@ -188,9 +188,9 @@ def main() -> None:
     for asset in core_assets:
         require_file(asset)
         cache_digest.update(asset.relative_to(PWA_DIR).as_posix().encode("utf-8"))
-        cache_digest.update(b"\\0")
+        cache_digest.update(bytes([0]))
         cache_digest.update(asset.read_bytes())
-        cache_digest.update(b"\\0")
+        cache_digest.update(bytes([0]))
     cache_name = f"solo-realms-systems-v18-{cache_digest.hexdigest()[:16]}"
 
     sw_text = SERVICE_WORKER.read_text(encoding="utf-8")
