@@ -8,7 +8,7 @@ const SR23_EVENT_LIMIT = 240;
 const SR23_MEMORY_LIMIT = 8;
 
 const SR23_INTENT_RULES = [
-  { mode: 'social', pattern: /\b(?:persuad\w*|convinc\w*|negotia\w*|bargain\w*|deceiv\w*|lie|bluff\w*|intimidat\w*|threaten\w*|bribe\w*|interrogat\w*|apologiz\w*|plead\w*|parley|talk|speak|ask|question)\b/gi },
+  { mode: 'social', pattern: /\b(?:persuad\w*|convinc\w*|negotia\w*|bargain\w*|deceiv\w*|lie|bluff\w*|intimidat\w*|\b(?:lie|deceiv\w*|bluff\w*|intimidat\w*|threaten\w*|bribe\w*|interrogat\w*|apologiz\w*|plead\w*|parley|talk|speak|ask|question)\b/gi },
   { mode: 'tactical', pattern: /\b(?:attack\w*|fight\w*|strike\w*|shoot\w*|stab\w*|slash\w*|ambush\w*|flank\w*|parry\w*|disarm\w*|grapple\w*|retreat\w*|withdraw\w*|defend\w*|take cover|dodge\w*|charge\w*)\b/gi },
   { mode: 'survival', pattern: /\b(?:make camp|camp|rest|sleep|forage\w*|hunt\w*|fish\w*|gather\w*|cook\w*|repair\w*|craft\w*|treat wounds|purify|boil water|collect water)\b/gi },
   { mode: 'travel', pattern: /\b(?:travel\w*|journey\w*|march\w*|hike\w*|cross\w*|sail\w*|ride\w*|set out|move camp|navigate\w*)\b/gi },
@@ -46,7 +46,7 @@ function sr23IsRest(action) {
 
 function sr23HasMeaningfulRisk(action, mode) {
   const text = String(action || '').toLowerCase();
-  const explicit = /\b(?:under fire|while pursued|during a storm|blizzard|flood|raging river|deadly|dangerous|unstable|collapsing|one chance|time is running out|guarded|watched|sentinels?|sentries|trapped|trap|locked|sealed|hidden|secret|concealed|contested|resist\w*|force open|break down|escape|steal|pick the lock|disarm|sneak|hide from|avoid detection|track|trail|forage|hunt|fish|climb|leap|swim|cross|persuad\w*|convinc\w*|negotia\w*|deceiv\w*|bluff\w*|intimidat\w*|threaten\w*|bribe|interrogat\w*|repair|craft|treat wounds)\b/.test(text);
+  const explicit = /\b(?:under fire|while pursued|during a storm|blizzard|flood|raging river|deadly|dangerous|unstable|collapsing|one chance|time is running out|guarded|watched|sentinels?|sentries|trapped|trap|locked|sealed|hidden|secret|concealed|contested|resist\w*|force open|break down|escape|steal|pick the lock|disarm|sneak|hide from|avoid detection|track|trail|forage|hunt|fish|climb|leap|swim|cross|persuad\w*|convinc\w*|negotia\w*|deceiv\w*|bluff\w*|intimidat\w*|\b(?:lie|deceiv\w*|bluff\w*|intimidat\w*|threaten\w*|bribe|interrogat\w*|repair|craft|treat wounds)\b/.test(text);
   if (mode === 'travel') return explicit;
   if (mode === 'social') return explicit || /\b(?:make them|get him to|get her to|win over|change their mind|reveal|confess)\b/.test(text);
   if (mode === 'exploration') return explicit || /\b(?:search|investigat\w*|inspect|examin\w*|study|look for|find out|identify|decipher|notice|spot|listen for)\b/.test(text);
@@ -349,6 +349,7 @@ function sr23ResolvePlayerAction(text, options = {}) {
   const explicitMode = String(resolved.mode || 'auto') !== 'auto';
   const explicitSkill = String(resolved.skill || 'auto') !== 'auto';
   const explicitDifficulty = String(resolved.difficulty || 'auto') !== 'auto';
+  const explicitDC = Number.isFinite(Number(resolved.dc)) && Number(resolved.dc) >= 5 && Number(resolved.dc) <= 30;
   const plan = sr23PlanAction(action, {
     mode: explicitMode ? resolved.mode : 'auto',
     skill: explicitSkill ? resolved.skill : 'auto',
@@ -357,7 +358,7 @@ function sr23ResolvePlayerAction(text, options = {}) {
 
   resolved.mode = plan.mode;
   if (!explicitSkill && plan.skill) resolved.skill = plan.skill;
-  if (!explicitDifficulty) {
+  if (!explicitDifficulty && !explicitDC) {
     resolved.difficulty = 'auto';
     resolved.dc = plan.dc;
     resolved.challenge = 'standard';
@@ -417,6 +418,7 @@ globalThis.__SR23_TEST = {
   ensure: sr23EnsureCampaign,
   record: sr23RecordEvent,
   retrieve: sr23RetrieveMemories,
+  context: () => srAIContext(),
   resolve: sr23ResolvePlayerAction,
   panel: sr23DirectorPanel,
   get state() { return state; },
