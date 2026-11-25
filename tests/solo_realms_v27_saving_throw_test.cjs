@@ -81,11 +81,7 @@ try{
  const effectSave=T25.withD20Rolls([11],()=>T14.savingThrow(wizard,'WIS',18));
  assert('V18 temporary saving-throw bonuses are adjudicated by the typed save resolver',effectSave.total===18&&effectSave.success);
 
- const liveCreature=creature('Fighter');
- const player=creature('Wizard');
- const oldState=T21SafeState();
  assert('Player-facing save adapter remains callable after V27 integration',typeof T14.savingThrow==='function'&&typeof T25.heroSave==='function');
- function T21SafeState(){return {character:player,campaign:{day:1,region:'Test Reach',companions:[],npcs:[],sideQuests:[]},log:[],combat:null,view:'adventure'};}
 
  const creatureSaveCalls=html.split('sr25ResolveCreatureSavingThrow(').length-1;
  assert('Build routes the six inventoried monster/target save paths through V25',creatureSaveCalls>=7,`observed typed calls including function declaration=${creatureSaveCalls}`);
