@@ -28,7 +28,6 @@ assert('Improvised combat input does not clutter the main controls',combat.inclu
 T.state.combat=null;
 assert('Rules guide includes required SRD 5.2.1 attribution and license',T.rulesPage().includes('SRD 5.2.1')&&T.rulesPage().includes('Creative Commons Attribution 4.0'));
 context.__SR18_TEST.render();
-console.log('LAYOUT_NAV_BEGIN');console.log(S.nav().slice(0,5000));console.log('LAYOUT_NAV_END');console.log('LAYOUT_RENDER_BEGIN');console.log(app.innerHTML.slice(0,10000));console.log('LAYOUT_RENDER_END');
 assert('Rendered document identifies itself as V18 Complete Rules & Living Campaign',document.title.includes('V18')&&document.title.includes('Complete Rules & Living Campaign'));
 assert('Rendered shell includes a visible Save Center entry' ,app.innerHTML.includes('data-action="sr18-open-save-center"'));
 assert('Rendered shell includes game navigation and character state',app.innerHTML.includes('simple-topbar')&&app.innerHTML.includes('simple-sidebar')&&app.innerHTML.includes('Rowan Vale'));
