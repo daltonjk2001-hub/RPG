@@ -93,6 +93,9 @@ try {
   reset();
   assert('V23 module version is present', T.version === '23.0.0');
   const modelFallback = T.plan('I persuade Mara Venn to reveal what she knows.');
+  const nestedRuling = T.extractModelPlan(JSON.stringify({ reply: JSON.stringify({ mode: 'social', requiresCheck: true, skill: 'Persuasion', dc: 15, reason: 'The keeper is hesitant.' }) }));
+  assert('Connected Director ruling parser unwraps the established conversation reply envelope', nestedRuling?.mode === 'social' && nestedRuling?.skill === 'Persuasion' && nestedRuling?.dc === 15);
+  assert('Connected Director ruling parser rejects non-JSON reply text', T.extractModelPlan(JSON.stringify({ reply: 'I would ask for Persuasion.' })) === null);
   const modelPlan = T.validateModelPlan({ mode: 'social', requiresCheck: true, skill: 'Persuasion', dc: 20, reason: 'Mara has a reason to withhold the information.' }, 'I persuade Mara Venn to reveal what she knows.', modelFallback);
   assert('A valid connected-Director ruling is accepted as a structured plan', modelPlan.source === 'connected-model' && modelPlan.mode === 'social' && modelPlan.skill === 'Persuasion' && modelPlan.dc === 20);
   const invalidSkillPlan = T.validateModelPlan({ mode: 'social', requiresCheck: true, skill: 'Arcane Persuasion', dc: 20 }, 'I persuade Mara Venn to reveal what she knows.', modelFallback);
