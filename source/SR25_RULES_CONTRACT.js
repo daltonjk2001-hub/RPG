@@ -277,6 +277,48 @@ function sr25ResolveSavingThrow(rolls, modifier, dc, options = {}) {
 function sr25ResolveAttack(rolls, modifier, ac, options = {}) {
   return sr25ResolveD20({ ...options, mechanic: 'attack', rolls, modifier, targetNumber: ac });
 }
+function sr25AbilityModifier(score) {
+  const value = Number(score ?? 10);
+  return Math.floor(((Number.isFinite(value) ? value : 10) - 10) / 2);
+}
+function sr25ProficiencyBonus(level) {
+  const normalized = Math.max(1, Math.min(20, Math.floor(Number(level) || 1)));
+  return 2 + Math.floor((normalized - 1) / 4);
+}
+function sr25SkillBonus(character, skill, options = {}) {
+  if (!sr25IsRecord(character)) throw new Error('A character is required for skill bonus calculation.');
+  const normalize = value => String(value || '').toLowerCase().replace(/[^a-z]/g, '');
+  const key = normalize(skill);
+  if (!key) throw new Error('A skill is required for skill bonus calculation.');
+  const ability = SR20_SKILL_ABILITIES?.[key] || 'INT';
+  const includes = values => Array.isArray(values) && values.some(item =>
+    normalize(typeof item === 'string' ? item : item?.name) === key
+  );
+  const expert = includes(character.expertise) || includes(character.skillExpertise) ||
+    includes(character.expertiseSkills) || includes(character.skills?.expertise);
+  const trained = includes(character.proficiencies) || includes(character.skillProficiencies) ||
+    includes(character.skills?.proficient) || expert;
+  const proficiencyBonus = sr25ProficiencyBonus(character.level);
+  const abilityMod = sr25AbilityModifier(character.stats?.[ability] ?? character.stats?.[ability.toLowerCase()] ?? 10);
+  const houseRules = sr25IsRecord(options.houseRules) ? options.houseRules : {};
+  const className = String(character.classId || character.class || character.className || '').toLowerCase();
+  const classKey = Object.keys(SR20_CLASS_EDGES || {}).find(name => className.includes(name));
+  const classEdge = houseRules.classIdentityEdge === true && !!classKey &&
+    (SR20_CLASS_EDGES[classKey] || []).includes(key) ? 1 : 0;
+  const proficiency = trained ? proficiencyBonus : 0;
+  const expertiseBonus = expert ? proficiencyBonus : 0;
+  return {
+    ability: abilityMod,
+    proficiency,
+    expertise: expertiseBonus,
+    expertiseBonus,
+    classEdge,
+    total: abilityMod + proficiency + expertiseBonus + classEdge,
+    trained,
+    expert,
+    edge: classEdge > 0
+  };
+}
 function sr25NormalizeLegacyD20Result(result, targetNumber, mechanic) {
   if (!sr25IsRecord(result)) return result;
   const die = Number(result.roll ?? result.r ?? result.die ?? result.d20 ?? result.r1);
@@ -316,6 +358,18 @@ if (typeof sr21EnsureCampaign === 'function') {
     const result = sr25EnsurePlayerCampaignBase();
     if (state?.campaign) sr25EnsureCampaignRules(state.campaign);
     return result;
+  };
+}
+if (typeof sr21SkillBonus === 'function') {
+  sr21SkillBonus = function(character, skill) {
+    const profile = sr25EnsureCampaignRules(state?.campaign);
+    return sr25SkillBonus(character, skill, { houseRules: profile.houseRules });
+  };
+}
+if (typeof sr20SkillBonus === 'function') {
+  sr20SkillBonus = function(character, skill) {
+    const profile = sr25EnsureCampaignRules(state?.campaign);
+    return sr25SkillBonus(character, skill, { houseRules: profile.houseRules });
   };
 }
 if (typeof sr20ClassEdge === 'function') {
@@ -529,6 +583,9 @@ globalThis.__SR25_TEST = {
   resolveSavingThrow: sr25ResolveSavingThrow,
   resolveAttack: sr25ResolveAttack,
   normalizeLegacyResult: sr25NormalizeLegacyD20Result,
+  abilityModifier: sr25AbilityModifier,
+  proficiencyBonus: sr25ProficiencyBonus,
+  skillBonus: sr25SkillBonus,
   profileDefaults: sr25ProfileDefaults,
   rulesetProfiles: Object.keys(SR25_PROFILE_DEFAULTS),
   houseRules: SR25_HOUSE_RULES.slice(),
