@@ -11,7 +11,7 @@ const builder=fs.readFileSync(path.join(root,'tools','build_v18.py'),'utf8');
 const checks=[];
 const ok=(name,pass)=>checks.push({name,pass:!!pass});
 const screens=[
-  'adventure','combat','character','inventory','journal','spells','world','worldmap',
+  'adventure','combat','character','inventory','journal','spells','world','campaign','worldmap',
   'rules','bestiary','crafting','downtime','party','gm','multiplayer','consequences',
   'ai','stronghold','downtime5','codex','tactics','treasure','factions7','exploration7','crafting7'
 ];
