@@ -18,6 +18,7 @@ const hero=(level=5)=>({name:'Integrity Tester',classId:'Fighter',ancestry:'Huma
 const campaign=()=>({day:1,chapter:1,region:'Test Reach',location:'Stonebridge',companions:[],npcs:[],sideQuests:[],mainQuest:{title:'Find the bridge key',goal:'Search the old bridge',progress:0}});
 const save=()=>({character:hero(),campaign:campaign(),log:[{day:1,msg:'A valid legacy save.'}]});
 const clone=value=>JSON.parse(JSON.stringify(value));
+(async()=>{
 try{
  assert('V22 data modules expose versioned namespaced APIs',T22.version==='22.0.0'&&typeof T22.validateSave==='function'&&typeof T22.ensureLegacy==='function'&&typeof T22.claimLegacy==='function');
  let valid=save();const result=T18.validateSave(valid);
@@ -113,3 +114,4 @@ for(const item of checks)console.log((item.pass?'PASS ':'FAIL ')+item.name+(item
 const passed=checks.filter(x=>x.pass).length;
 console.log('\\nRESULT '+passed+'/'+checks.length+' V22 data-integrity assertions passed');
 if(passed!==checks.length)process.exitCode=1;
+})().catch(error=>{console.error(error?.stack||error);process.exitCode=1;});
