@@ -205,11 +205,11 @@ function sr21ResolvePlayerAction(text,options={}){
    if(!water){g.survival.waterShortages++;g.survival.fatigue=sr20Clamp(g.survival.fatigue+1,0,6);}
    g.survival.exposure++;
   }
-  try{if(typeof sr18AdvanceWorld==='function')sr18AdvanceWorld('travel',1);}catch(e){}
+  try{if(typeof sr18AdvanceWorld==='function')for(let i=0;i<watches;i++)sr18AdvanceWorld('travel',0);}catch(e){}
  }else if(mode==='survival'&&/\b(rest|camp|sleep)\b/i.test(action)){
   const meal=sr20ConsumeSupply(/\b(rations?|food|trail meals?|provisions?)\b/i);
   g.survival.fatigue=sr20Clamp(g.survival.fatigue-(meal?2:1),0,6);g.survival.exposure=Math.max(0,g.survival.exposure-1);
-  g.clock.watch=beforeWatch+2;try{if(typeof sr18AdvanceWorld==='function')sr18AdvanceWorld('long_rest',1);}catch(e){}
+  g.clock.watch=beforeWatch+2;try{if(typeof sr18AdvanceWorld==='function')for(let i=0;i<2;i++)sr18AdvanceWorld('long_rest',0);}catch(e){}
  }else{g.clock.watch=beforeWatch;try{if(typeof sr18AdvanceWorld==='function')sr18AdvanceWorld('action',0);}catch(e){}}
  if(mode==='survival'&&success&&/\b(forage|hunt|fish|gather|refill|collect|purify|boil)\b/i.test(action)){
   if(/\b(water|stream|river|spring|waterskin|canteen)\b/i.test(action))sr20AddSupply('Waterskin','A filled waterskin.');

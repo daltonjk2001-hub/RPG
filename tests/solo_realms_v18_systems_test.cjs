@@ -114,6 +114,8 @@ assert('Personality simulation does not directly change hit points or gold',T.st
  T.state={character:hero(),campaign:campaign(),log:[],combat:null,view:'adventure'};
  const world=T.ensureWorld();T.addWorldEvent('test','The watch changes at midnight.');T.advanceWorld('travel',1);
  assert('Living world advances time and stores durable events',world.clock.day>=2&&world.events.some(x=>x.text.includes('watch changes')));
+ world.clock.day=10;world.clock.watch=6;T.advanceWorld('travel',0);
+ assert('Four-hour world watches roll over after six watches',world.clock.day===11&&world.clock.watch===1);
  const baseSave=T.snapshot('Test snapshot');
  assert('Portable campaign snapshot preserves living-world state',baseSave.schema==='solo-realms-v18-save-v1'&&baseSave.state.campaign.sr18?.factions?.length>=4);
  const slot=await T.storeSlot(1,'Unit test slot'),loaded=await T.readSlot(1);
