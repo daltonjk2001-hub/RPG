@@ -208,7 +208,7 @@ def main() -> None:
         cache_digest.update(bytes([0]))
         cache_digest.update(asset.read_bytes())
         cache_digest.update(bytes([0]))
-    cache_name = f"solo-realms-systems-v18-{cache_digest.hexdigest()[:16]}"
+    cache_name = f"solo-realms-systems-v23-{cache_digest.hexdigest()[:16]}"
 
     sw_text = SERVICE_WORKER.read_text(encoding="utf-8")
     cache_pattern = re.compile(r"(?m)^const CACHE_NAME = .+;$")
