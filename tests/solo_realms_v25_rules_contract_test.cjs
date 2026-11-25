@@ -138,7 +138,7 @@ try{
  T25.setProfile(T21.state.campaign,'solo-realms-v24-enhanced');
  assert('Enhanced Adventure UI visibly labels custom DC presets as Solo Realms options',T25.difficultyOptions().includes('Solo Realms custom'));
  assert('Adventure campaign controls expose the current profile and explicit house-rule toggles',T25.rulesetPanel().includes('id="sr25-profile"')&&T25.rulesetPanel().includes('data-sr25-house-rule="flankingACBonus"'));
- const directorContext=T20.context();
+ const directorContext=T25.directorContext();
  assert('Director context receives the active ruleset and persisted house-rule flags',directorContext.campaign.ruleset?.id==='solo-realms-v24-enhanced'&&directorContext.campaign.ruleset.houseRules.coverACBonus===true);
 }catch(error){
  assert('V25 rules-contract suite completes without uncaught runtime errors',false,error?.stack||String(error));
