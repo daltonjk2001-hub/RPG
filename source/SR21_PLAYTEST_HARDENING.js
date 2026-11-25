@@ -138,6 +138,15 @@ function sr21AdvanceAdventure(text,mode,success){
  objective.progress=Math.min(Math.max(1,Number(objective.goal)||1),(Number(objective.progress)||0)+1);
  if(objective.progress>=Math.max(1,Number(objective.goal)||1)){
   objective.status='completed';objective.completedDay=day;
+  if(objective.type==='main'&&c.mainQuest){
+   c.mainQuest.progress=objective.progress;c.flags=c.flags||{};c.flags.sr20MainObjectiveCompleted=true;
+  }
+  if(!objective.legacyAwarded){
+   objective.legacyAwarded=true;g.legacy.completedObjectives++;g.legacy.renown+=10;
+   const count=g.legacy.completedObjectives,title=count>=20?'Legend of the Realms':count>=10?'Worldshaper':count>=5?'Seasoned Hero':'Oathkeeper';
+   if(!g.legacy.titles.includes(title))g.legacy.titles.push(title);
+   g.legacy.milestones.push({type:'objective-completed',title:objective.title,day,renown:10});
+  }
   if(Number(state.character?.level)>=20)sr21AwardLegacyXP(objective.type==='main'?1500:objective.type==='player'?750:500,'Objective completed','objective:'+objective.id);
   g.momentum++;if(g.momentum>=3){g.momentum=0;sr20AddLead('A major opportunity opens after the party completes several campaign objectives.','campaign-opening');}
  }
@@ -239,7 +248,7 @@ function sr21ResolvePlayerAction(text,options={}){
  sr21RecordTutorial(mode);try{save();}catch(e){}return outcome;
 }
 function sr21SetObjective(title,detail='',goal=2){
- const g=sr21EnsureCampaign();if(!g)throw new Error('No active campaign.');
+ const v=sr21EnsureCampaign(),g=sr20EnsureCampaign();if(!v||!g)throw new Error('No active campaign.');
  const clean=String(title||'').trim().slice(0,100);if(!clean)throw new Error('Give the objective a title.');
  const n=Math.max(1,Math.min(10,Math.floor(Number(goal)||2)));
  const active=g.objectives.filter(x=>x.status==='active').length;
