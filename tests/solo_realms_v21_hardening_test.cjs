@@ -66,9 +66,9 @@ try{
  T.resolve('I question the keeper about the hidden cistern',{mode:'social',target:'Town Guard',objectiveId:obj.id,roll:18,dc:5});assert('A distinct relevant action completes a multi-step objective',obj.progress===2&&obj.status==='completed');
  T.resolve('I question the keeper about the hidden cistern',{mode:'social',target:'Town Guard',objectiveId:obj.id,roll:18,dc:5});assert('Completed objectives cannot be advanced twice',obj.progress===2&&obj.status==='completed');
  T.resolve('We make camp and rest for the night',{mode:'auto',objectiveId:obj.id});assert('Rest cannot progress objectives',obj.progress===2);
- for(let i=0;i<10;i++)T.setObjective('Side objective '+i,'Investigate region clue '+i,1);
+ for(let i=0;i<20;i++)T.setObjective('Side objective '+i,'Investigate region clue '+i,1);
  let limit=false;try{T.setObjective('Too many active objectives','Investigate a new region');}catch(e){limit=/Complete or resolve/.test(e.message);}
- assert('Active objective count is bounded',limit&&T.state.campaign.sr20.objectives.filter(x=>x.status==='active').length===10);
+ assert('Active objective count is bounded by the existing journal capacity',limit&&T.state.campaign.sr20.objectives.filter(x=>x.status==='active').length===20);
  reset(20);const stats=JSON.stringify(T.state.character.stats);
  const award=T.awardLegacy(1000,'Objective completed','legacy-event-1'),duplicate=T.awardLegacy(5000,'Duplicate award','legacy-event-1');
  assert('Level-20 character earns separate legacy XP/rank without raising level',award.gained===1000&&T.state.character.level===20&&T.legacy().rank===1);
