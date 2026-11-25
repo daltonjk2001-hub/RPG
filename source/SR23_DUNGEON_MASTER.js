@@ -141,6 +141,23 @@ function sr23PlanAction(text, options = {}) {
   };
 }
 
+function sr23RequiresDedicatedCombatAction(action) {
+  const text = String(action || '');
+  const patterns = [
+    /\b(?:i|we|my character)\s+(?:quickly\s+|carefully\s+|immediately\s+)?(?:attack|strike|stab|slash|shoot|fire|swing|cast)\b/gi,
+    /^\s*(?:attack|strike|stab|slash|shoot|fire|swing|cast)\b/gi,
+    /\b(?:make|take) an attack\b/gi,
+    /\bcast\s+(?:a\s+|the\s+|my\s+)?spell\b/gi
+  ];
+  for (const pattern of patterns) {
+    pattern.lastIndex = 0;
+    for (const match of text.matchAll(pattern)) {
+      if (!sr23IsNegated(text, match.index)) return true;
+    }
+  }
+  return false;
+}
+
 function sr23ValidateModelPlan(candidate, action, fallback = sr23PlanAction(action)) {
   if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return fallback;
   const modes = ['exploration', 'social', 'travel', 'tactical', 'survival', 'campaign'];
@@ -189,6 +206,9 @@ function sr23BuildRulingPrompt(action, fallback, context) {
 }
 
 async function sr23RequestModelPlan(action, options = {}) {
+  if (sr23RequiresDedicatedCombatAction(action)) {
+    throw new Error('Weapon attacks and spell casts use the dedicated Combat or Spells controls so range, defenses, spell slots, and damage are resolved correctly.');
+  }
   const fallback = sr23PlanAction(action, options);
   if (!sr23ConfiguredAI() || typeof srAICall !== 'function') return fallback;
   try {
@@ -447,6 +467,9 @@ function sr23NarrateWithModel(outcome, plan) {
 function sr23ResolvePlayerAction(text, options = {}) {
   const action = String(text || '').trim().slice(0, 500);
   if (!action) throw new Error('Describe what your character is trying to do.');
+  if (sr23RequiresDedicatedCombatAction(action)) {
+    throw new Error('Weapon attacks and spell casts use the dedicated Combat or Spells controls so range, defenses, spell slots, and damage are resolved correctly.');
+  }
   if (!state?.character || !state?.campaign) throw new Error('Start a campaign before taking a gameplay action.');
 
   const resolved = typeof sr21ResolveOptions === 'function' ? sr21ResolveOptions(options) : { ...(options || {}) };
@@ -542,6 +565,7 @@ globalThis.__SR23_TEST = {
   retrieve: sr23RetrieveMemories,
   context: () => srAIContext(),
   validateModelPlan: sr23ValidateModelPlan,
+  requiresDedicatedCombatAction: sr23RequiresDedicatedCombatAction,
   buildRulingPrompt: sr23BuildRulingPrompt,
   resolve: sr23ResolvePlayerAction,
   panel: sr23DirectorPanel,
