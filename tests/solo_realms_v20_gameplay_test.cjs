@@ -39,7 +39,7 @@ try{
  const campaign=T.ensure(),objective=campaign.objectives.find(x=>x.type==='main');
  const first=T.resolve('I repair the beacon with the spare iron gear',{mode:'campaign',roll:20,dc:5});
  extra('Multi-step objective records first progress without prematurely awarding legacy',first.success&&objective.progress===1&&objective.status==='active'&&campaign.legacy.completedObjectives===0&&campaign.legacy.renown===0);
- const second=T.resolve('I repair the beacon with the spare iron gear',{mode:'campaign',roll:20,dc:5});
+ const second=T.resolve('I repair the beacon from the opposite side with the spare gear',{mode:'campaign',roll:20,dc:5});
  extra('Final objective progress completes the quest and awards legacy once',second.success&&objective.progress===2&&objective.status==='completed'&&objective.legacyAwarded===true&&campaign.legacy.completedObjectives===1&&campaign.legacy.renown===10);
  T.resolve('I repair the beacon with the spare iron gear',{mode:'campaign',roll:20,dc:5});
  extra('Repeating a completed objective cannot duplicate its renown or milestone',campaign.legacy.completedObjectives===1&&campaign.legacy.renown===10&&campaign.legacy.milestones.length===1);
