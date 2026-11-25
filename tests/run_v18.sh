@@ -9,6 +9,7 @@ for suite in multiplayer legacy ui pwa rules_campaign resource reactive reliabil
   node "tests/solo_realms_v18_${suite}_test.cjs"
 done
 node "tests/solo_realms_v20_gameplay_test.cjs"
+node "tests/solo_realms_v20_release_integrity_test.cjs"
 node - <<'NODE'
 const fs=require('node:fs');
 const manifest=JSON.parse(fs.readFileSync('pwa/manifest.webmanifest','utf8'));
