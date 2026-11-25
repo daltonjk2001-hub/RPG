@@ -41,7 +41,7 @@ Requirements: Python 3 and Node.js. From the repository root, run:
 bash tests/run_v18.sh
 ```
 
-The runner rebuilds the standalone and PWA outputs, synchronizes `docs/` from `pwa/`, and runs the V18/V19 compatibility, V20 gameplay/layout, V21 player-stage/endurance, V22 data-integrity, and V23 Director-first gameplay suites. The final run passed 698/698 numbered assertions under both Node 22 and Node 20, plus release-integrity verification. Automated level bands are gameplay proxies, not real-world tabletop experience. Android installation/touch testing, real two-device multiplayer, and human playtests still require real devices and players. See `V18_TEST_REPORT.md` and `V21_PLAYTEST_REPORT.md`.
+The runner rebuilds the standalone and PWA outputs, synchronizes `docs/` from `pwa/`, and runs the V18/V19 compatibility, V20 gameplay/layout, V21 player-stage/endurance, V22 data-integrity, and V23 Director-first gameplay suites. The latest completed V23 regression passed 739/739 numbered assertions under both Node 22 and Node 20, plus release-integrity verification; the cache-migration assertions are included in the current rerun. Automated level bands are gameplay proxies, not real-world tabletop experience. Android installation/touch testing, real two-device multiplayer, and human playtests still require real devices and players. See `V18_TEST_REPORT.md`, `V21_PLAYTEST_REPORT.md`, and `V23_DM_DESIGN.md`.
 
 ## Cost and connectivity
 
