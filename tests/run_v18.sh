@@ -8,6 +8,7 @@ node --check pwa/sw.js
 for suite in multiplayer legacy ui pwa rules_campaign resource reactive reliability systems save_db; do
   node "tests/solo_realms_v18_${suite}_test.cjs"
 done
+node "tests/solo_realms_v20_gameplay_test.cjs"
 node - <<'NODE'
 const fs=require('node:fs');
 const manifest=JSON.parse(fs.readFileSync('pwa/manifest.webmanifest','utf8'));

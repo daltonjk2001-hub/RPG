@@ -17,6 +17,7 @@ SRC = ROOT / "source" / "solo_realms_v17.js"
 LAYER = ROOT / "source" / "SR18_SYSTEMS_LAYER.js"
 STUDIO = ROOT / "source" / "SR19_DIRECTOR_STUDIO.js"
 BEHAVIOR = ROOT / "source" / "SR19_REACTIVE_WORLD.js"
+GAMEPLAY = ROOT / "source" / "SR20_GAMEPLAY_ENGINE.js"
 BASE_HTML = ROOT / "build-inputs" / "Solo_Realms_V17_Main.html"
 MAIN_HTML = ROOT / "Solo_Realms_V18_Main.html"
 PWA_DIR = ROOT / "pwa"
@@ -47,6 +48,7 @@ def build_runtime() -> str:
     layer = LAYER.read_text(encoding="utf-8").rstrip()
     studio = STUDIO.read_text(encoding="utf-8").rstrip()
     behavior = BEHAVIOR.read_text(encoding="utf-8").rstrip()
+    gameplay = GAMEPLAY.read_text(encoding="utf-8").rstrip()
 
     if not base.rstrip().endswith("})();"):
         raise SystemExit("Unexpected V17 IIFE wrapper; refusing unsafe concatenation.")
@@ -88,11 +90,11 @@ def build_runtime() -> str:
     base = base.replace("reliable-v17", "systems-v18")
     base = base.replace("Solo Realms V17 character and client.", "Solo Realms V18 character and client.")
 
-    return base + layer + "\n\n" + studio + "\n\n" + behavior + "\n\n})();\n"
+    return base + layer + "\n\n" + studio + "\n\n" + behavior + "\n\n" + gameplay + "\n\n})();\n"
 
 
 def main() -> None:
-    for path in (SRC, LAYER, STUDIO, BEHAVIOR, BASE_HTML, MANIFEST, SERVICE_WORKER):
+    for path in (SRC, LAYER, STUDIO, BEHAVIOR, GAMEPLAY, BASE_HTML, MANIFEST, SERVICE_WORKER):
         require_file(path)
 
     combined = build_runtime()
@@ -149,7 +151,7 @@ def main() -> None:
     manifest_data["description"] = (
         "Free offline-first tabletop RPG with expanded 2024 SRD spell resolution, "
         "stat-block monster tactics, flexible action adjudication, a persistent living "
-        "campaign, eight manual save slots and automatic recovery."
+        "campaign, a seven-system player-facing gameplay loop, eight manual save slots and automatic recovery."
     )
     MANIFEST.write_text(
         json.dumps(manifest_data, ensure_ascii=False, indent=2) + "\n",
@@ -171,7 +173,7 @@ def main() -> None:
 
     print(f"Built {PWA_HTML.relative_to(ROOT)} ({PWA_HTML.stat().st_size:,} bytes)")
     print(f"Synchronized {DOCS_DIR.relative_to(ROOT)}/ from {PWA_DIR.relative_to(ROOT)}/")
-    print("Patched two solo spell-damage bypasses; multiplayer protocol is 20.")
+    print("Patched typed spell damage, protocol 20, and assembled V20 gameplay systems.")
 
 
 if __name__ == "__main__":
