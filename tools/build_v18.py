@@ -118,6 +118,7 @@ def build_runtime() -> str:
         "V21 four-hour watch integration": "const SR21_WORLD_CLOCK_CONTRACT='four-hour-watches-v1';",
         "namespaced save validation module": "const SR22SaveGuard = (() => {",
         "namespaced legacy reward ledger": "const SR22LegacyLedger = (() => {",
+        "V23 Director-first gameplay module": "const SR23_VERSION = '23.0.0';",
     }
     missing = [label for label, marker in required_contracts.items() if marker not in combined]
     if missing:
