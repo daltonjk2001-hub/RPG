@@ -41,7 +41,7 @@ pass('V21 player-stage hardening is assembled into standalone, PWA and Pages run
 pass('V21 skill, difficulty, roll and objective controls are shipped in all player-facing builds',
   ['sr21-skill','sr21-difficulty','sr21-roll-mode','sr21-objective'].every(id => main.includes(id) && pwa.includes(id) && docs.includes(id)));
 
-for (const feature of ['Your first adventure', 'sr20-challenge', 'sr20-skill', 'sr20-roll-state', 'Legacy renown', 'Legend of the Realms']) {
+for (const feature of ['Your first adventure', 'sr21-skill', 'sr21-difficulty', 'sr21-roll-mode', 'Legacy renown', 'Legend of the Realms']) {
   pass('Standalone, PWA and Pages all include ' + feature,
     main.includes(feature) && pwa.includes(feature) && docs.includes(feature));
 }
