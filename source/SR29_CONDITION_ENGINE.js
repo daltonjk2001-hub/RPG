@@ -254,6 +254,26 @@ function sr29CanAct(actor,actionType='action') {
   return status.canAct;
 }
 function sr29CanMove(actor){return sr29Status(actor).speedOverride!==0;}
+/* Fail-closed 2024 grapple initiation check; callers supply measured combat facts. */
+function sr29GrappleEligibility(grappler,target,options={}) {
+  if(!grappler||!target||grappler===target)return {legal:false,reason:'invalid-creatures'};
+  const sizes=['tiny','small','medium','large','huge','gargantuan'];
+  const readSize=value=>Number.isFinite(Number(value))&&value!==''?Math.max(0,Math.min(5,Math.floor(Number(value)))):sizes.indexOf(String(value||'').trim().toLowerCase());
+  const gs=readSize(options.grapplerSize??grappler.size),ts=readSize(options.targetSize??target.size);
+  if(gs<0||ts<0)return {legal:false,reason:'unknown-size'};
+  if(ts>gs+1)return {legal:false,reason:'target-too-large'};
+  const hands=Number(options.freeHands);
+  if(!Number.isInteger(hands)||hands<0)return {legal:false,reason:'free-hands-unknown'};
+  const active=Array.isArray(options.activeGrapples)?options.activeGrapples:[];
+  const id=String(grappler.id||grappler.name||'');
+  const used=active.filter(x=>x&&String(x.grapplerId||x.sourceId||'')===id).length;
+  if(used>=hands)return {legal:false,reason:'no-free-hand'};
+  const distance=Number(options.distance),reach=Number(options.reach??5);
+  if(!Number.isFinite(distance)||!Number.isFinite(reach)||reach<=0)return {legal:false,reason:'distance-or-reach-unknown'};
+  if(distance>reach)return {legal:false,reason:'out-of-reach'};
+  return {legal:true,reason:'eligible',freeHandsRemaining:hands-used-1};
+}
+
 function sr29LongRestExhaustion(actor) {
   if(!actor||Number(actor.exhaustion)<=0)return {changed:false,before:Number(actor?.exhaustion)||0,after:Number(actor?.exhaustion)||0};
   const result=sr29ChangeExhaustion(actor,-1);
@@ -822,6 +842,6 @@ globalThis.__SR29_TEST={
   applyUiCondition:sr29ApplyUiCondition,removeUiCondition:sr29RemoveUiCondition,
   currentPhase:()=>({phase:SR29_PHASE,cycle:SR29_COMBAT_CYCLE}),
   canUseAction:sr29CanAct,
-  releaseGrapple:sr29ReleaseGrapple,reconcileGrapples:sr29ReconcileGrapples,
+  grappleEligibility:sr29GrappleEligibility,releaseGrapple:sr29ReleaseGrapple,reconcileGrapples:sr29ReconcileGrapples,
   combatParticipants:sr29CombatParticipants,reconcileCombatGrapples:sr29ReconcileCombatGrapples
 };

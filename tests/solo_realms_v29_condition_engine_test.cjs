@@ -98,6 +98,13 @@ try{
  assert('Grappled sets Speed to zero',T.status(grappled).speedOverride===0);
  assert('Grappled attackers have Disadvantage against targets other than their grappler',T.attackState(grappled,actor({id:'another-target'}),{melee:true,distance:5}).mode==='disadvantage');
  assert('Grappled attackers do not suffer this penalty against their grappler',T.attackState(grappled,actor({id:'grappler-1'}),{melee:true,distance:5}).mode==='normal');
+
+ const eligibleHolder=actor({id:'legal-holder',size:'medium'}),eligibleTarget=actor({id:'legal-target',size:'large'});
+ assert('Grapple eligibility accepts a target one size larger with a free hand and valid reach',T.grappleEligibility(eligibleHolder,eligibleTarget,{grapplerSize:'medium',targetSize:'large',freeHands:1,activeGrapples:[],distance:5,reach:5}).legal);
+ assert('Grapple eligibility rejects a target more than one size larger',T.grappleEligibility(eligibleHolder,actor(),{grapplerSize:'medium',targetSize:'huge',freeHands:1,distance:5,reach:5}).reason==='target-too-large');
+ assert('Each active grapple consumes one free hand',T.grappleEligibility(eligibleHolder,eligibleTarget,{grapplerSize:'medium',targetSize:'large',freeHands:1,activeGrapples:[{grapplerId:'legal-holder'}],distance:5,reach:5}).reason==='no-free-hand');
+ assert('Grapple eligibility rejects targets beyond reach',T.grappleEligibility(eligibleHolder,eligibleTarget,{grapplerSize:'medium',targetSize:'large',freeHands:1,distance:10,reach:5}).reason==='out-of-reach');
+ assert('Grapple eligibility fails closed when size or free-hand data is missing',T.grappleEligibility(eligibleHolder,eligibleTarget,{freeHands:1,distance:5,reach:5}).reason==='unknown-size'&&T.grappleEligibility(eligibleHolder,eligibleTarget,{grapplerSize:'medium',targetSize:'large',distance:5,reach:5}).reason==='free-hands-unknown');
  const heldAtReach=actor({id:'held-at-reach'}),holderAtReach=actor({id:'holder-at-reach'});
  const heldInstance=T.apply(heldAtReach,'grappled','permanent','claw',{grapplerId:'holder-at-reach',grappleRange:10});
  assert('Grappled instances preserve the source creature and its specific reach',heldInstance.instance.grapplerId==='holder-at-reach'&&heldInstance.instance.grappleRange===10);
