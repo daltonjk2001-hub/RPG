@@ -223,6 +223,25 @@ if(typeof sr13ProcessEnemyGroup==='function'&&typeof sr131OldEnemyTurn==='functi
     return acted;
   };
 }
+if(typeof sr18ResolveMonsterAction==='function'&&typeof sr29Apply==='function'){
+  const sr29PriorMonsterAction=sr18ResolveMonsterAction;
+  sr18ResolveMonsterAction=function(enemy,action,target){
+    const desc=sr18Text(action?.description),save=sr14ParseMonsterSave(desc),condition=sr18ParseCondition(desc);
+    if(condition!=='grappled'||!save)return sr29PriorMonsterAction.apply(this,arguments);
+    const grapplerId=String(enemy?.id||enemy?.name||'unknown-grappler');
+    const escapeDC=Number(desc.match(/escape\\s+DC\\s*(\\d+)/i)?.[1]||save.dc||12);
+    const range=sr18ParseActionRange(action),grappleRange=Math.max(5,Number(range.ranged?range.normalRange:range.reach)||5);
+    const priorApply=sr29Apply;
+    sr29Apply=function(creature,name,duration,source,options={}){
+      if(String(name).toLowerCase()==='grappled'&&String(options.grapplerId||options.sourceId||'')===grapplerId){
+        options={...options,escapeDC,grapplerSize:sr29MpSize(enemy),targetSize:sr29MpSize(creature),handSlot:'monster-action:'+String(action.name||'grapple')};
+      }
+      return priorApply.call(this,creature,name,duration,source,options);
+    };
+    try{return sr29PriorMonsterAction.apply(this,arguments);}
+    finally{sr29Apply=priorApply;}
+  };
+}
 if(typeof sr12HeroAction==='function'){
   const sr29MpPriorHeroAction=sr12HeroAction;
   sr12HeroAction=function(player,action,spellName,targetId,data={}){
