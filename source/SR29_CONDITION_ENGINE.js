@@ -198,7 +198,7 @@ function sr29ResolveRepeatSave(target,spec,rolls=null){
   return {success:total>=dc,total,dc,autoFail:false};
 }
 function sr29ProcessRepeatSaves(target,trigger='end-turn',turnKey='',rolls=null){
-  if(!target||(target.hp!==undefined&&Number(target.hp)<=0))return {attempted:0,ended:0,failed:0,skipped:0};
+  if(!target||target.dead===true||target.isDead===true)return {attempted:0,ended:0,failed:0,skipped:0};
   const entries=sr29Entries(target);target.conditions=entries;
   const key=String(turnKey||`${sr29CurrentCycle()}:${trigger}:${target.id||target.name||'target'}`);
   let attempted=0,ended=0,failed=0,skipped=0;
