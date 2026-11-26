@@ -34,7 +34,7 @@ try{
  assert('Monster displacement planner stops before blocked or occupied squares',T18.displacementPlan({x:1,y:2},{x:0,y:2},'push',15,p=>p.x<3)?.to.x===2);
  const priorState=T18.state;
  const soloMonster={id:'solo-displacer',name:'Solo Displacer',distance:10,hp:20};
- T18.state={character:actor(),combat:{mp:null,enemies:[soloMonster],heroPos:{x:1,y:3}}};
+ T18.state={character:actor(),log:[],combat:{mp:null,enemies:[soloMonster],heroPos:{x:1,y:3}}};
  const soloPush=T18.displaceCombatant({player:{id:'solo',name:'Solo Hero'}},soloMonster,'The target is pushed 10 feet away.');
  assert('Monster Push changes theater-of-the-mind solo combat distance',soloPush&&soloMonster.distance===20);
  const soloPull=T18.displaceCombatant({player:{id:'solo',name:'Solo Hero'}},soloMonster,'The target is pulled 15 feet toward the monster.');
