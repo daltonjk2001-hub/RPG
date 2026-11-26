@@ -76,8 +76,10 @@ try{
  const attacker=actor(),target=actor({id:'target-2'});
  T.apply(target,'paralyzed',2,'ghoul');
  assert('Attacks against Paralyzed targets have Advantage',T.attackState(attacker,target,{melee:true,distance:5}).mode==='advantage');
- const grappled=actor();T.apply(grappled,'grappled',2,'grab');
- assert('Grappled sets Speed to zero without imposing attack Disadvantage',T.status(grappled).speedOverride===0&&T.attackState(grappled,attacker,{melee:true,distance:5}).mode==='normal');
+ const grappled=actor();T.apply(grappled,'grappled',2,'grab',{grapplerId:'grappler-1'});
+ assert('Grappled sets Speed to zero',T.status(grappled).speedOverride===0);
+ assert('Grappled attackers have Disadvantage against targets other than their grappler',T.attackState(grappled,actor({id:'another-target'}),{melee:true,distance:5}).mode==='disadvantage');
+ assert('Grappled attackers do not suffer this penalty against their grappler',T.attackState(grappled,actor({id:'grappler-1'}),{melee:true,distance:5}).mode==='normal');
  const invisible=actor();T.apply(invisible,'invisible',2,'spell');
  assert('Invisible attackers have Advantage',T.attackState(invisible,target,{melee:true,distance:5}).mode==='advantage');
  const invisibleTarget=actor();T.apply(invisibleTarget,'invisible',2,'spell');
