@@ -120,6 +120,10 @@ try{
  const naturalTwentyTarget=actor({id:'grapple-natural-twenty'});
  const naturalTwenty=T.startGrapple(grappleHolder,naturalTwentyTarget,{attackHit:true,grapplerSize:'medium',targetSize:'medium',freeHands:1,activeGrapples:[],distance:5,reach:5,proficiencyBonus:3,targetSave:{ability:'DEX',roll:20,bonus:-20}});
  assert('A natural 20 does not bypass the grapple saving throw DC',naturalTwenty.started&&T.has(naturalTwentyTarget,'grappled'));
+ const canonicalAutoFailTarget=actor({id:'grapple-canonical-auto-fail'});T.apply(canonicalAutoFailTarget,'paralyzed','permanent','test');
+ const canonicalAutoFail=T.startGrapple(grappleHolder,canonicalAutoFailTarget,{attackHit:true,grapplerSize:'medium',targetSize:'medium',freeHands:1,activeGrapples:[],distance:5,reach:5,proficiencyBonus:3,targetSave:{ability:'STR',roll:20,bonus:30,success:false}});
+ assert('Canonical condition auto-failure overrides a numerically successful grapple save',canonicalAutoFail.started&&T.has(canonicalAutoFailTarget,'grappled'));
+
  const started=T.startGrapple(grappleHolder,grappleVictim,{attackHit:true,grapplerSize:'medium',targetSize:'large',freeHands:1,activeGrapples:[],distance:5,reach:5,proficiencyBonus:3,targetSave:{ability:'STR',roll:10,bonus:2}});
  assert('A failed target saving throw applies Grappled with source, reach, and escape DC',started.started&&T.has(grappleVictim,'grappled')&&started.escapeDC===14&&started.instance.grapplerId==='grapple-starter'&&started.instance.grappleRange===5&&started.save.success===false);
  const failedEscape=T.escapeGrapple(grappleVictim,{instanceId:started.instance.id,ability:'Athletics',roll:10,bonus:3});
@@ -335,7 +339,7 @@ try{
   assert('Generated build includes the live V29.1 grapple gameplay adapter',html.includes("const SR29_GRAPPLE_GAMEPLAY_VERSION='29.1.0';"));
   assert('Solo combat exposes the Unarmed Strike grapple action',html.includes('data-action="sr29-grapple"')&&html.includes('Unarmed Strike · Grapple'));
   assert('Solo combat exposes the action-based grapple escape control',html.includes('data-action="sr29-escape-grapple"')&&html.includes('Escape Grapple · Action'));
-  assert('Live grapple flow performs a target STR/DEX saving throw after a hit',html.includes('The target chooses a saving throw')&&html.includes('targetSave:save'));
+  assert('Live grapple flow performs a target STR/DEX saving throw after a hit',html.includes('The target chooses a saving throw')&&html.includes('targetSave:save')&&html.includes('sr25ResolveCreatureSavingThrow(saveTarget,key,[roll],bonus,dc'));
   assert('Live grapple flow uses canonical escape checks and source-linked conditions',html.includes('sr29EscapeGrapple(c,{instanceId:grapple.id')&&html.includes('sr29StartGrapple(c,e'));
   assert('Solo grapple movement charges doubled drag cost and keeps the held target adjacent',html.includes('cost.movementCost')&&html.includes('enemy.distance=5'));
   assert('Free-hand calculation accounts for one-handed weapons and equipped shields',T.gameplay?.freeHands?.({weapon:'Dagger'})===1&&T.gameplay.freeHands({weapon:'Dagger',shieldEquipped:true})===0);
