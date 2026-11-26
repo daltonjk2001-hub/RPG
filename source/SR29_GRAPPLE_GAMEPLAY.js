@@ -913,7 +913,7 @@ if(typeof sr12HeroAttack==='function'){
     const result=sr29PriorHeroAttack.call(this,player,targetOverride,reaction,...args);
     if(result&&state?.combat?.mp&&mastery==='Push'&&target&&origin){
       const prefix=`${player?.name||character?.name||''} attacks ${target.name}:`;
-      const hits=(state.log||[]).slice(beforeLog).filter(entry=>{const message=String(entry?.msg??entry??'');return message.startsWith(prefix)&&/\\bHit\\./.test(message);}).length;
+      const hits=(state.log||[]).slice(beforeLog).filter(entry=>{const message=String(entry?.msg??entry??'');return message.startsWith(prefix)&&/\bHit\./.test(message);}).length;
       for(let i=0;i<hits;i++)sr29ApplyMasteryPush(target,player,origin);
     }
     return result;
