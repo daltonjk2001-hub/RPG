@@ -27,6 +27,7 @@ let SR29_COMBAT_CYCLE = 0;
 let SR29_PHASE = 'player';
 let SR29_DAMAGE_EVENT = 0;
 function sr29CurrentCycle(){const round=Number(state?.combat?.round);return Math.max(SR29_COMBAT_CYCLE,Number.isFinite(round)?round:0);}
+function sr29NextDamageEventKey(){return `${sr29CurrentCycle()}:damage:${++SR29_DAMAGE_EVENT}`;}
 
 function sr29Name(value) {
   const raw = typeof value === 'string' ? value : value?.name || value?.condition || '';
@@ -195,8 +196,8 @@ function sr29ResolveRepeatSave(target,spec,rolls=null){
   const total=Number(dice[0])+bonus;
   return {success:total>=dc,total,dc,autoFail:false};
 }
-function sr29ProcessRepeatSaves(target,trigger='end-turn',turnKey=''){
-  if(!target)return {attempted:0,ended:0,failed:0,skipped:0};
+function sr29ProcessRepeatSaves(target,trigger='end-turn',turnKey='',rolls=null){
+  if(!target||(target.hp!==undefined&&Number(target.hp)<=0))return {attempted:0,ended:0,failed:0,skipped:0};
   const entries=sr29Entries(target);target.conditions=entries;
   const key=String(turnKey||`${sr29CurrentCycle()}:${trigger}:${target.id||target.name||'target'}`);
   let attempted=0,ended=0,failed=0,skipped=0;
@@ -205,7 +206,7 @@ function sr29ProcessRepeatSaves(target,trigger='end-turn',turnKey=''){
     if(!spec||spec.trigger!==trigger)continue;
     if(spec.lastTriggerKey===key){skipped++;continue;}
     spec.lastTriggerKey=key;attempted++;
-    const result=sr29ResolveRepeatSave(target,spec);
+    const result=sr29ResolveRepeatSave(target,spec,rolls);
     log(`${target.name||'Target'} repeats ${spec.ability} save for ${spec.sourceSpell||item.source}: ${result.total??'—'} vs DC ${spec.dc} — ${result.success?'SUCCESS':'FAILURE'}.`,result.success?'goodlog':'rolllog');
     if(result.legendaryResistanceUsed)log(`${target.name||'Target'} uses Legendary Resistance to overcome the repeat save.`,'rolllog');
     if(result.success&&spec.endsOnSuccess===true){sr29Remove(target,item.name,{instanceId:item.id});ended++;}
@@ -950,7 +951,7 @@ if(typeof sr18MonsterApplyDamage==='function') {
 
 globalThis.__SR29_TEST={
   version:SR29_VERSION,schema:SR29_SCHEMA,names:SR29_CONDITION_NAMES.slice(),registry:SR29_CONDITIONS,
-  normalizeName:sr29Name,entries:sr29Entries,has:sr29Has,apply:sr29Apply,remove:sr29Remove,tick:sr29Tick,processRepeatSaves:sr29ProcessRepeatSaves,resolveRepeatSave:sr29ResolveRepeatSave,
+  normalizeName:sr29Name,entries:sr29Entries,has:sr29Has,apply:sr29Apply,remove:sr29Remove,tick:sr29Tick,processRepeatSaves:sr29ProcessRepeatSaves,resolveRepeatSave:sr29ResolveRepeatSave,nextDamageEventKey:sr29NextDamageEventKey,
   namesFor:sr29Names,status:sr29Status,isImmune:sr29IsImmune,changeExhaustion:sr29ChangeExhaustion,
   longRestExhaustion:sr29LongRestExhaustion,autoFailSave:sr29AutoFailSave,attackState:sr29AttackState,
   skillMode:sr29SkillMode,criticalOnHit:sr29CriticalOnHit,canAct:sr29CanAct,canMove:sr29CanMove,
