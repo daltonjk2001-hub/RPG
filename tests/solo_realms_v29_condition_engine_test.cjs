@@ -552,6 +552,10 @@ try{
  let masteryAttackResult=false;
  try{masteryAttackResult=T.gameplay.heroAttack(masteryPlayer,masteryEnemy,false);}finally{math.random=priorMasteryRandom;}
  assert('A successful multiplayer Warhammer Push hit displaces the enemy and releases an out-of-reach grapple',masteryAttackResult===true&&masteryEnemy.pos.x>=4&&!T.has(masteryEnemy,'grappled'),JSON.stringify({masteryAttackResult,masteryLookup:T.gameplay.weaponMasteryFor(masteryHero,'Warhammer'),pushable:T.gameplay.canPushTarget(masteryEnemy),pos:masteryEnemy.pos,conditions:masteryEnemy.conditions,log:T18.state.log.slice(0,6)}));
+ const masteryProbe=actor({id:'mastery-probe',name:'Mastery Probe',size:'Medium',hp:100,pos:{x:2,y:1}});
+ T18.state.combat.enemies=[masteryProbe];
+ const masteryProbeMoved=T.gameplay.applyMasteryPush(masteryProbe,masteryPlayer,{x:1,y:1},'Warhammer');
+ assert('The multiplayer Push transaction accepts a legal source, target, and learned mastery',masteryProbeMoved===true&&masteryProbe.pos.x>=4,JSON.stringify({masteryProbeMoved,pos:masteryProbe.pos,lookup:T.gameplay.weaponMasteryFor(masteryHero,'Warhammer')}));
  const hugePushTarget=actor({id:'huge-push-target',name:'Huge Push Target',size:'Huge',pos:{x:2,y:1},hp:30});
  T18.state.combat.enemies=[hugePushTarget];
  const hugePush=T.gameplay.applyMasteryPush(hugePushTarget,masteryPlayer,{x:1,y:1},'Warhammer');
@@ -637,14 +641,15 @@ try{
  const reactionPlayerB={id:'reaction-hero-b',name:'Reaction Hero B',connected:true,character:reactionHeroB};
  const reactionEnemy=actor({id:'reaction-enemy',name:'Reaction Enemy',hp:20,reactionAvailable:false});
  T18.state={character:reactionHeroA,campaign:{multiplayer:{players:[reactionPlayerA,reactionPlayerB]},companions:[]},combat:{round:1,mp:{heroPositions:{'reaction-hero-a':{x:1,y:1},'reaction-hero-b':{x:2,y:1}},turnOrder:[{kind:'hero',id:'reaction-hero-a',faction:'hero'}],index:0},enemies:[reactionEnemy]},log:[]};
- T.gameplay.endRound();
+ const reactionErrors=[];
+ try{T.gameplay.endRound();}catch(e){reactionErrors.push('endRound: '+e.message);}
  const reactionsPreserved=reactionHeroA.reactionAvailable===false&&reactionHeroB.reactionAvailable===true&&reactionEnemy.reactionAvailable===false;
- T.gameplay.beginHeroTurn(reactionPlayerA);
+ try{T.gameplay.beginHeroTurn(reactionPlayerA);}catch(e){reactionErrors.push('beginHeroTurn: '+e.message);}
  const heroReactionReset=reactionHeroA.reactionAvailable===true&&reactionHeroA.actionSpent===false&&reactionHeroA.bonusActionSpent===false;
  T18.state.campaign.multiplayer.players=[];
  reactionEnemy.reactionAvailable=false;
- T.gameplay.beginEnemyTurn(reactionEnemy);
- assert('Reactions refresh at each creature’s own turn, not at the round boundary',reactionsPreserved&&heroReactionReset&&reactionEnemy.reactionAvailable===true);
+ try{T.gameplay.beginEnemyTurn(reactionEnemy);}catch(e){reactionErrors.push('beginEnemyTurn: '+e.message);}
+ assert('Reactions refresh at each creature’s own turn, not at the round boundary',reactionErrors.length===0&&reactionsPreserved&&heroReactionReset&&reactionEnemy.reactionAvailable===true,JSON.stringify({reactionErrors,reactionsPreserved,heroReactionReset,enemyReaction:reactionEnemy.reactionAvailable,round:T18.state.combat?.round}));
  T18.state=priorSpellState;
 
  assert('Solo grapple panel exposes both 2024 Shove outcomes',html.includes('data-action="sr29-shove-push"')&&html.includes('data-action="sr29-shove-prone"')&&html.includes('function sr29SoloShove(mode='));
