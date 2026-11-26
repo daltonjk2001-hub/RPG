@@ -11,6 +11,22 @@ function sr29SoloSize(actor){
   const raw=actor?.size??actor?.sizeCategory??actor?.statBlock?.size;
   return String(raw||'').trim().toLowerCase();
 }
+function sr29CanPushTarget(target){
+  const size=sr29SoloSize(target).split(/[ (]/)[0],rank={tiny:0,small:1,medium:2,large:3,huge:4,gargantuan:5};
+  return Object.prototype.hasOwnProperty.call(rank,size)&&rank[size]<=rank.large;
+}
+function sr29WeaponMasteryFor(actor,weapon){
+  const mastery=(typeof SR6_MASTERY!=='undefined'?SR6_MASTERY?.[weapon]:null)||WEAPONS?.[weapon]?.mastery||null;
+  if(!mastery)return null;
+  const cls=String(actor?.classId||''),level=Number(actor?.classLevels?.[cls])||Number(actor?.level)||1;
+  const classFeature=['Barbarian','Fighter','Paladin','Ranger','Rogue'].includes(cls)&&level>=1;
+  const explicit=actor?.weaponMasteryFeature===true||(Array.isArray(actor?.features)&&actor.features.some(x=>String(x).toLowerCase()==='weapon mastery'));
+  if(!classFeature&&!explicit)return null;
+  const chosen=Array.isArray(actor?.weaponMasteries)?actor.weaponMasteries:[];
+  if(chosen.length&&!chosen.includes(weapon))return null;
+  if(!chosen.length&&actor?.weaponMastery!==mastery)return null;
+  return mastery;
+}
 function sr29SoloActiveGrapples(actor){
   const id=sr29SoloGrapplerId(actor);
   const targets=[...(state?.combat?.enemies||[]),state?.character].filter(Boolean);
@@ -596,8 +612,13 @@ if(typeof sr131Maneuver==='function'){
 }
 if(typeof sr7ApplyMastery==='function'){
   const sr29PriorApplyMastery=sr7ApplyMastery;
-  sr7ApplyMastery=function(...args){
-    const result=sr29PriorApplyMastery.apply(this,args);
+  sr7ApplyMastery=function(enemy,actor,weapon,...args){
+    const mastery=(typeof SR6_MASTERY!=='undefined'?SR6_MASTERY?.[weapon]:null)||WEAPONS?.[weapon]?.mastery;
+    if(mastery==='Push'&&(!sr29CanPushTarget(enemy)||sr29WeaponMasteryFor(actor,weapon)!=='Push')){
+      log(!sr29CanPushTarget(enemy)?`${enemy?.name||'Target'} is too large for Push mastery.`:'This character has not learned this weapon’s Push mastery.','muted');
+      return false;
+    }
+    const result=sr29PriorApplyMastery.call(this,enemy,actor,weapon,...args);
     sr29ReconcileAbstractGrapples();
     sr29ReconcileCombatGrapples();
     return result;
@@ -674,8 +695,8 @@ function sr29SpellTargetFailedSave(target,entries){
   const details=sr29SpellSaveDetails(target,entries);
   return details.failure===true;
 }
-function sr29ApplyMasteryPush(target,player,origin){
-  if(!target||!state?.combat?.mp||typeof sr18DisplaceCombatant!=='function')return false;
+function sr29ApplyMasteryPush(target,player,origin,weapon){
+  if(!target||!state?.combat?.mp||typeof sr18DisplaceCombatant!=='function'||!sr29CanPushTarget(target)||sr29WeaponMasteryFor(player?.character,weapon)!=='Push')return false;
   const sourcePos=origin||sr12PlayerPos(player?.id);
   if(!sourcePos)return false;
   const moved=sr18DisplaceCombatant({enemy:target},{pos:sourcePos},'Push up to 10 feet away from you.');
@@ -908,13 +929,13 @@ if(typeof sr12HeroAttack==='function'){
   sr12HeroAttack=function(player,targetOverride=null,reaction=false,...args){
     const kind=reaction?'reaction':'action',character=player?.character;
     if(!sr29ActionEconomyGate(character,kind,true))return false;
-    const target=targetOverride||(typeof sr4Target==='function'?sr4Target():null),weapon=String(character?.weapon||''),mastery=typeof SR6_MASTERY!=='undefined'?SR6_MASTERY[weapon]:WEAPONS?.[weapon]?.mastery;
+    const target=targetOverride||(typeof sr4Target==='function'?sr4Target():null),weapon=String(character?.weapon||''),mastery=sr29WeaponMasteryFor(character,weapon);
     const beforeLog=(state?.log||[]).length,origin=state?.combat?.mp?sr12PlayerPos(player?.id):null;
     const result=sr29PriorHeroAttack.call(this,player,targetOverride,reaction,...args);
     if(result&&state?.combat?.mp&&mastery==='Push'&&target&&origin){
       const prefix=`${player?.name||character?.name||''} attacks ${target.name}:`;
       const hits=(state.log||[]).slice(beforeLog).filter(entry=>{const message=String(entry?.msg??entry??'');return message.startsWith(prefix)&&/\bHit\./.test(message);}).length;
-      for(let i=0;i<hits;i++)sr29ApplyMasteryPush(target,player,origin);
+      for(let i=0;i<hits;i++)sr29ApplyMasteryPush(target,player,origin,weapon);
     }
     return result;
   };
