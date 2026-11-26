@@ -5849,7 +5849,7 @@ function sr14CastSpell(playerOrNull,name,allyId=null,fromMP=false){
  const player=playerOrNull||{id:SR4.myPlayerId||'solo',name:state.character?.name||'Hero',character:state.character},c=player.character,sp=SRD52_SPELLS?.[name];
  if(!c||!sp||!sr14SpellKnown(c,name)){toast('Learn the spell before casting it.');return false;}if(!sr14ClassCanCast(c,sp)){toast('Your current class levels cannot cast this spell.');return false;}if(!sr14SpellPrepared(c,name)){toast('Prepare this spell before casting it.');return false;}
  const effect=sr14SpellEffect(name,sp),isMP=!!state.combat?.mp,combat=!!state.combat;
- if(combat&&c.actionSpent&&!/bonus action/i.test(sp.castingTime)){toast('Your action is already spent.');return false;}if(combat&&/bonus action/i.test(sp.castingTime)&&c.bonusActionSpent){toast('Your Bonus Action is already spent.');return false;}
+ if(combat&&c.actionSpent&&!/bonus action|reaction/i.test(sp.castingTime)){toast('Your action is already spent.');return false;}if(combat&&/bonus action/i.test(sp.castingTime)&&c.bonusActionSpent){toast('Your Bonus Action is already spent.');return false;}
  if(!combat&&/reaction/i.test(sp.castingTime)){toast('That spell needs its reaction trigger.');return false;}
  if(combat&&sp.castingTime&&/minute|hour/i.test(sp.castingTime)){toast('This casting time cannot be completed during combat.');return false;}
  if(c.hp<=0&&name!=='Revivify'&&name!=='True Resurrection'){toast('You cannot cast while unconscious.');return false;}
