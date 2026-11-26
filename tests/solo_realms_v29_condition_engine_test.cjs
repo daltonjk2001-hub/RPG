@@ -580,6 +580,11 @@ try{
  T18.state={character:surgeFighter,campaign:{multiplayer:{players:[surgePlayer]}},combat:{mp:null,enemies:[]},log:[]};
  const surgeResult=T.gameplay.classPower(surgePlayer);
  assert('Action Surge remains usable after the Bonus Action and does not consume it',surgeResult===true&&surgeFighter.actionSurgeUsed===true&&surgeFighter.actionSpent===false&&surgeFighter.bonusActionSpent===true);
+ const featureSurgeFighter=actor({id:'feature-surge-fighter',name:'Feature Surge Fighter',classId:'Fighter',level:2,classLevels:{Fighter:2},actionSpent:true,bonusActionSpent:true,resourcesByClass:{Fighter:{actionSurge:1}}});
+ const featureSurgePlayer={id:'feature-surge-fighter',name:'Feature Surge Fighter',character:featureSurgeFighter};
+ T18.state={character:featureSurgeFighter,campaign:{multiplayer:{players:[featureSurgePlayer]}},combat:{mp:null,enemies:[]},log:[]};
+ const modernSurge=T.gameplay.runFeature(featureSurgePlayer,'actionSurge');
+ assert('The modern Action Surge feature adapter also works after both normal resources are spent',modernSurge===true&&featureSurgeFighter.actionSurgeReady===true&&featureSurgeFighter.actionSpent===false&&featureSurgeFighter.bonusActionSpent===true);
  const actionCleric=actor({id:'action-cleric',name:'Action Cleric',classId:'Cleric',level:5,classLevels:{Cleric:5},hp:10,maxHp:30,actionSpent:false,bonusActionSpent:true});
  const clericPlayer={id:'action-cleric',name:'Action Cleric',connected:true,character:actionCleric};
  T18.state={character:actionCleric,campaign:{multiplayer:{players:[clericPlayer]}},combat:{mp:null,enemies:[]},log:[]};
