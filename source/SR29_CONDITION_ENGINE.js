@@ -168,7 +168,8 @@ function sr29Status(target) {
     speedOverride:speedZero?0:null,incapacitated:incap,canAct:!incap,canBonusAction:!incap,canReact:!incap,
     movementMode:sr29Has(target,'prone')?'crawl-or-stand':'normal',concentrationEnds:incap,
     autoFailAbilities:['STR','DEX'].filter(a=>sr29AutoFailSave(target,a)),
-    resistanceAllDamage:sr29Has(target,'petrified'),conditionImmunities:sr29Has(target,'petrified')?['poisoned']:[]};
+    resistanceAllDamage:sr29Has(target,'petrified'),conditionImmunities:sr29Has(target,'petrified')?['poisoned']:[],
+    effectiveSpeed:speedZero?0:Math.max(0,Number(target?.baseMovement??target?.baseSpeed??target?.movement??target?.speed??30)-5*exhaustion)};
 }
 function sr29AutoFailSave(target,ability) {
   const key=String(ability||'').toUpperCase().slice(0,3);
@@ -204,7 +205,7 @@ function sr29SkillMode(actor,skill,options={}) {
   if(sr29Has(actor,'poisoned'))disadvantage=true;
   if(sr29Has(actor,'frightened')&&sr29FrightSourceVisible(actor,options))disadvantage=true;
   const key=String(skill||'').toLowerCase();
-  if(sr29Has(actor,'blinded')&&(options.requiresSight===true||(!options.requiresSight&&key==='perception')))disadvantage=true;
+  if(sr29Has(actor,'blinded')&&(options.requiresSight===true||(!options.requiresSight&&key==='perception')))return 'auto-fail';
   if(sr29Has(actor,'deafened')&&(options.requiresHearing===true||/hearing|listen|sound/.test(key)))return 'auto-fail';
   return disadvantage?'disadvantage':'normal';
 }
@@ -285,14 +286,17 @@ if(typeof sr11RollAttack==='function'){
     const mode=sr29AttackState(actor,target,{melee,distance});
     const r1=die(20),r2=mode.mode==='normal'?r1:die(20);
     const r=mode.mode==='advantage'?Math.max(r1,r2):mode.mode==='disadvantage'?Math.min(r1,r2):r1;
-    return {r,r1,r2,adv:mode.mode==='advantage',dis:mode.mode==='disadvantage',total:r+base};
+    const exhaustion=Math.max(0,Math.min(6,Math.floor(Number(actor?.exhaustion)||0)));
+    const totalBonus=Number(base||0)-2*exhaustion;
+    return {r,r1,r2,adv:mode.mode==='advantage',dis:mode.mode==='disadvantage',total:r+totalBonus,modifier:totalBonus};
   };
 }
 if(typeof sr25ResolveCreatureSavingThrow==='function'){
   const sr29PriorCreatureSave=sr25ResolveCreatureSavingThrow;
   sr25ResolveCreatureSavingThrow=function(target,ability,rolls,modifier,dc,options={}){
     const forced=sr29AutoFailSave(target,ability);
-    return sr29PriorCreatureSave(target,ability,rolls,modifier,dc,{...options,autoFail:!!options.autoFail||forced});
+    const exhaustion=Math.max(0,Math.min(6,Math.floor(Number(target?.exhaustion)||0)));
+    return sr29PriorCreatureSave(target,ability,rolls,Number(modifier||0)-2*exhaustion,dc,{...options,autoFail:!!options.autoFail||forced});
   };
   if(globalThis.__SR25_TEST)globalThis.__SR25_TEST.resolveCreatureSavingThrow=sr25ResolveCreatureSavingThrow;
 }
@@ -336,11 +340,20 @@ if(typeof sr7Move==='function'){
 }
 if(typeof sr10EnemyMove==='function'){
   const sr29PriorEnemyMove=sr10EnemyMove;
-  sr10EnemyMove=function(actor,...args){if(!sr29CanMove(actor))return false;return sr29PriorEnemyMove.call(this,actor,...args);};
+  sr10EnemyMove=function(actor,...args){
+    if(!sr29CanMove(actor))return false;
+    const base=Number(actor?.baseSpeed||actor?.speed||30),exhaustion=Math.max(0,Math.min(6,Math.floor(Number(actor?.exhaustion)||0)));
+    actor.speed=Math.max(0,base-5*exhaustion);
+    return sr29PriorEnemyMove.call(this,actor,...args);
+  };
 }
 if(typeof sr10EnemyAttack==='function'){
   const sr29PriorEnemyAttack=sr10EnemyAttack;
   sr10EnemyAttack=function(actor,...args){if(!sr29CanAct(actor,'action'))return false;return sr29PriorEnemyAttack.call(this,actor,...args);};
+}
+if(typeof sr10EnemyTurn==='function'){
+  const sr29PriorEnemyTurn10=sr10EnemyTurn;
+  sr10EnemyTurn=function(entry,...args){const actor=state?.combat?.enemies?.[entry?.index];if(actor&&!sr29CanAct(actor,'action'))return false;return sr29PriorEnemyTurn10.call(this,entry,...args);};
 }
 globalThis.__SR29_TEST={
   version:SR29_VERSION,schema:SR29_SCHEMA,names:SR29_CONDITION_NAMES.slice(),registry:SR29_CONDITIONS,
