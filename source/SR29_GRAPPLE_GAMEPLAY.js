@@ -16,7 +16,7 @@ function sr29CanPushTarget(target){
   return Object.prototype.hasOwnProperty.call(rank,size)&&rank[size]<=rank.large;
 }
 function sr29WeaponMasteryFor(actor,weapon){
-  const mastery=(typeof SR6_MASTERY!=='undefined'?SR6_MASTERY?.[weapon]:null)||WEAPONS?.[weapon]?.mastery||null;
+  const mastery=(typeof SR14_WEAPON_MASTERY!=='undefined'?SR14_WEAPON_MASTERY?.[weapon]:null)||(typeof SR6_MASTERY!=='undefined'?SR6_MASTERY?.[weapon]:null)||WEAPONS?.[weapon]?.mastery||null;
   if(!mastery)return null;
   const cls=String(actor?.classId||''),level=Number(actor?.classLevels?.[cls])||Number(actor?.level)||1;
   const classFeature=['Barbarian','Fighter','Paladin','Ranger','Rogue'].includes(cls)&&level>=1;
@@ -613,10 +613,16 @@ if(typeof sr131Maneuver==='function'){
 if(typeof sr7ApplyMastery==='function'){
   const sr29PriorApplyMastery=sr7ApplyMastery;
   sr7ApplyMastery=function(enemy,actor,weapon,...args){
-    const mastery=(typeof SR6_MASTERY!=='undefined'?SR6_MASTERY?.[weapon]:null)||WEAPONS?.[weapon]?.mastery;
-    if(mastery==='Push'&&(!sr29CanPushTarget(enemy)||sr29WeaponMasteryFor(actor,weapon)!=='Push')){
-      log(!sr29CanPushTarget(enemy)?`${enemy?.name||'Target'} is too large for Push mastery.`:'This character has not learned this weapon’s Push mastery.','muted');
-      return false;
+    const mastery=(typeof SR14_WEAPON_MASTERY!=='undefined'?SR14_WEAPON_MASTERY?.[weapon]:null)||(typeof SR6_MASTERY!=='undefined'?SR6_MASTERY?.[weapon]:null)||WEAPONS?.[weapon]?.mastery;
+    if(mastery==='Push'){
+      if(!sr29CanPushTarget(enemy)||sr29WeaponMasteryFor(actor,weapon)!=='Push'){
+        log(!sr29CanPushTarget(enemy)?`${enemy?.name||'Target'} is too large for Push mastery.`:'This character has not learned this weapon’s Push mastery.','muted');
+        return false;
+      }
+      const before=Number(enemy.distance)||5;enemy.distance=Math.max(10,before+10);enemy.pushed=true;
+      log(`${actor?.name||'The hero'} pushes ${enemy?.name||'the target'} 10 feet with Push mastery.`,'goodlog');
+      sr29ReconcileAbstractGrapples();sr29ReconcileCombatGrapples();
+      return true;
     }
     const result=sr29PriorApplyMastery.call(this,enemy,actor,weapon,...args);
     sr29ReconcileAbstractGrapples();
