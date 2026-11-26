@@ -367,6 +367,9 @@ try{
    return result.removed===3&&result.remaining===1&&snapshot.combat.mp.grappleChallenges[0].id==='live-challenge'&&
      result.reasons.some(x=>x.reason==='participant-disconnected')&&result.reasons.some(x=>x.reason==='participant-defeated')&&result.reasons.some(x=>x.reason==='challenge-expired');
  })());
+ const heldHero=actor({id:'held-hero'});T.apply(heldHero,'grappled','permanent','Monster',{grapplerId:'monster-1'});
+ const freeHero=actor({id:'free-hero'});
+ assert('Multiplayer Grappled heroes cannot use voluntary tactical movement',T.gameplay.multiplayerVoluntaryMovementEligibility({id:'held-hero',character:heldHero}).legal===false&&T.gameplay.multiplayerVoluntaryMovementEligibility({id:'free-hero',character:freeHero}).legal===true);
  assert('Multiplayer grapple dragging keeps a held hero adjacent and charges double movement for a same-size target',(()=>{
    const grappler=actor({id:'mp-grappler',name:'Grappler',size:'medium',movement:30});
    const held=actor({id:'mp-held',name:'Held Hero',size:'medium'});
