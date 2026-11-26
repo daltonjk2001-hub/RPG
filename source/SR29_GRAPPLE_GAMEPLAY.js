@@ -120,6 +120,7 @@ const sr29SoloMoveBase=sr7Move;
 sr7Move=function(direction){
   const c=state?.character,b=state?.combat;
   if(!b||b.mp||!c)return sr29SoloMoveBase(direction);
+  if(sr29Entries(c).some(item=>item.name==='grappled')){toast('You cannot move while Grappled. Use your action to escape first.');return false;}
   const id=sr29SoloGrapplerId(c),held=(b.enemies||[]).filter(enemy=>sr29Entries(enemy).some(item=>item.name==='grappled'&&String(item.grapplerId||item.sourceId||'')===id));
   if(!held.length||!['closer','retreat'].includes(direction))return sr29SoloMoveBase(direction);
   const enemy=held[0],baseSpeed=Math.max(0,(c.baseMovement||c.movement||30)+(c.movementBonus||0)-(sr7HasCondition(c,'prone')?15:0)-5*(Number(c.exhaustion)||0));
