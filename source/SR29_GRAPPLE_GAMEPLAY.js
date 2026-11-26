@@ -82,8 +82,10 @@ function sr29SoloEscapeGrapple(){
   const choice=typeof prompt==='function'?prompt('Escape using Athletics or Acrobatics?','Athletics'):'Athletics';
   const skill=String(choice||'').trim().toLowerCase();
   if(!['athletics','acrobatics'].includes(skill)){toast('Choose Athletics or Acrobatics.');return false;}
-  const skillKey=skill==='athletics'?'Athletics':'Acrobatics';
-  const mode=sr29SkillMode(c,skillKey),roll=sr7RollD20(mode),bonus=skillBonus(skillKey),result=sr29EscapeGrapple(c,{instanceId:grapple.id,ability:skillKey,roll,bonus});
+  const skillKey=skill==='athletics'?'Athletics':'Acrobatics',dc=Number(grapple.escapeDC)||12;
+  const check=sr29CanonicalAbilityCheck(c,skillKey,dc,{roll:die(20),secondRoll:die(20)});
+  const roll=Number(check.roll)||1,bonus=Number(check.bonus)||0;
+  const result=sr29EscapeGrapple(c,{instanceId:grapple.id,ability:skillKey,roll,bonus,dc,success:check.success===true});
   if(result.escaped)log(`${c.name} escapes the grapple with ${skillKey}: ${roll} + ${bonus} = ${result.total} vs DC ${result.dc}.`,'goodlog');
   else log(`${c.name} fails to escape with ${skillKey}: ${roll} + ${bonus} = ${result.total} vs DC ${result.dc}. The grapple remains.`,'badlog');
   afterPlayerAction();render();save();return true;
