@@ -614,6 +614,32 @@ function sr29ParseForcedDisplacement(description){
   }
   return {mode:m[1].toLowerCase().startsWith('push')?'push':'pull',feet:Number(m[2])};
 }
+function sr29ParseRepeatSave(description){
+  const d=String(description||'');
+  const endsOnSuccess=/ending (?:the spell|the effect) on itself on a success|ending (?:the spell|effect) on a success/i.test(d);
+  if(!endsOnSuccess)return null;
+  let trigger=null;
+  if(/at the end of each of (?:its|their) turns?/i.test(d)&&/repeats? the (?:saving throw|save)/i.test(d))trigger='end-turn';
+  else if(/whenever (?:the )?target takes damage/i.test(d)&&/repeats? the (?:saving throw|save)/i.test(d))trigger='damage';
+  if(!trigger)return null;
+  const match=d.match(/\b(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma) saving throw\b/i);
+  const ability=match?({strength:'STR',dexterity:'DEX',constitution:'CON',intelligence:'INT',wisdom:'WIS',charisma:'CHA'}[match[1].toLowerCase()]):null;
+  return {trigger,endsOnSuccess:true,ability};
+}
+function sr29SpellSaveDetails(target,entries){
+  const name=String(target?.name||'');
+  const message=(entries||[]).map(entry=>String(entry?.msg??entry??'')).find(text=>text.startsWith(name+' ')&&/(?:makes|rolls)\s+(?:STR|DEX|CON|INT|WIS|CHA)\s+save\b/i.test(text));
+  if(!message)return {};
+  const match=message.match(/(?:makes|rolls)\s+(STR|DEX|CON|INT|WIS|CHA)\s+save\b.*?\bvs DC\s+(\d+)/i);
+  return match?{ability:match[1].toUpperCase(),dc:Number(match[2]),message}:{message};
+}
+function sr29AttachRepeatSave(target,condition,spellName,caster,ability,dc,spec){
+  if(!target||!condition||!spec||!ability||!Number.isFinite(Number(dc)))return false;
+  const entries=sr29Entries(target),matches=entries.filter(item=>item.name===String(condition).toLowerCase()&&item.source===String(spellName));
+  const item=matches[matches.length-1];if(!item)return false;
+  item.repeatSave={trigger:spec.trigger,endsOnSuccess:true,ability:String(ability).toUpperCase(),dc:Number(dc),sourceSpell:String(spellName),sourceId:String(caster?.id||''),sourceName:String(caster?.name||''),appliedRound:Number(state?.combat?.round)||sr29CurrentCycle()};
+  target.conditions=entries;return true;
+}
 function sr29SpellTargetFailedSave(target,entries){
   const name=String(target?.name||'');
   if(!name)return false;
@@ -652,22 +678,27 @@ if(typeof sr14CastSpellComplete==='function'){
     const effect=spell&&typeof sr14SpellEffectComplete==='function'?sr14SpellEffectComplete(spellName,spell):null;
     const castTime=String(spell?.castingTime||'Action'),castKind=/bonus action/i.test(castTime)?'bonus-action':/reaction/i.test(castTime)?'reaction':'action';
     if(!sr29ActionEconomyGate(caster,castKind,!!state?.combat))return false;
-    const displacement=spell?sr29ParseForcedDisplacement(spell.description):null;
+    const displacement=spell?sr29ParseForcedDisplacement(spell.description):null,repeatSave=spell?sr29ParseRepeatSave(spell.description):null;
     const combat=state?.combat,target=combat?.mp?(typeof sr4Target==='function'?sr4Target():null):(typeof targetEnemy==='function'?targetEnemy():null);
     const origin=combat?.mp&&typeof sr12PlayerPos==='function'?sr12PlayerPos(player.id):combat?.heroPos;
     let targets=[];
-    if(displacement&&combat&&effect&&['saveDamage','control','debuff','attack'].includes(effect.kind)){
+    if((displacement||repeatSave)&&combat&&effect&&['saveDamage','control','debuff','attack'].includes(effect.kind)){
       targets=effect.area&&typeof sr14TargetListComplete==='function'?sr14TargetListComplete(player,spell,effect,target,origin):[target].filter(Boolean);
       targets=(targets||[]).filter(item=>item&&!item.player&&Number(item.hp)>0);
     }
     const beforeLog=Array.isArray(state?.log)?state.log.length:0;
     const result=sr29PriorCastSpell.apply(this,args);
-    if(result&&displacement&&targets.length){
+    if(result&&(displacement||repeatSave)&&targets.length){
       const entries=(state?.log||[]).slice(beforeLog);
       for(const victim of targets){
         const failed=sr29SpellTargetFailedSave(victim,entries);
         const attackHit=effect.kind==='attack'&&!entries.some(entry=>String(entry?.msg??entry??'').includes(`${spellName} misses ${victim.name}`));
-        if(failed||attackHit)sr29ApplyPlayerSpellDisplacement(victim,player,displacement.mode,displacement.feet,origin);
+        if(failed&&repeatSave&&effect.condition){
+          const details=sr29SpellSaveDetails(victim,entries),ability=String(effect.save||details.ability||repeatSave.ability||'').toUpperCase();
+          const dc=Number(details.dc)||(typeof sr12SpellDC==='function'?Number(sr12SpellDC(caster)):0);
+          sr29AttachRepeatSave(victim,effect.condition,spellName,caster,ability,dc,repeatSave);
+        }
+        if(displacement&&(failed||attackHit))sr29ApplyPlayerSpellDisplacement(victim,player,displacement.mode,displacement.feet,origin);
       }
     }
     sr29ReconcileAbstractGrapples();
