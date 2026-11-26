@@ -793,6 +793,27 @@ function sr29ApplyPlayerSpellDisplacement(target,caster,mode,feet,origin=null){
   return moved;
 }
 
+// The legacy multiplayer spell path receives structured slot records too, but its
+// original consumer treats them as numbers and falls back to the scalar total.
+if(typeof sr12ConsumeSlot==='function'){
+  const sr29PriorConsumeSlot=sr12ConsumeSlot;
+  sr12ConsumeSlot=function(c,slot){
+    if(slot===false)return false;
+    if(slot==null)return true;
+    if(slot&&typeof slot==='object'&&Number(slot.level)>0){
+      if(typeof sr7ConsumeCastSlot==='function')sr7ConsumeCastSlot(c,slot);
+      else if(c?.spellSlotsByLevel){const level=Number(slot.level);c.spellSlotsByLevel[level]=Math.max(0,(Number(c.spellSlotsByLevel[level])||0)-1);if(typeof sr7UpdateSlotTotals==='function')sr7UpdateSlotTotals(c);}
+      return true;
+    }
+    if(typeof slot==='number'&&slot>0&&c?.spellSlotsByLevel){
+      const selected=typeof sr7ChooseCastSlot==='function'?sr7ChooseCastSlot(c,slot):null;
+      if(selected&&typeof sr7ConsumeCastSlot==='function')sr7ConsumeCastSlot(c,selected);
+      else{c.spellSlotsByLevel[slot]=Math.max(0,(Number(c.spellSlotsByLevel[slot])||0)-1);if(typeof sr7UpdateSlotTotals==='function')sr7UpdateSlotTotals(c);}
+      return true;
+    }
+    return sr29PriorConsumeSlot.apply(this,arguments);
+  };
+}
 if(typeof sr14CastSpellComplete==='function'){
   const sr29PriorCastSpell=sr14CastSpellComplete;
   sr14CastSpellComplete=function(...args){
@@ -875,7 +896,41 @@ if(typeof sr14CastSpellComplete==='function'){
     return result;
   };
 }
-
+if(typeof sr12CastSpell==='function'){
+  const sr29PriorLegacyCastSpell=sr12CastSpell;
+  sr12CastSpell=function(player,name,allyId=null,...args){
+    const spell=SRD52_SPELLS?.[name]?null:(SR9_SPELLS?.[name]||SPELLS?.[name]);
+    if(!spell||spell.kind!=='teleport')return sr29PriorLegacyCastSpell.apply(this,[player,name,allyId,...args]);
+    if(!state?.combat?.mp){toast('This legacy teleport is only supported in tactical multiplayer combat.');return false;}
+    const caster=player?.character;
+    const castKind=/bonus action/i.test(String(spell.castingTime||(/misty step/i.test(name)?'Bonus Action':'Action')))?'bonus-action':/reaction/i.test(String(spell.castingTime||''))?'reaction':'action';
+    if(!sr29ActionEconomyGate(caster,castKind,true))return false;
+    const range=sr29PlayerTeleportRange(name,spell),plan=Number.isFinite(range)&&range>0?sr29PlayerTeleportPlan(player,range):null;
+    if(!plan){toast('This legacy teleport has no legal visible destination within its supported range.');return false;}
+    const resourcesBefore={actionSpent:caster?.actionSpent,bonusActionSpent:caster?.bonusActionSpent};
+    const spellTable=SR9_SPELLS?.[name]?SR9_SPELLS:SPELLS,originalSpell=spellTable[name];
+    const utilitySpell={...originalSpell,kind:'utility'};
+    // Reuse the legacy spell's slot, concentration and action flow, but suppress its
+    // unsafe direct-position write. V29 commits the prevalidated destination afterward.
+    spellTable[name]=utilitySpell;
+    if(castKind==='bonus-action'&&caster)caster.actionSpent=false;
+    let result=false;
+    try{result=sr29PriorLegacyCastSpell.apply(this,[player,name,allyId,...args]);}
+    finally{spellTable[name]=originalSpell;}
+    if(!result){
+      if(caster){caster.actionSpent=resourcesBefore.actionSpent;caster.bonusActionSpent=resourcesBefore.bonusActionSpent;}
+      return false;
+    }
+    if(caster){
+      if(castKind==='bonus-action'){caster.actionSpent=resourcesBefore.actionSpent;caster.bonusActionSpent=true;}
+      else if(castKind==='reaction'){caster.actionSpent=resourcesBefore.actionSpent;caster.bonusActionSpent=resourcesBefore.bonusActionSpent;caster.reactionAvailable=false;}
+      if(Number(spell.level)>0&&castKind!=='reaction')caster.spellSlotSpentThisTurn=true;
+    }
+    sr29ApplyPlayerTeleport(player,plan);
+    log(`${player.name} completes the legacy teleport at a legal destination ${plan.travelFeet} feet away.`,'rolllog');
+    return result;
+  };
+}
 
 function sr29RepeatSaveAfterDamage(target,amount,rolls=null){
   if(Number(amount)>0&&target)sr29ProcessRepeatSaves(target,'damage',sr29NextDamageEventKey(),rolls);
@@ -1113,5 +1168,5 @@ if(typeof sr10Dodge==='function'){
 }
 
 if(globalThis.__SR29_TEST){
-  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,actionEconomyGate:sr29ActionEconomyGate,finalizeCastResources:sr29FinalizeCastResources,runFeature:typeof sr14RunFeature==='function'?sr14RunFeature:null,classPower:typeof sr12ClassPower==='function'?sr12ClassPower:null,cunningAction:typeof sr137CunningAction==='function'?sr137CunningAction:null,heroAction:typeof sr12HeroAction==='function'?sr12HeroAction:null,heroAttack:typeof sr12HeroAttack==='function'?sr12HeroAttack:null,castSpell:typeof sr14CastSpellComplete==='function'?sr14CastSpellComplete:null,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,soloShove:sr29SoloShove,parseForcedDisplacement:sr29ParseForcedDisplacement,spellDisplacementSpec:sr29SpellDisplacementSpec,parseRepeatSave:sr29ParseRepeatSave,repeatSaveSpecForSpell:sr29RepeatSaveSpecForSpell,spellEffectComplete:typeof sr14SpellEffectComplete==='function'?sr14SpellEffectComplete:null,attachRepeatSave:sr29AttachRepeatSave,spellTargetFailedSave:sr29SpellTargetFailedSave,playerSpellDisplace:sr29ApplyPlayerSpellDisplacement,playerTeleportRange:sr29PlayerTeleportRange,playerTeleportPlan:sr29PlayerTeleportPlan,applyPlayerTeleport:sr29ApplyPlayerTeleport,setSpellData:(name,spell)=>{if(typeof SRD52_SPELLS==='object')SRD52_SPELLS[name]=spell;},spellDiagnostics:(c,name)=>{const sp=SRD52_SPELLS?.[name],klass=sp?sr14CasterClass(c,sp):null;return {exists:!!sp,known:sr14SpellKnown(c,name),classCanCast:!!sp&&sr14ClassCanCast(c,sp),prepared:!!sp&&sr14SpellPrepared(c,name),effect:sp?sr14SpellEffectComplete(name,sp):null,klass,maxLevel:sp?sr14MaxSpellLevel(c,klass):0,slot:sp?sr14GetCastSlot(c,sp.level):null,actionGate:sr29ActionEconomyGate(c,'bonus-action',true)};},applyMastery:typeof sr7ApplyMastery==='function'?sr7ApplyMastery:null,weaponMasteryFor:sr29WeaponMasteryFor,canPushTarget:sr29CanPushTarget,applyMasteryPush:sr29ApplyMasteryPush,repeatSaveAfterDamage:sr29RepeatSaveAfterDamage,advanceIndex:typeof sr12AdvanceIndex==='function'?sr12AdvanceIndex:null,endRound:typeof sr12EndRound==='function'?sr12EndRound:null,beginHeroTurn:typeof sr12BeginHeroTurn==='function'?sr12BeginHeroTurn:null,beginEnemyTurn:sr29BeginEnemyTurn,enemyTurn:typeof sr12EnemyTurn==='function'?sr12EnemyTurn:null,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerResolveGrappleSave:sr29MpResolveGrappleSave,multiplayerPruneGrappleChallenges:sr29MpPruneGrappleChallenges,multiplayerGrappleMovePlan:sr29MpGrappleMovePlan,multiplayerVoluntaryMovementEligibility:sr29MpVoluntaryMovementEligibility,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
+  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,actionEconomyGate:sr29ActionEconomyGate,finalizeCastResources:sr29FinalizeCastResources,runFeature:typeof sr14RunFeature==='function'?sr14RunFeature:null,classPower:typeof sr12ClassPower==='function'?sr12ClassPower:null,cunningAction:typeof sr137CunningAction==='function'?sr137CunningAction:null,heroAction:typeof sr12HeroAction==='function'?sr12HeroAction:null,heroAttack:typeof sr12HeroAttack==='function'?sr12HeroAttack:null,castSpell:typeof sr14CastSpellComplete==='function'?sr14CastSpellComplete:null,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,soloShove:sr29SoloShove,parseForcedDisplacement:sr29ParseForcedDisplacement,spellDisplacementSpec:sr29SpellDisplacementSpec,parseRepeatSave:sr29ParseRepeatSave,repeatSaveSpecForSpell:sr29RepeatSaveSpecForSpell,spellEffectComplete:typeof sr14SpellEffectComplete==='function'?sr14SpellEffectComplete:null,attachRepeatSave:sr29AttachRepeatSave,spellTargetFailedSave:sr29SpellTargetFailedSave,playerSpellDisplace:sr29ApplyPlayerSpellDisplacement,playerTeleportRange:sr29PlayerTeleportRange,playerTeleportPlan:sr29PlayerTeleportPlan,applyPlayerTeleport:sr29ApplyPlayerTeleport,setSpellData:(name,spell)=>{if(typeof SRD52_SPELLS==='object')SRD52_SPELLS[name]=spell;},setLegacySpellData:(name,spell)=>{if(typeof SPELLS==='object')SPELLS[name]=spell;if(typeof SR9_SPELLS==='object')SR9_SPELLS[name]=spell;if(typeof SRD52_SPELLS==='object')delete SRD52_SPELLS[name];},castLegacySpell:(player,name,allyId=null)=>sr12CastSpell(player,name,allyId),spellDiagnostics:(c,name)=>{const sp=SRD52_SPELLS?.[name],klass=sp?sr14CasterClass(c,sp):null;return {exists:!!sp,known:sr14SpellKnown(c,name),classCanCast:!!sp&&sr14ClassCanCast(c,sp),prepared:!!sp&&sr14SpellPrepared(c,name),effect:sp?sr14SpellEffectComplete(name,sp):null,klass,maxLevel:sp?sr14MaxSpellLevel(c,klass):0,slot:sp?sr14GetCastSlot(c,sp.level):null,actionGate:sr29ActionEconomyGate(c,'bonus-action',true)};},applyMastery:typeof sr7ApplyMastery==='function'?sr7ApplyMastery:null,weaponMasteryFor:sr29WeaponMasteryFor,canPushTarget:sr29CanPushTarget,applyMasteryPush:sr29ApplyMasteryPush,repeatSaveAfterDamage:sr29RepeatSaveAfterDamage,advanceIndex:typeof sr12AdvanceIndex==='function'?sr12AdvanceIndex:null,endRound:typeof sr12EndRound==='function'?sr12EndRound:null,beginHeroTurn:typeof sr12BeginHeroTurn==='function'?sr12BeginHeroTurn:null,beginEnemyTurn:sr29BeginEnemyTurn,enemyTurn:typeof sr12EnemyTurn==='function'?sr12EnemyTurn:null,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerResolveGrappleSave:sr29MpResolveGrappleSave,multiplayerPruneGrappleChallenges:sr29MpPruneGrappleChallenges,multiplayerGrappleMovePlan:sr29MpGrappleMovePlan,multiplayerVoluntaryMovementEligibility:sr29MpVoluntaryMovementEligibility,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
 }
