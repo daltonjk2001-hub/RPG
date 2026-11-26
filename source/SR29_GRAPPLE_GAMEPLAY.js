@@ -238,13 +238,13 @@ function sr29NextMonsterAppendageSlot(actor,active=[]){
   const capacity=sr29CreatureGrappleAppendageCapacity(actor),occupied=new Set();
   for(const grapple of active){
     const slot=String(grapple?.handSlot||'');
-    const match=slot.match(/^monster-appendage-(\\d+)$/);
+    const match=slot.match(/^monster-appendage-(\d+)$/);
     if(match){const index=Number(match[1]);if(index>=1&&index<=capacity)occupied.add(index);}
   }
   // Older/manual grapple instances may not have a slot. Reserve the first
   // remaining slot for each such instance rather than allowing it to be reused.
   for(const grapple of active){
-    if(/^monster-appendage-\\d+$/.test(String(grapple?.handSlot||'')))continue;
+    if(/^monster-appendage-\d+$/.test(String(grapple?.handSlot||'')))continue;
     for(let index=1;index<=capacity;index++)if(!occupied.has(index)){occupied.add(index);break;}
   }
   for(let index=1;index<=capacity;index++)if(!occupied.has(index))return 'monster-appendage-'+index;
