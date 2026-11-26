@@ -149,7 +149,7 @@ function sr29MpSize(actor){
 }
 function sr29MpActiveGrapples(player){
   const id=String(player?.id||player?.name||'');
-  const actors=[...(state?.combat?.enemies||[]),...(state?.campaign?.multiplayer?.players||[]).map(p=>p.character),state?.character].filter(Boolean);
+  const actors=[...new Set([...(state?.combat?.enemies||[]),...(state?.campaign?.multiplayer?.players||[]).map(p=>p.character),state?.character].filter(Boolean))];
   return actors.flatMap(target=>sr29Entries(target).filter(item=>item.name==='grappled'&&String(item.grapplerId||item.sourceId||'')===id));
 }
 function sr29MpStartGrapple(player){
@@ -220,7 +220,7 @@ if(typeof sr12CombatPage==='function'){
   const sr29MpPriorCombatPage=sr12CombatPage;
   sr12CombatPage=function(){
     let html=sr29MpPriorCombatPage();
-    html=html.replace('data-move="grapple"','data-move="grapple"');
+    html=html.replace('>Grapple</button>','>Unarmed Strike · Grapple</button>');
     html=html.replace('<button class="btn small" data-action="mp-combat" data-move="escape-grapple">Escape grapple</button>',
       '<button class="btn small" data-action="sr29-mp-escape" data-ability="Athletics">Escape · Athletics</button><button class="btn small" data-action="sr29-mp-escape" data-ability="Acrobatics">Escape · Acrobatics</button>');
     return html;
