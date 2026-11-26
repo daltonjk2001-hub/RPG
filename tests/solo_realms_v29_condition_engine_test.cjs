@@ -49,6 +49,15 @@ try{
  const soloTeleport=T18.teleportMonster(soloMonster,{player:{id:'solo',name:'Solo Hero'}},'The monster teleports up to 30 feet to an unoccupied space it can see.');
  assert('Monster teleport changes solo abstract separation by its stated range',soloTeleport&&soloMonster.distance===30);
  assert('Actions without teleport wording do not move the monster',!T18.teleportMonster(soloMonster,{player:{id:'solo'}},'The monster makes a claw attack.')&&soloMonster.distance===30);
+ const teleportAction={name:'Teleport',description:'The monster teleports up to 30 feet to an unoccupied space it can see.'};
+ const actionMonster={id:'teleporter',name:'Teleporter',distance:60,hp:20,attack:100,actions:[teleportAction]};
+ const actionHero=actor({hp:30,maxHp:30,ac:10});
+ const actionTarget={player:{id:'solo',name:'Solo Hero',character:actionHero},pos:{x:1,y:3}};
+ T18.state={character:actionHero,log:[],combat:{mp:null,enemies:[actionMonster],heroPos:{x:1,y:3}}};
+ const selectedTeleport=T18.chooseMonsterAction(actionMonster,actionTarget);
+ const teleportActionResolved=T18.resolveMonsterAction(actionMonster,teleportAction,actionTarget);
+ assert('Monster action selection includes a teleport-only stat-block action',selectedTeleport===teleportAction);
+ assert('A teleport-only monster action relocates and consumes the action without making a default attack',teleportActionResolved&&actionMonster.distance===30&&actionHero.hp===30);
  T18.state=priorState;
  const stacked=actor();
  const first=T.apply(stacked,'poisoned',1,'venom A'),second=T.apply(stacked,'poisoned',3,'venom B');
