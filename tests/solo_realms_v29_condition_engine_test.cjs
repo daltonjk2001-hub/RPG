@@ -122,8 +122,11 @@ try{
  assert('Monster save-based conditions attach a source-linked end-of-turn repeat save and end on a later success',monsterRepeatActionResult===true&&monsterRepeatAttached&&monsterRepeatSuccess.ended===1&&!T.has(monsterRepeatTarget,'frightened'),JSON.stringify({monsterRepeatActionResult,monsterRepeatInstance,monsterRepeatSuccess,conditions:monsterRepeatTarget.conditions,log:T18.state.log}));
  const persistedHero=actor({id:'persisted-hero',name:'Persisted Hero',classId:'Fighter',ancestry:'Human',level:1,inventory:[],proficiencies:[]});
  const persistedGrapple=T.apply(persistedHero,'grappled','permanent','Persistence Monster',{sourceId:'persistence-monster',grapplerId:'persistence-monster',grappleRange:10});
- persistedGrapple.instance.escapeDC=15;persistedGrapple.instance.handSlot='monster-appendage-2';
- persistedGrapple.instance.repeatSave={trigger:'end-turn',endsOnSuccess:true,ability:'WIS',dc:14,sourceSpell:'Dreadful Glare',sourceId:'persistence-monster',sourceName:'Persistence Monster'};
+ // Grapple reconciliation normalizes condition records; reacquire the live instance before
+ // attaching gameplay metadata, matching the production grapple-start adapters.
+ const persistedGrappleInstance=T.entries(persistedHero).find(item=>item.name==='grappled');
+ persistedGrappleInstance.escapeDC=15;persistedGrappleInstance.handSlot='monster-appendage-2';
+ persistedGrappleInstance.repeatSave={trigger:'end-turn',endsOnSuccess:true,ability:'WIS',dc:14,sourceSpell:'Dreadful Glare',sourceId:'persistence-monster',sourceName:'Persistence Monster'};
  const priorPersistenceState=T18.state;
  T18.state={character:persistedHero,campaign:{day:1,region:'Persistence Test',location:'Persistence Test',companions:[],npcs:[],sideQuests:[],story:{},sr14:{factions:{}}},log:[],combat:null,view:'journal'};
  const persistenceSnapshot=T18.snapshot('V29 grapple metadata round-trip');
