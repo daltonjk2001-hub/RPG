@@ -530,6 +530,16 @@ try{
  const spellPull=T.gameplay.playerSpellDisplace(forcedSpellPullTarget,{id:'spell-caster'},'pull',5);
  assert('Player spell Push and Pull update abstract distance and reconcile grapples after forced movement',spellPush&&forcedSpellTarget.distance===15&&spellPushReleased&&spellPull&&forcedSpellPullTarget.distance===15);
  T18.state=priorSpellMoveState;
+ const priorMasteryRandom=math.random;
+ const masteryHero=actor({id:'mastery-hero',name:'Mastery Hero',classId:'Fighter',level:1,classLevels:{Fighter:1},weapon:'Warhammer',actionSpent:false,bonusActionSpent:false,stats:{STR:18,DEX:10,CON:10,INT:10,WIS:10,CHA:10}});
+ const masteryPlayer={id:'mastery-hero',name:'Mastery Hero',connected:true,character:masteryHero};
+ const masteryEnemy=actor({id:'mastery-enemy',name:'Mastery Enemy',hp:100,maxHp:100,ac:1,pos:{x:2,y:1},stats:{STR:12,DEX:10,CON:10,INT:10,WIS:10,CHA:10}});
+ T18.state={character:masteryHero,campaign:{multiplayer:{players:[masteryPlayer]},companions:[]},combat:{round:1,mp:{heroPositions:{'mastery-hero':{x:1,y:1}},turnOrder:[{kind:'hero',id:'mastery-hero'}],index:0},enemies:[masteryEnemy]},log:[]};
+ T.apply(masteryEnemy,'grappled','permanent','Mastery Hero',{grapplerId:'mastery-hero',sourceId:'mastery-hero',grappleRange:5,escapeDC:12});
+ math.random=()=>0.99;
+ let masteryAttackResult=false;
+ try{masteryAttackResult=T.gameplay.heroAttack(masteryPlayer,masteryEnemy,false);}finally{math.random=priorMasteryRandom;}
+ assert('A successful multiplayer Warhammer Push hit displaces the enemy and releases an out-of-reach grapple',masteryAttackResult===true&&masteryEnemy.pos.x>=4&&!T.has(masteryEnemy,'grappled'));
  const spellSaveTarget=actor({name:'Thunderwave Target'});
  assert('Player spell displacement recognizes failed target-save results without treating successful saves as failures',T.gameplay.forcedSpellTargetFailedSave(spellSaveTarget,[{msg:'Thunderwave Target makes CON save 11 vs DC 13: failure.'}])&&!T.gameplay.forcedSpellTargetFailedSave(spellSaveTarget,[{msg:'Thunderwave Target makes CON save 18 vs DC 13: success.'}]));
  const movementOnlySpell=T18.inferSpell('Gust of Wind',{description:'The target must succeed on a Strength saving throw or be pushed 15 feet away.',save:true,saveAbility:'STR'},{kind:'control',condition:'restrained',save:'STR'});
