@@ -355,24 +355,32 @@ function sr18ResolveMonsterAction(enemy,action,target){
  if(enemy.pos&&target.pos&&!sr11HasLOS(enemy.pos,target.pos))return false;
  const targets=save?sr18MonsterTargetsForAction(enemy,action,target,save):[target];let did=false;
  for(const t of targets){const hero=t.player,cc=hero.character;if(!cc||cc.hp<=0)continue;
-  if(save){const result=sr133HeroSave(cc,save.ability,hero,enemy),raw=rollDice(dice),half=/half damage/i.test(desc),damage=result.success?(half?Math.floor(raw/2):0):raw,actual=sr18MonsterApplyDamage(t,damage,type,enemy),condition=sr18ParseCondition(desc);
-   if(!result.success&&condition&&!sr18ConditionImmunity(t,condition)){
+  if(save){
+   const result=sr133HeroSave(cc,save.ability,hero,enemy),raw=rollDice(dice),half=/half damage/i.test(desc);
+   // Keep the structured resolver authoritative, but guard against legacy result
+   // records whose success flag disagrees with their reported total and DC.
+   const total=Number(result?.total),dc=Number(save?.dc);
+   const failedSave=result?.autoFail===true||result?.success===false||
+     (Number.isFinite(total)&&Number.isFinite(dc)&&total<dc&&result?.legendaryResistanceUsed!==true);
+   const damage=failedSave?raw:(half?Math.floor(raw/2):0),actual=sr18MonsterApplyDamage(t,damage,type,enemy),condition=sr18ParseCondition(desc);
+   if(failedSave&&condition&&!sr18ConditionImmunity(t,condition)){
     const conditionDuration=Math.max(1,Number((desc.match(/(?:until the end of|for) (?:its|the target's|your) next turn/i)||[]).length?1:1),1);
     const sourceId=String(enemy.id||enemy.name||'unknown-monster');
     if(condition==='grappled'&&typeof sr29Apply==='function'){
      const grappleRange=Math.max(5,Number(range.ranged?range.normalRange:range.reach)||5);
      sr29Apply(cc,condition,conditionDuration,enemy.name,{sourceId,grapplerId:sourceId,grappleRange});
-    }else sr11Add(cc,condition,conditionDuration,enemy.name);
+    }else if(typeof sr29Apply==='function')sr29Apply(cc,condition,conditionDuration,enemy.name,{sourceId});
+    else sr11Add(cc,condition,conditionDuration,enemy.name);
     // Reuse the canonical repeat-save contract for monster-applied conditions.
     // Attach only after the failed save actually applied the condition.
     const repeatSave=typeof sr29ParseRepeatSave==='function'?sr29ParseRepeatSave(desc):null;
     if(repeatSave&&typeof sr29AttachRepeatSave==='function'){
-     const ability=save?.ability||repeatSave.ability,dc=Number(save?.dc);
+     const ability=save?.ability||repeatSave.ability;
      if(ability&&Number.isFinite(dc))sr29AttachRepeatSave(cc,condition,enemy.name,enemy,ability,dc,repeatSave,sourceId);
     }
    }
-   if(!result.success)sr18DisplaceCombatant(t,enemy,desc);
-   log(`${enemy.name} uses ${action.name}; ${hero.name} makes a ${save.ability} save (${result.total} vs DC ${save.dc}) and takes ${actual} ${type} damage${condition&&!result.success?` and gains ${condition}`:''}.`,'badlog');
+   if(failedSave)sr18DisplaceCombatant(t,enemy,desc);
+   log(`${enemy.name} uses ${action.name}; ${hero.name} makes a ${save.ability} save (${result.total} vs DC ${save.dc}) and takes ${actual} ${type} damage${condition&&failedSave?` and gains ${condition}`:''}.`,'badlog');
   }else{
    const bonus=Number(action.attack_bonus??enemy.attack)||0,r=sr11RollAttack(bonus,enemy,cc,!range.ranged),ac=sr12WithHero(hero,()=>computeAC())+(cc.buffRounds>0?2:0)+(state.combat?.mp?sr11Cover(t.pos,enemy.pos):0),d20=sr25ResolveAttackRecord(r,ac),hit=d20.success;
    if(hit){let amount=rollDice(dice);if(d20.critical)amount+=rollDice(dice);const actual=sr18MonsterApplyDamage(t,amount,type,enemy);sr18DisplaceCombatant(t,enemy,desc);log(`${enemy.name} uses ${action.name} against ${hero.name}: hit for ${actual} ${type} damage.`,'badlog');}else log(`${enemy.name} uses ${action.name} against ${hero.name}: miss.`,'rolllog');
