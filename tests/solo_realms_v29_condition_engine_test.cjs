@@ -482,6 +482,22 @@ try{
  assert('Player spell Push uses collision-aware tactical displacement in multiplayer combat',tacticalPush&&tacticalTarget.pos.x===4&&tacticalTarget.pos.y===1);
  T18.state=priorSpellState;
 
+ const incapacitatedGateActor=actor({id:'gate-actor',name:'Gate Actor',classId:'Barbarian',level:3,classLevels:{Barbarian:3},stats:{STR:16,DEX:10,CON:12,INT:10,WIS:10,CHA:10},reactionAvailable:true,bonusActionSpent:false,actionSpent:false});
+ T.apply(incapacitatedGateActor,'incapacitated','permanent','action gate regression');
+ const gatePlayer={id:'gate-actor',name:'Gate Actor',connected:true,character:incapacitatedGateActor};
+ const gateEnemy=actor({id:'gate-enemy',name:'Gate Enemy',hp:20,pos:{x:2,y:1}});
+ T18.state={character:incapacitatedGateActor,campaign:{multiplayer:{players:[gatePlayer]}},combat:{mp:{turnOrder:[{kind:'hero',id:'gate-actor'}],index:0,heroPositions:{'gate-actor':{x:1,y:1}}},enemies:[gateEnemy],map:{width:8,height:6,terrain:openTerrain}},log:[]};
+ const gateFeature=context.sr14RunFeature(gatePlayer,'rage');
+ const gateLegacyPower=context.sr12ClassPower(gatePlayer);
+ const gateCunning=context.sr137CunningAction(gatePlayer,'dash');
+ const gateHeroAction=context.sr12HeroAction(gatePlayer,'attack');
+ const gateSpell=context.sr14CastSpellComplete(gatePlayer,'Thunderwave');
+ const gateReaction=context.sr12HeroAttack(gatePlayer,gateEnemy,true);
+ assert('Incapacitated blocks player class Bonus Actions, Cunning Action, ordinary actions, spellcasting, and reactions',!gateFeature&&!gateLegacyPower&&!gateCunning&&!gateHeroAction&&!gateSpell&&!gateReaction&&!incapacitatedGateActor.bonusActionSpent&&!incapacitatedGateActor.actionSpent&&incapacitatedGateActor.reactionAvailable);
+ const spentReactionActor=actor({id:'spent-reaction',name:'Spent Reaction',reactionAvailable:false});
+ assert('Spent Reaction blocks only reaction use while leaving Action and Bonus Action eligibility intact',!T.gameplay.actionEconomyGate(spentReactionActor,'reaction',true)&&T.gameplay.actionEconomyGate(spentReactionActor,'action',true)&&T.gameplay.actionEconomyGate(spentReactionActor,'bonus-action',true));
+ T18.state=priorSpellState;
+
  assert('Solo grapple panel exposes both 2024 Shove outcomes',html.includes('data-action="sr29-shove-push"')&&html.includes('data-action="sr29-shove-prone"')&&html.includes('function sr29SoloShove(mode='));
 
  const abstractGrappler=actor({id:'abstract-hero',name:'Abstract Hero'}),abstractTarget=actor({id:'abstract-foe',name:'Abstract Foe',distance:10});
