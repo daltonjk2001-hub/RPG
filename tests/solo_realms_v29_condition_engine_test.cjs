@@ -756,6 +756,7 @@ try{
  assert('The modern Action Surge feature adapter also works after both normal resources are spent',modernSurge===true&&featureSurgeFighter.actionSurgeReady===true&&featureSurgeFighter.actionSpent===false&&featureSurgeFighter.bonusActionSpent===true);
  const dispatchedSurgeFighter=actor({id:'dispatched-surge-fighter',name:'Dispatched Surge Fighter',classId:'Fighter',level:2,classLevels:{Fighter:2},actionSpent:true,bonusActionSpent:true});
  const dispatchedSurgePlayer={id:'dispatched-surge-fighter',name:'Dispatched Surge Fighter',character:dispatchedSurgeFighter};
+ T.gameplay.setConnection(dispatchedSurgePlayer.id,{peer:dispatchedSurgePlayer.id});
  T18.state={character:dispatchedSurgeFighter,campaign:{multiplayer:{players:[dispatchedSurgePlayer]}},combat:{mp:{heroPositions:{'dispatched-surge-fighter':{x:1,y:1}},turnOrder:[{kind:'hero',id:'dispatched-surge-fighter',faction:'hero'}],index:0},enemies:[],map:{width:8,height:6,terrain:[]}},log:[]};
  const dispatchedSurge=T.gameplay.heroAction(dispatchedSurgePlayer,'power-class');
  assert('The legacy player-action dispatcher routes Fighter Action Surge through its free class-specific timing',dispatchedSurge===true&&dispatchedSurgeFighter.actionSurgeUsed===true&&dispatchedSurgeFighter.actionSpent===false&&dispatchedSurgeFighter.bonusActionSpent===true);
