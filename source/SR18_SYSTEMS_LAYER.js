@@ -297,9 +297,55 @@ function sr18DisplaceCombatant(target,source,description){
  log((target?.player?.name||target?.enemy?.name||'The target')+' is '+(mode==='push'?'pushed':'pulled')+' '+plan.feet+' feet.','rolllog');
  return true;
 }
+// Select a legal teleport destination that advances toward the current target without occupying its space.
+function sr18TeleportPlan(from,target,feet,isOpen,hasLOS){
+ if(!from||!target||!Number.isFinite(Number(from.x))||!Number.isFinite(Number(from.y))||!Number.isFinite(Number(target.x))||!Number.isFinite(Number(target.y)))return null;
+ const limit=Math.max(5,Number(feet)||5),candidates=[];
+ for(let x=Math.floor(from.x-limit/5);x<=Math.ceil(from.x+limit/5);x++)for(let y=Math.floor(from.y-limit/5);y<=Math.ceil(from.y+limit/5);y++){
+  const p={x,y};if(x===Number(from.x)&&y===Number(from.y))continue;
+  const travel=sr12Distance(from,p)*5,remaining=sr12Distance(p,target)*5;
+  if(travel>limit||remaining<5||typeof isOpen==='function'&&!isOpen(p)||typeof hasLOS==='function'&&!hasLOS(p,target))continue;
+  candidates.push({to:p,travelFeet:travel,remainingFeet:remaining});
+ }
+ candidates.sort((a,b)=>a.remainingFeet-b.remainingFeet||a.travelFeet-b.travelFeet||a.to.y-b.to.y||a.to.x-b.to.x);
+ return candidates[0]||null;
+}
+function sr18TeleportMonster(enemy,target,description){
+ const d=sr18Text(description);
+ if(!/\\bteleport(?:s|ed|ing)?\\b/i.test(d))return false;
+ const match=d.match(/teleport(?:s|ed|ing)?[^.]{0,100}?(?:up to |within |no more than )?(\\d+)\\s*feet?/i)||d.match(/(\\d+)\\s*feet?[^.]{0,80}teleport/i);
+ const feet=Math.max(5,Number(match?.[1])||30),b=state.combat;
+ if(!b)return false;
+ if(!b.mp){
+  const before=Math.max(0,Number(enemy?.distance)||0),after=Math.max(5,before-feet);
+  if(after>=before)return false;
+  enemy.distance=after;
+  if(typeof sr29ReconcileAbstractGrapples==='function')sr29ReconcileAbstractGrapples();
+  if(typeof sr29ReconcileCombatGrapples==='function')sr29ReconcileCombatGrapples();
+  log(enemy.name+' teleports '+(before-after)+' feet closer to '+(target?.player?.name||'its target')+'.','rolllog');
+  return true;
+ }
+ const from=enemy?.pos||enemy?.position,to=target?.pos;
+ if(!from||!to||typeof sr9Cell!=='function')return false;
+ const isOpen=p=>{
+  const cell=sr9Cell(p.x,p.y);
+  if(!cell||cell.blocked===true||cell.walkable===false||/^(?:wall|void|blocked)$/i.test(String(cell.kind||cell.type||'')))return false;
+  for(const [id,p2] of Object.entries(b.mp.heroPositions||{}))if(p2&&Number(p2.x)===p.x&&Number(p2.y)===p.y)return false;
+  for(const other of b.enemies||[]){if(other!==enemy&&other.hp>0){const p2=other.pos||other.position;if(p2&&Number(p2.x)===p.x&&Number(p2.y)===p.y)return false;}}
+  return true;
+ };
+ const plan=sr18TeleportPlan(from,to,feet,isOpen,(a,z)=>sr11HasLOS(a,z));
+ if(!plan)return false;
+ enemy.pos={...plan.to};if(enemy.position)enemy.position={...plan.to};
+ if(typeof sr29ReconcileAbstractGrapples==='function')sr29ReconcileAbstractGrapples();
+ if(typeof sr29ReconcileCombatGrapples==='function')sr29ReconcileCombatGrapples();
+ log(enemy.name+' teleports to an unoccupied space '+plan.travelFeet+' feet away.','rolllog');
+ return true;
+}
 function sr18ResolveMonsterAction(enemy,action,target){
  if(!target?.player?.character||!action||!sr18CanUseAction(enemy))return false;
  const p=target.player,c=p.character,desc=sr18Text(action.description),save=sr14ParseMonsterSave(desc),dice=sr14MonsterActionDamage(action)||'1d4',type=sr18Text(action.damage?.[0]?.type||'physical').toLowerCase();
+ sr18TeleportMonster(enemy,target,desc);
  const range=sr18ParseActionRange(action),dist=enemy.pos&&target.pos?sr12Distance(enemy.pos,target.pos):0;
  if(!range.ranged&&dist>range.reach){if(state.combat?.mp)sr12EnemyStep(enemy,target.pos);else if(typeof sr10EnemyMove==='function')sr10EnemyMove(enemy);return false;}
  if(enemy.pos&&target.pos&&!sr11HasLOS(enemy.pos,target.pos))return false;
@@ -584,6 +630,6 @@ function sr18RunTests(){
  }catch(e){ok('V18 rules, living world and save tests execute without runtime errors',false,String(e?.stack||e));}
  return out;
 }
-globalThis.__SR18_TEST={version:SR18_VERSION,canUseAction:sr18CanUseAction,canUseReaction:sr18CanUseReaction,attackRoll:sr11RollAttack,openDB:sr18OpenDB,inferSpell:sr18InferSpellEffect,area:sr18Area,condition:sr18DetectCondition,expandMultiattack:sr18ExpandMultiattack,availableMultiattack:sr18AvailableMultiattack,rechargeReady:sr18RechargeReady,recharge:sr18ParseRecharge,parseActionRange:sr18ParseActionRange,markRechargeUsed:sr18MarkRechargeUsed,prepareMonsterTurn:sr18PrepareMonsterTurn,chooseMonsterAction:sr18ChooseMonsterAction,resolveMonsterAction:sr18ResolveMonsterAction,monsterTurnSolo:sr18MonsterTurnSolo,monsterDamage:sr18MonsterApplyDamage,typedDamage:sr12ApplyDamage,applySpellUtility:sr18ApplySpellUtility,displacementPlan:sr18DisplacementPlan,displaceCombatant:sr18DisplaceCombatant,classifyImprovisation:sr18ClassifyImprovisation,improvisationDecision:sr18ImprovisationDecision,ensureWorld:sr18EnsureWorld,advanceWorld:sr18AdvanceWorld,addWorldEvent:sr18AddWorldEvent,validateSave:sr18ValidateSave,normalizeImport:sr18NormalizeImported,snapshot:sr18Snapshot,storeSlot:sr18StoreSlot,readSlot:sr18ReadSlot,deleteSlot:sr18DeleteSlot,writeRecovery:sr18WriteRecovery,restore:sr18RestoreState,latestRecovery:sr18LatestRecovery,exportSave:sr18SaveExport,importFile:sr18ImportFile,saveCenter:sr18SaveCenter,render:render,header:header,adventurePage:adventurePage,tests:sr18RunTests,get state(){return state;},set state(v){state=v;}};
+globalThis.__SR18_TEST={version:SR18_VERSION,canUseAction:sr18CanUseAction,canUseReaction:sr18CanUseReaction,attackRoll:sr11RollAttack,openDB:sr18OpenDB,inferSpell:sr18InferSpellEffect,area:sr18Area,condition:sr18DetectCondition,expandMultiattack:sr18ExpandMultiattack,availableMultiattack:sr18AvailableMultiattack,rechargeReady:sr18RechargeReady,recharge:sr18ParseRecharge,parseActionRange:sr18ParseActionRange,markRechargeUsed:sr18MarkRechargeUsed,prepareMonsterTurn:sr18PrepareMonsterTurn,chooseMonsterAction:sr18ChooseMonsterAction,resolveMonsterAction:sr18ResolveMonsterAction,monsterTurnSolo:sr18MonsterTurnSolo,monsterDamage:sr18MonsterApplyDamage,typedDamage:sr12ApplyDamage,applySpellUtility:sr18ApplySpellUtility,displacementPlan:sr18DisplacementPlan,displaceCombatant:sr18DisplaceCombatant,teleportPlan:sr18TeleportPlan,teleportMonster:sr18TeleportMonster,classifyImprovisation:sr18ClassifyImprovisation,improvisationDecision:sr18ImprovisationDecision,ensureWorld:sr18EnsureWorld,advanceWorld:sr18AdvanceWorld,addWorldEvent:sr18AddWorldEvent,validateSave:sr18ValidateSave,normalizeImport:sr18NormalizeImported,snapshot:sr18Snapshot,storeSlot:sr18StoreSlot,readSlot:sr18ReadSlot,deleteSlot:sr18DeleteSlot,writeRecovery:sr18WriteRecovery,restore:sr18RestoreState,latestRecovery:sr18LatestRecovery,exportSave:sr18SaveExport,importFile:sr18ImportFile,saveCenter:sr18SaveCenter,render:render,header:header,adventurePage:adventurePage,tests:sr18RunTests,get state(){return state;},set state(v){state=v;}};
 // Re-render after the additive systems are installed so the V18 header and Save Center are visible on first boot.
 try { render(); } catch (error) { console.warn('V18 initial render:', error); }
