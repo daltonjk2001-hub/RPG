@@ -496,6 +496,12 @@ try{
  assert('Incapacitated blocks player class Bonus Actions, Cunning Action, ordinary actions, spellcasting, and reactions',!gateFeature&&!gateLegacyPower&&!gateCunning&&!gateHeroAction&&!gateSpell&&!gateReaction&&!incapacitatedGateActor.bonusActionSpent&&!incapacitatedGateActor.actionSpent&&incapacitatedGateActor.reactionAvailable);
  const spentReactionActor=actor({id:'spent-reaction',name:'Spent Reaction',reactionAvailable:false});
  assert('Spent Reaction blocks only reaction use while leaving Action and Bonus Action eligibility intact',!T.gameplay.actionEconomyGate(spentReactionActor,'reaction',true)&&T.gameplay.actionEconomyGate(spentReactionActor,'action',true)&&T.gameplay.actionEconomyGate(spentReactionActor,'bonus-action',true));
+ const spentBard=actor({id:'spent-bard',name:'Spent Bard',classId:'Bard',level:3,classLevels:{Bard:3},stats:{STR:10,DEX:12,CON:12,INT:10,WIS:12,CHA:16},reactionAvailable:false,resourcesByClass:{Bard:{inspiration:3}}});
+ const spentBardPlayer={id:'spent-bard',name:'Spent Bard',character:spentBard};
+ T18.state={character:spentBard,campaign:{multiplayer:{players:[spentBardPlayer]}},combat:{mp:null,enemies:[gateEnemy]},log:[]};
+ const cuttingWordsBlocked=context.sr14RunFeature(spentBardPlayer,'cuttingWords');
+ const readiedAttackBlocked=context.sr12HeroAttack(spentBardPlayer,gateEnemy,true);
+ assert('A spent Reaction blocks Cutting Words and readied attacks without spending another resource',!cuttingWordsBlocked&&!readiedAttackBlocked&&spentBard.reactionAvailable===false&&spentBard.resourcesByClass.Bard.inspiration===3);
  T18.state=priorSpellState;
 
  assert('Solo grapple panel exposes both 2024 Shove outcomes',html.includes('data-action="sr29-shove-push"')&&html.includes('data-action="sr29-shove-prone"')&&html.includes('function sr29SoloShove(mode='));
