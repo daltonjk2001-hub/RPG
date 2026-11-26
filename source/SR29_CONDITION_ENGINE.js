@@ -341,6 +341,32 @@ function sr29ReconcileGrapples(participants,options={}) {
   }
   return {count:released.length,released};
 }
+function sr29GrappleEligibility(grappler,target,options={}) {
+  if(!grappler||!target)return {legal:false,reason:'missing-creature'};
+  const sizeOrder=['tiny','small','medium','large','huge','gargantuan'];
+  const grapplerSize=String(options.grapplerSize??grappler.size??'').trim().toLowerCase();
+  const targetSize=String(options.targetSize??target.size??'').trim().toLowerCase();
+  if(!sizeOrder.includes(grapplerSize)||!sizeOrder.includes(targetSize))
+    return {legal:false,reason:'unknown-size'};
+  if(sizeOrder.indexOf(targetSize)>sizeOrder.indexOf(grapplerSize)+1)
+    return {legal:false,reason:'target-too-large'};
+  const freeHands=Number(options.freeHands);
+  if(!Number.isFinite(freeHands)||freeHands<0)
+    return {legal:false,reason:'free-hands-unknown'};
+  const grapplerId=String(grappler.id||grappler.name||'');
+  const active=Array.isArray(options.activeGrapples)?options.activeGrapples:[];
+  const occupied=active.filter(item=>{
+    const holder=String(item?.grapplerId??item?.sourceId??'');
+    return !holder||!grapplerId||holder===grapplerId;
+  }).length;
+  if(freeHands-occupied<1)return {legal:false,reason:'no-free-hand'};
+  const distance=Number(options.distance);
+  const reach=Number(options.reach);
+  if(!Number.isFinite(distance)||distance<0||!Number.isFinite(reach)||reach<=0)
+    return {legal:false,reason:'distance-or-reach-unknown'};
+  if(distance>reach)return {legal:false,reason:'out-of-reach'};
+  return {legal:true,reason:null,grapplerSize,targetSize,freeHandsRemaining:freeHands-occupied};
+}
 function sr29ReconcileCombatGrapples(snapshot=state) {
   if(!snapshot?.combat)return {count:0,released:[]};
   return sr29ReconcileGrapples(sr29CombatParticipants(snapshot));
@@ -822,6 +848,7 @@ globalThis.__SR29_TEST={
   applyUiCondition:sr29ApplyUiCondition,removeUiCondition:sr29RemoveUiCondition,
   currentPhase:()=>({phase:SR29_PHASE,cycle:SR29_COMBAT_CYCLE}),
   canUseAction:sr29CanAct,
+  grappleEligibility:sr29GrappleEligibility,
   releaseGrapple:sr29ReleaseGrapple,reconcileGrapples:sr29ReconcileGrapples,
   combatParticipants:sr29CombatParticipants,reconcileCombatGrapples:sr29ReconcileCombatGrapples
 };
