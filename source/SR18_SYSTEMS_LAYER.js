@@ -345,7 +345,10 @@ function sr18TeleportMonster(enemy,target,description){
 function sr18ResolveMonsterAction(enemy,action,target){
  if(!target?.player?.character||!action||!sr18CanUseAction(enemy))return false;
  const p=target.player,c=p.character,desc=sr18Text(action.description),save=sr14ParseMonsterSave(desc),dice=sr14MonsterActionDamage(action)||'1d4',type=sr18Text(action.damage?.[0]?.type||'physical').toLowerCase();
+ const teleportIntent=/\\bteleport(?:s|ed|ing)?\\b/i.test(desc);
  sr18TeleportMonster(enemy,target,desc);
+ // A teleport-only stat-block action consumes its action; it must not fall through to the legacy default 1d4 attack.
+ if(teleportIntent&&!save&&!sr14MonsterActionDamage(action)&&!action.damage?.length&&!/\\b(?:attack roll|melee attack|ranged attack|hit:|damage)\\b/i.test(desc))return true;
  const range=sr18ParseActionRange(action),dist=enemy.pos&&target.pos?sr12Distance(enemy.pos,target.pos):0;
  if(!range.ranged&&dist>range.reach){if(state.combat?.mp)sr12EnemyStep(enemy,target.pos);else if(typeof sr10EnemyMove==='function')sr10EnemyMove(enemy);return false;}
  if(enemy.pos&&target.pos&&!sr11HasLOS(enemy.pos,target.pos))return false;
@@ -377,7 +380,7 @@ function sr18PrepareMonsterTurn(enemy){
  }
 }
 function sr18ChooseMonsterAction(enemy,target){
- const actions=(enemy.actions||[]).filter(a=>!/^multiattack$/i.test(a.name||'')&&(sr14MonsterActionDamage(a)||sr14ParseMonsterSave(a.description)||/restrain|grapple|swallow|knock prone|pushes?|pulls?/i.test(a.description||'')));
+ const actions=(enemy.actions||[]).filter(a=>!/^multiattack$/i.test(a.name||'')&&(sr14MonsterActionDamage(a)||sr14ParseMonsterSave(a.description)||/restrain|grapple|swallow|knock prone|pushes?|pulls?|teleport(?:s|ed|ing)?/i.test(a.description||'')));
  const ready=actions.filter(a=>{const recharge=sr18ParseRecharge(a);return !recharge||enemy._sr18Recharge?.[a.name]!==false;});
  const dist=enemy.pos&&target?.pos?sr12Distance(enemy.pos,target.pos):0;
  return ready.sort((a,b)=>{
