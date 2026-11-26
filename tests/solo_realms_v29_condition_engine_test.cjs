@@ -362,6 +362,8 @@ try{
  assert('Abstract-distance reconciliation also releases a player held by a displaced enemy',abstractVictimRelease.count===1&&!T.has(abstractVictim,'grappled'));
  assert('V29 reconciliation runs after multiplayer hero movement, shove, weapon mastery push and spell resolution',html.includes('sr12MoveHero=function(...args)')&&html.includes('sr131Maneuver=function(...args)')&&html.includes('sr7ApplyMastery=function(...args)')&&html.includes('sr14CastSpellComplete=function(...args)'));
  assert('Solo grappled monsters spend their action on a source-specific canonical escape check',html.includes('sr7EnemySpecial=function(enemy)')&&html.includes('sr29EscapeGrapple(enemy,{instanceId:grapple.id')&&html.includes('bonusOverride:skillBonus'));
+ assert('Monster-initiated grapples retain parsed escape DC, reach, size and action appendage metadata',html.includes('escape\\s+DC\\s*(\\d+)')&&html.includes('escapeDC,grapplerSize:sr29MpSize(enemy),targetSize:sr29MpSize(creature),handSlot:'));
+
 
 
 
