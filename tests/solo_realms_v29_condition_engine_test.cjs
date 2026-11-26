@@ -103,7 +103,7 @@ try{
  const firstDominateRelease=T.processRepeatSaves(dominatedFirst,'damage','dominate-first-damage',[20]);
  const concentrationRetained=concentrationCaster.concentration?.spell==='Dominate Person';
  const secondDominateRelease=T.processRepeatSaves(dominatedSecond,'damage','dominate-second-damage',[20]);
- assert('Ending one target of a multi-target concentration spell keeps concentration while another target remains',firstDominateRelease.ended===1&&concentrationRetained&&T.has(dominatedSecond,'charmed'));
+ assert('Ending one target of a multi-target concentration spell keeps concentration while another target remains',firstDominateRelease.ended===1&&concentrationRetained&&T.has(dominatedSecond,'charmed'),JSON.stringify({firstDominateRelease,concentrationRetained,casterConcentration:concentrationCaster.concentration,casterEffects:concentrationCaster.activeEffects,firstConditions:dominatedFirst.conditions,secondConditions:dominatedSecond.conditions,repeatRecords:T.endRepeatSaveConcentration({sourceSpell:'Dominate Person',sourceId:'concentration-caster',sourceName:'Concentration Caster'})}));
  assert('Ending the final target of a concentration spell clears the caster concentration and its matching concentration effect',secondDominateRelease.ended===1&&concentrationCaster.concentration===null&&!concentrationCaster.activeEffects.some(x=>x.name==='Dominate Person'));
  const damageHookTarget=actor({id:'damage-hook-target',name:'Damage Hook Target',classId:'Wizard',level:1});
  T18.state={character:damageHookTarget,combat:{round:1},campaign:{},log:[]};
