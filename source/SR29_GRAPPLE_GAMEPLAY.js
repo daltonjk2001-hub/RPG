@@ -93,6 +93,37 @@ function sr29SoloEscapeGrapple(){
   afterPlayerAction();render();save();return true;
 }
 
+
+/* V29.9 — solo theater-of-the-mind Shove uses the 2024 Unarmed Strike save procedure. */
+function sr29SoloShove(mode='push'){
+  const b=state?.combat,c=state?.character,e=targetEnemy();
+  if(!b||b.mp||!c||!e||e.hp<=0){toast('A living solo-combat target is required.');return false;}
+  if(!['push','prone'].includes(mode))return false;
+  if(c.actionSpent||!sr29CanAct(c,'action')){toast('Your condition or spent Action prevents this maneuver.');return false;}
+  const ranks={tiny:0,small:1,medium:2,large:3,huge:4,gargantuan:5};
+  const ownRank=ranks[sr29SoloSize(c)]??2,targetRank=ranks[sr29SoloSize(e)]??2;
+  if(targetRank>ownRank+1){toast('That creature is too large to shove.');return false;}
+  const distance=Number.isFinite(Number(e.distance))?Math.max(0,Number(e.distance)):5;
+  if(distance>5){toast('Move within 5 feet of the target first.');return false;}
+  const dc=sr29GrappleEscapeDC(c,{proficiencyBonus:profBonus(),strengthScore:Number(c.stats?.STR)||10});
+  const ability=sr29SoloChooseTargetSaveAbility(e),saveResult=sr29SoloTargetSave(e,ability,dc);
+  log(`${c.name} attempts to shove ${e.name}; ${ability} save ${saveResult.total} vs DC ${dc}: ${saveResult.success?'success':'failure'}.`,saveResult.success?'rolllog':'goodlog');
+  if(!saveResult.success){
+    if(mode==='push'){
+      const before=distance;
+      e.distance=before+5;
+      log(`${e.name} is pushed 5 feet away (${before} → ${e.distance} feet).`,'goodlog');
+      sr29ReconcileAbstractGrapples();
+      sr29ReconcileCombatGrapples();
+    }else{
+      if(typeof sr29Apply==='function')sr29Apply(e,'prone',1,c.name,{sourceId:String(c.id||c.name||'solo-player')});
+      else sr11Add(e,'prone',1,c.name);
+      log(`${e.name} is knocked Prone.`,'goodlog');
+    }
+  }else log(`${e.name} resists the shove.`,'rolllog');
+  afterPlayerAction();render();save();return true;
+}
+
 const sr29SoloCombatPageBase=combatPage;
 combatPage=function(){
   const html=sr29SoloCombatPageBase();
@@ -100,16 +131,16 @@ combatPage=function(){
   const c=state.character,grappled=sr29Entries(c).some(item=>item.name==='grappled');
   const canGrapple=!!targetEnemy()&&!grappled;
   const controls='<section class="card"><h3>Grapple</h3><p class="smalltext muted">Unarmed Strike grapple: hit first, then the target chooses a Strength or Dexterity saving throw. Escape uses an action and Athletics or Acrobatics.</p><div class="item-actions">'+
-    (canGrapple?'<button class="btn small" data-action="sr29-grapple">Unarmed Strike · Grapple</button>':'')+
+    (canGrapple?'<button class="btn small" data-action="sr29-grapple">Unarmed Strike · Grapple</button><button class="btn small" data-action="sr29-shove-push">Shove · Push 5 ft</button><button class="btn small" data-action="sr29-shove-prone">Shove · Knock Prone</button>':'')+
     (grappled?'<button class="btn small" data-action="sr29-escape-grapple">Escape Grapple · Action</button>':'')+
     '</div></section>';
   return html+controls;
 };
 document.addEventListener('click',function(event){
-  const button=event.target?.closest?.('button[data-action="sr29-grapple"],button[data-action="sr29-escape-grapple"]');
+  const button=event.target?.closest?.('button[data-action="sr29-grapple"],button[data-action="sr29-escape-grapple"],button[data-action="sr29-shove-push"],button[data-action="sr29-shove-prone"]');
   if(!button)return;
   event.preventDefault();event.stopImmediatePropagation();
-  try{if(button.dataset.action==='sr29-grapple')sr29SoloStartPlayerGrapple();else sr29SoloEscapeGrapple();}
+  try{if(button.dataset.action==='sr29-grapple')sr29SoloStartPlayerGrapple();else if(button.dataset.action==='sr29-escape-grapple')sr29SoloEscapeGrapple();else sr29SoloShove(button.dataset.action==='sr29-shove-prone'?'prone':'push');}
   catch(error){console.error('V29 grapple action failed',error);toast('Grapple action failed safely; no action was consumed.');}
 },true);
 
@@ -582,5 +613,5 @@ if(typeof sr14CastSpellComplete==='function'){
 }
 
 if(globalThis.__SR29_TEST){
-  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerResolveGrappleSave:sr29MpResolveGrappleSave,multiplayerPruneGrappleChallenges:sr29MpPruneGrappleChallenges,multiplayerGrappleMovePlan:sr29MpGrappleMovePlan,multiplayerVoluntaryMovementEligibility:sr29MpVoluntaryMovementEligibility,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
+  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,soloShove:sr29SoloShove,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerResolveGrappleSave:sr29MpResolveGrappleSave,multiplayerPruneGrappleChallenges:sr29MpPruneGrappleChallenges,multiplayerGrappleMovePlan:sr29MpGrappleMovePlan,multiplayerVoluntaryMovementEligibility:sr29MpVoluntaryMovementEligibility,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
 }
