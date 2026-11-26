@@ -114,6 +114,12 @@ try{
  assert('Grapple initiation requires the target to make its choice of Strength or Dexterity save',!missingTargetSave.started&&missingTargetSave.reason==='target-save-required'&&!T.has(grappleVictim,'grappled'));
  const resisted=T.startGrapple(grappleHolder,grappleVictim,{attackHit:true,grapplerSize:'medium',targetSize:'large',freeHands:1,activeGrapples:[],distance:5,reach:5,proficiencyBonus:3,targetSave:{ability:'DEX',roll:12,bonus:2}});
  assert('A successful target saving throw prevents the grapple',!resisted.started&&resisted.reason==='target-saved'&&!T.has(grappleVictim,'grappled')&&resisted.escapeDC===14);
+ const naturalOneTarget=actor({id:'grapple-natural-one'});
+ const naturalOne=T.startGrapple(grappleHolder,naturalOneTarget,{attackHit:true,grapplerSize:'medium',targetSize:'medium',freeHands:1,activeGrapples:[],distance:5,reach:5,proficiencyBonus:3,targetSave:{ability:'STR',roll:1,bonus:30}});
+ assert('A natural 1 fails the grapple saving throw despite a high modifier',naturalOne.started&&T.has(naturalOneTarget,'grappled'));
+ const naturalTwentyTarget=actor({id:'grapple-natural-twenty'});
+ const naturalTwenty=T.startGrapple(grappleHolder,naturalTwentyTarget,{attackHit:true,grapplerSize:'medium',targetSize:'medium',freeHands:1,activeGrapples:[],distance:5,reach:5,proficiencyBonus:3,targetSave:{ability:'DEX',roll:20,bonus:-20}});
+ assert('A natural 20 succeeds on the grapple saving throw despite a low modifier',!naturalTwenty.started&&naturalTwenty.reason==='target-saved'&&!T.has(naturalTwentyTarget,'grappled'));
  const started=T.startGrapple(grappleHolder,grappleVictim,{attackHit:true,grapplerSize:'medium',targetSize:'large',freeHands:1,activeGrapples:[],distance:5,reach:5,proficiencyBonus:3,targetSave:{ability:'STR',roll:10,bonus:2}});
  assert('A failed target saving throw applies Grappled with source, reach, and escape DC',started.started&&T.has(grappleVictim,'grappled')&&started.escapeDC===14&&started.instance.grapplerId==='grapple-starter'&&started.instance.grappleRange===5&&started.save.success===false);
  const failedEscape=T.escapeGrapple(grappleVictim,{instanceId:started.instance.id,ability:'Athletics',roll:10,bonus:3});
