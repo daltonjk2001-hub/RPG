@@ -120,17 +120,19 @@ sr7Move=function(direction){
   if(!held.length||!['closer','retreat'].includes(direction))return sr29SoloMoveBase(direction);
   const enemy=held[0],baseSpeed=Math.max(0,(c.baseMovement||c.movement||30)+(c.movementBonus||0)-(sr7HasCondition(c,'prone')?15:0)-5*(Number(c.exhaustion)||0));
   const allowance=baseSpeed*(c.dashUsed?2:1),before=Number(c.movementSpent)||0,remaining=Math.max(0,allowance-before);
-  const planned=Math.min(baseSpeed,remaining/2);
+  const costs=held.map(target=>sr29GrappleMovementCost(c,target,1,{grapplerSize:sr29SoloSize(c)||'medium',targetSize:sr29SoloSize(target)||'medium'}));
+  const multiplier=Math.max(1,...costs.filter(x=>x.valid).map(x=>x.multiplier));
+  const planned=Math.min(baseSpeed,remaining/multiplier);
   if(!planned)return sr29SoloMoveBase(direction);
-  const cost=sr29GrappleMovementCost(c,enemy,planned,{grapplerSize:sr29SoloSize(c)||'medium',targetSize:sr29SoloSize(enemy)||'medium'});
+  const cost={valid:true,movementCost:planned*multiplier,speedHalved:multiplier>1};
   const oldDistance=Number(enemy.distance)||5,temporarySpent=allowance-planned;
   c.movementSpent=temporarySpent;
   sr29SoloMoveBase(direction);
   const moved=(Number(c.movementSpent)||0)>temporarySpent;
   if(moved){
     c.movementSpent=Math.min(allowance,before+cost.movementCost);
-    enemy.distance=5;
-    log(`Dragging ${enemy.name} costs ${cost.movementCost} feet of movement${cost.speedHalved?' (speed halved)':''}.`,'rolllog');
+    held.forEach(target=>{target.distance=5;});
+    log(`Dragging ${held.map(target=>target.name).join(' and ')} costs ${cost.movementCost} feet of movement${cost.speedHalved?' (speed halved)':''}.`,'rolllog');
     sr29ReconcileCombatGrapples(state);
     render();save();
   }else{c.movementSpent=before;enemy.distance=oldDistance;}
