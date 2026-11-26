@@ -23,14 +23,26 @@ function sr29SoloFreeHands(actor){
   const shieldEquipped=!!(actor?.shieldEquipped||actor?.shield||actor?.offHandShield||actor?.equipment?.shield);
   return Math.max(0,2-Math.min(2,Math.max(0,weaponHands||0))-(shieldEquipped?1:0));
 }
+function sr29SoloSaveBonus(target,ability){
+  const key=String(ability||'').toUpperCase(),stats=target?.stats||target?.abilityScores||{};
+  const score=Number(stats[key]??10),saveMap=target?.saves||target?.savingThrows||target?.statBlock?.saves||target?.statBlock?.saving_throws||{};
+  const saved=Number(saveMap[key]??saveMap[key.toLowerCase()]);
+  const trained=target===state.character&&CLASS_SAVES?.[target.classId]?.includes(key);
+  return Number.isFinite(saved)?saved:Math.floor((score-10)/2)+(trained?profBonus():0);
+}
+function sr29SoloChooseTargetSaveAbility(target){
+  const strAuto=sr29AutoFailSave(target,'STR'),dexAuto=sr29AutoFailSave(target,'DEX');
+  if(strAuto&&!dexAuto)return 'DEX';
+  if(dexAuto&&!strAuto)return 'STR';
+  const str=sr29SoloSaveBonus(target,'STR'),dex=sr29SoloSaveBonus(target,'DEX');
+  if(sr29Has(target,'restrained'))return str>=dex-4?'STR':'DEX';
+  return dex>str?'DEX':'STR';
+}
 function sr29SoloTargetSave(target,ability,dc){
   const key=String(ability||'').toUpperCase();
   const stats=target?.stats||target?.abilityScores||{STR:10,DEX:10,CON:10,INT:10,WIS:10,CHA:10};
   const score=Number(stats[key]??10);
-  const saveMap=target?.saves||target?.savingThrows||target?.statBlock?.saves||target?.statBlock?.saving_throws||{};
-  const saved=Number(saveMap[key]??saveMap[key.toLowerCase()]);
-  const trained=target===state.character&&CLASS_SAVES?.[target.classId]?.includes(key);
-  const bonus=Number.isFinite(saved)?saved:Math.floor((score-10)/2)+(trained?profBonus():0);
+  const bonus=sr29SoloSaveBonus(target,key);
   const roll=die(20),saveTarget=target?.stats?target:{...target,stats};
   const resolved=typeof sr25ResolveCreatureSavingThrow==='function'
     ?sr25ResolveCreatureSavingThrow(saveTarget,key,[roll],bonus,dc,{useLegendaryResistance:true})
@@ -50,9 +62,9 @@ function sr29SoloStartPlayerGrapple(){
   const hit=attackRoll===20||(attackRoll!==1&&attackTotal>=Number(e.ac||10));
   log(`Unarmed Strike (grapple): d20 ${attackRoll} + ${attackBonus} = ${attackTotal} vs AC ${e.ac||10}. ${hit?'Hit.':'Miss.'}`,hit?'goodlog':'badlog');
   if(!hit){afterPlayerAction();render();save();return true;}
-  const chosen=typeof prompt==='function'?prompt('The target chooses a saving throw: enter STR or DEX.','STR'): 'STR';
-  const ability=String(chosen===null?'STR':chosen||'').trim().toUpperCase();
-  if(!['STR','DEX'].includes(ability)){toast('Choose STR or DEX; the grapple attempt is not completed.');return false;}
+  // Solo combat targets are Director-controlled creatures: they choose their
+  // stronger legal save rather than asking the player controlling the grappler.
+  const ability=sr29SoloChooseTargetSaveAbility(e);
   const escapeDC=sr29GrappleEscapeDC(c,{proficiencyBonus:profBonus()});
   const save=sr29SoloTargetSave(e,ability,escapeDC);
   const result=sr29StartGrapple(c,e,{attackHit:true,grapplerSize,targetSize,freeHands,activeGrapples,distance,reach,proficiencyBonus:profBonus(),strengthScore:c.stats.STR,targetSave:save,source:'Unarmed Strike',handSlot:'main'});
@@ -125,5 +137,5 @@ sr7Move=function(direction){
 };
 
 if(globalThis.__SR29_TEST){
-  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples};
+  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,chooseTargetSave:sr29SoloChooseTargetSaveAbility};
 }
