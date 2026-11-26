@@ -57,7 +57,7 @@ try{
  const selectedTeleport=T18.chooseMonsterAction(actionMonster,actionTarget);
  const teleportActionResolved=T18.resolveMonsterAction(actionMonster,teleportAction,actionTarget);
  assert('Monster action selection includes a teleport-only stat-block action',selectedTeleport===teleportAction);
- assert('A teleport-only monster action relocates and consumes the action without making a default attack',teleportActionResolved&&actionMonster.distance===30&&actionHero.hp===30);
+ assert('A teleport-only monster action relocates and consumes the action without making a default attack',teleportActionResolved&&actionMonster.distance===30&&actionHero.hp===30,JSON.stringify({resolved:teleportActionResolved,distance:actionMonster.distance,heroHp:actionHero.hp,selected:selectedTeleport?.name}));
  T18.state=priorState;
  const stacked=actor();
  const first=T.apply(stacked,'poisoned',1,'venom A'),second=T.apply(stacked,'poisoned',3,'venom B');
