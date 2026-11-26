@@ -193,6 +193,7 @@ function sr29AttackState(attacker,target,options={}) {
     const source=String(grapple?.grapplerId||grapple?.sourceId||grapple?.source||''),targetId=String(target?.id||target?.name||'');
     if(!source||source!==targetId)add(false,true);
   }
+  add(sr29Has(attacker,'invisible'),false);
   add(false,sr29Has(target,'invisible')&&!options.canSeeInvisible);
   add(sr29Has(target,'blinded')||sr29Has(target,'restrained')||sr29Has(target,'paralyzed')||
       sr29Has(target,'petrified')||sr29Has(target,'stunned')||sr29Has(target,'unconscious'),false);
@@ -212,6 +213,20 @@ function sr29SkillMode(actor,skill,options={}) {
 function sr29CriticalOnHit(target,options={}) {
   return !!options.hit&&!!options.melee&&Number(options.distance??5)<=5&&
     (sr29Has(target,'paralyzed')||sr29Has(target,'unconscious'));
+}
+function sr29CanMoveToward(actor,target) {
+  if (!sr29Has(actor,'frightened') || !sr29FrightSourceVisible(actor,{})) return true;
+  const effect=sr29Entries(actor).find(x=>x.name==='frightened');
+  const source=String(effect?.sourceId||effect?.sourceName||'');
+  const targetId=String(target?.id||target?.name||'');
+  return !source || source!==targetId;
+}
+function sr29CannotHarm(actor,target) {
+  if (!sr29Has(actor,'charmed')) return false;
+  const effect=sr29Entries(actor).find(x=>x.name==='charmed');
+  const source=String(effect?.sourceId||effect?.sourceName||'');
+  const targetId=String(target?.id||target?.name||'');
+  return !!source && source===targetId;
 }
 function sr29CanAct(actor,actionType='action') {
   const status=sr29Status(actor);
@@ -313,6 +328,8 @@ if(typeof playerAttack==='function'){
   const sr29PriorPlayerAttack=playerAttack;
   playerAttack=function(...args){
     if(!sr29CanAct(state?.character,'action')){toast('You cannot attack while incapacitated.');return false;}
+    const target=typeof targetEnemy==='function'?targetEnemy():null;
+    if(sr29CannotHarm(state?.character,target)){toast('The Charmed condition prevents you from harming its source.');return false;}
     return sr29PriorPlayerAttack.apply(this,args);
   };
 }
@@ -320,6 +337,8 @@ if(typeof sr11HeroAttack==='function'){
   const sr29PriorHeroAttack=sr11HeroAttack;
   sr11HeroAttack=function(...args){
     if(!sr29CanAct(state?.character,'action')){toast('You cannot attack while incapacitated.');return false;}
+    const target=typeof targetEnemy==='function'?targetEnemy():null;
+    if(sr29CannotHarm(state?.character,target)){toast('The Charmed condition prevents you from harming its source.');return false;}
     return sr29PriorHeroAttack.apply(this,args);
   };
 }
@@ -335,7 +354,12 @@ if(typeof sr7Move==='function'){
   const sr29PriorMove=sr7Move;
   sr7Move=function(...args){
     if(!sr29CanMove(state?.character)){toast('Your current condition sets your Speed to 0.');return false;}
-    return sr29PriorMove.apply(this,args);
+    const target=typeof targetEnemy==='function'?targetEnemy():null;
+    if(args[0]==='closer'&&!sr29CanMoveToward(state?.character,target)){toast('The Frightened condition prevents you from willingly moving closer to its source.');return false;}
+    const before=Number(state?.character?.movementSpent)||0;
+    const result=sr29PriorMove.apply(this,args);
+    if((Number(state?.character?.movementSpent)||0)>before&&sr29Has(state?.character,'prone'))sr29Remove(state.character,'prone');
+    return result;
   };
 }
 if(typeof sr10EnemyMove==='function'){
@@ -361,5 +385,6 @@ globalThis.__SR29_TEST={
   namesFor:sr29Names,status:sr29Status,isImmune:sr29IsImmune,changeExhaustion:sr29ChangeExhaustion,
   longRestExhaustion:sr29LongRestExhaustion,autoFailSave:sr29AutoFailSave,attackState:sr29AttackState,
   skillMode:sr29SkillMode,criticalOnHit:sr29CriticalOnHit,canAct:sr29CanAct,canMove:sr29CanMove,
+  canMoveToward:sr29CanMoveToward,cannotHarm:sr29CannotHarm,
   currentPhase:()=>({phase:SR29_PHASE,cycle:SR29_COMBAT_CYCLE})
 };
