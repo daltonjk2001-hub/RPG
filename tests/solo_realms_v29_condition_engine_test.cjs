@@ -350,6 +350,8 @@ try{
  assert('Multiplayer heroes can choose Athletics or Acrobatics for Escape',typeof T.gameplay.multiplayerEscapeGrapple==='function'&&html.includes('Escape · Athletics')&&html.includes('Escape · Acrobatics'));
  assert('Multiplayer grappled monsters use their stored escape DC and release one grapple instance',html.includes('sr29EscapeGrapple(enemy,{instanceId:grapple.id')&&html.includes('grapple.escapeDC??enemy.grappleDC??12'));
  assert('Multiplayer grapple initiation uses source-linked V29 conditions and the canonical target save resolver',html.includes('sr29StartGrapple(grappler,e')&&html.includes('sr29SoloTargetSave(e,ability,escapeDC)'));
+ const explicitSkillCheck=T.canonicalAbilityCheck(actor({stats:{STR:10,DEX:10,CON:10,INT:10,WIS:10,CHA:10}}),'Athletics',14,{roll:10,bonusOverride:5});
+ assert('Canonical ability checks preserve explicit monster skill bonuses',explicitSkillCheck.total===15&&explicitSkillCheck.success===true);
  const abstractGrappler=actor({id:'abstract-hero',name:'Abstract Hero'}),abstractTarget=actor({id:'abstract-foe',name:'Abstract Foe',distance:10});
  T.apply(abstractTarget,'grappled','permanent','Abstract Hero',{grapplerId:'abstract-hero',grappleRange:5,escapeDC:12});
  const abstractRelease=T.gameplay.reconcileAbstractGrapples({character:abstractGrappler,combat:{enemies:[abstractTarget]}});
