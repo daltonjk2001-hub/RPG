@@ -10,7 +10,7 @@ const SR29_CONDITIONS = Object.freeze({
   deafened: Object.freeze({name:'Deafened', hearing:false, hearingChecksAutoFail:true}),
   exhaustion: Object.freeze({name:'Exhaustion', cumulative:true, d20PenaltyPerLevel:2, speedPenaltyPerLevel:5, deathAtLevel:6}),
   frightened: Object.freeze({name:'Frightened', checksAndAttacksDisadvantageWhenSourceVisible:true, cannotApproachSource:true}),
-  grappled: Object.freeze({name:'Grappled', speedZero:true, attacksAgainstOthersDisadvantage:true, endsIfGrapplerIncapacitated:true}),
+  grappled: Object.freeze({name:'Grappled', speedZero:true, endsIfGrapplerIncapacitated:true}),
   incapacitated: Object.freeze({name:'Incapacitated', actions:false, bonusActions:false, reactions:false, endsConcentration:true}),
   invisible: Object.freeze({name:'Invisible', initiativeAdvantage:true, attackAdvantage:true, attacksAgainstDisadvantage:true}),
   paralyzed: Object.freeze({name:'Paralyzed', incapacitated:true, speedZero:true, autoFail:['STR','DEX'], attacksAgainstAdvantage:true, meleeCriticalWithin5:true}),
@@ -188,11 +188,6 @@ function sr29AttackState(attacker,target,options={}) {
   const add=(a,d)=>{advantage=advantage||a;disadvantage=disadvantage||d;};
   add(sr29Has(attacker,'blinded')||sr29Has(attacker,'poisoned')||sr29Has(attacker,'prone')||sr29Has(attacker,'restrained'),false);
   if(sr29Has(attacker,'frightened')&&sr29FrightSourceVisible(attacker,options))add(false,true);
-  if(sr29Has(attacker,'grappled')){
-    const grapple=sr29Entries(attacker).find(x=>x.name==='grappled');
-    const source=String(grapple?.grapplerId||grapple?.sourceId||grapple?.source||''),targetId=String(target?.id||target?.name||'');
-    if(!source||source!==targetId)add(false,true);
-  }
   add(sr29Has(attacker,'invisible'),false);
   add(false,sr29Has(target,'invisible')&&!options.canSeeInvisible);
   add(sr29Has(target,'blinded')||sr29Has(target,'restrained')||sr29Has(target,'paralyzed')||
@@ -227,6 +222,12 @@ function sr29CannotHarm(actor,target) {
   const source=String(effect?.sourceId||effect?.sourceName||'');
   const targetId=String(target?.id||target?.name||'');
   return !!source && source===targetId;
+}
+function sr29SocialCheckAdvantage(actor,target) {
+  if (!sr29Has(target,'charmed')) return false;
+  const effect=sr29Entries(target).find(x=>x.name==='charmed');
+  const source=String(effect?.sourceId||effect?.sourceName||'');
+  return !!source && source===String(actor?.id||actor?.name||'');
 }
 function sr29CanAct(actor,actionType='action') {
   const status=sr29Status(actor);
@@ -385,6 +386,6 @@ globalThis.__SR29_TEST={
   namesFor:sr29Names,status:sr29Status,isImmune:sr29IsImmune,changeExhaustion:sr29ChangeExhaustion,
   longRestExhaustion:sr29LongRestExhaustion,autoFailSave:sr29AutoFailSave,attackState:sr29AttackState,
   skillMode:sr29SkillMode,criticalOnHit:sr29CriticalOnHit,canAct:sr29CanAct,canMove:sr29CanMove,
-  canMoveToward:sr29CanMoveToward,cannotHarm:sr29CannotHarm,
+  canMoveToward:sr29CanMoveToward,cannotHarm:sr29CannotHarm,socialCheckAdvantage:sr29SocialCheckAdvantage,
   currentPhase:()=>({phase:SR29_PHASE,cycle:SR29_COMBAT_CYCLE})
 };
