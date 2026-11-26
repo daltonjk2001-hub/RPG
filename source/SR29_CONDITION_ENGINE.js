@@ -188,7 +188,7 @@ function sr29AttackState(attacker,target,options={}) {
   const add=(a,d)=>{advantage=advantage||a;disadvantage=disadvantage||d;};
   add(false,sr29Has(attacker,'blinded')||sr29Has(attacker,'poisoned')||sr29Has(attacker,'prone')||sr29Has(attacker,'restrained'));
   if(sr29Has(attacker,'frightened')&&sr29FrightSourceVisible(attacker,options))add(false,true);
-  add(sr29Has(attacker,'invisible')||attacker?.invisible===true||attacker?.hidden===true,false);
+  add((sr29Has(attacker,'invisible')||attacker?.invisible===true||attacker?.hidden===true)&&!(options.targetCanSeeInvisible===true||sr29CanSeeInvisible(target)),false);
   const grappleEffect=sr29Entries(attacker).find(x=>x.name==='grappled');
   if(grappleEffect){
     const grapplerId=String(grappleEffect.grapplerId||grappleEffect.sourceId||'');

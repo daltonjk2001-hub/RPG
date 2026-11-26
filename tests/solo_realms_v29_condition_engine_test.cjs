@@ -89,6 +89,7 @@ try{
  const invisible=actor();T.apply(invisible,'invisible',2,'spell');
  assert('Invisible attackers have Advantage',T.attackState(invisible,target,{melee:true,distance:5}).mode==='advantage');
  assert('Invisible attackers gain no Advantage against a target that can see them',T.attackState(invisible,actor(),{melee:true,distance:5,targetCanSeeInvisible:true}).mode==='normal');
+ assert('Attack-state service reads the defender senses when checking Invisible attackers',T.attackState(invisible,actor({canSeeInvisible:true}),{melee:true,distance:5}).mode==='normal');
  const invisibleTarget=actor();T.apply(invisibleTarget,'invisible',2,'spell');
  assert('Attacks against Invisible targets have Disadvantage',T.attackState(attacker,invisibleTarget,{melee:true,distance:5}).mode==='disadvantage');
  assert('Seeing an Invisible target removes that Disadvantage',T.attackState(attacker,invisibleTarget,{melee:true,distance:5,canSeeInvisible:true}).mode==='normal');
