@@ -223,18 +223,29 @@ if(typeof sr13ProcessEnemyGroup==='function'&&typeof sr131OldEnemyTurn==='functi
     return acted;
   };
 }
+function sr29CreatureGrappleAppendageCapacity(actor){
+  const explicit=actor?.grappleAppendageCount??actor?.appendageCount??actor?.handCount??actor?.hands??actor?.tentacleCount;
+  if(Number.isFinite(Number(explicit)))return Math.max(0,Math.floor(Number(explicit)));
+  if(Array.isArray(actor?.grappleAppendages))return actor.grappleAppendages.length;
+  if(Array.isArray(actor?.appendages))return actor.appendages.length;
+  if(actor?.appendages&&typeof actor.appendages==='object')return Object.keys(actor.appendages).length;
+  const kind=String(actor?.type||actor?.kind||actor?.name||'').toLowerCase();
+  return /humanoid|giant|goblin|orc|human|elf|dwarf|gnoll|bandit|guard|veteran|cultist/.test(kind)?2:1;
+}
 if(typeof sr18ResolveMonsterAction==='function'&&typeof sr29Apply==='function'){
   const sr29PriorMonsterAction=sr18ResolveMonsterAction;
   sr18ResolveMonsterAction=function(enemy,action,target){
     const desc=sr18Text(action?.description),save=sr14ParseMonsterSave(desc),condition=sr18ParseCondition(desc);
     if(condition!=='grappled'||!save)return sr29PriorMonsterAction.apply(this,arguments);
     const grapplerId=String(enemy?.id||enemy?.name||'unknown-grappler');
+    const active=sr29MpActiveGrapples({id:grapplerId}),capacity=sr29CreatureGrappleAppendageCapacity(enemy);
+    if(active.length>=capacity){log(`${enemy.name} has no free appendage to grapple another creature.`,'muted');return false;}
     const escapeDC=Number(desc.match(/escape\\s+DC\\s*(\\d+)/i)?.[1]||save.dc||12);
     const range=sr18ParseActionRange(action),grappleRange=Math.max(5,Number(range.ranged?range.normalRange:range.reach)||5);
     const priorApply=sr29Apply;
     sr29Apply=function(creature,name,duration,source,options={}){
       if(String(name).toLowerCase()==='grappled'&&String(options.grapplerId||options.sourceId||'')===grapplerId){
-        options={...options,escapeDC,grapplerSize:sr29MpSize(enemy),targetSize:sr29MpSize(creature),handSlot:'monster-action:'+String(action.name||'grapple')};
+        options={...options,escapeDC,grapplerSize:sr29MpSize(enemy),targetSize:sr29MpSize(creature),handSlot:'monster-appendage-'+String(active.length+1)};
       }
       return priorApply.call(this,creature,name,duration,source,options);
     };
@@ -357,5 +368,5 @@ if(typeof sr14CastSpellComplete==='function'){
 }
 
 if(globalThis.__SR29_TEST){
-  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples};
+  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity};
 }
