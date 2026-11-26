@@ -128,10 +128,11 @@ const sr29SoloCombatPageBase=combatPage;
 combatPage=function(){
   const html=sr29SoloCombatPageBase();
   if(!state?.combat||state.combat.mp||!state.character)return html;
-  const c=state.character,grappled=sr29Entries(c).some(item=>item.name==='grappled');
-  const canGrapple=!!targetEnemy()&&!grappled;
-  const controls='<section class="card"><h3>Grapple</h3><p class="smalltext muted">Unarmed Strike grapple: hit first, then the target chooses a Strength or Dexterity saving throw. Escape uses an action and Athletics or Acrobatics.</p><div class="item-actions">'+
-    (canGrapple?'<button class="btn small" data-action="sr29-grapple">Unarmed Strike · Grapple</button><button class="btn small" data-action="sr29-shove-push">Shove · Push 5 ft</button><button class="btn small" data-action="sr29-shove-prone">Shove · Knock Prone</button>':'')+
+  const c=state.character,grappled=sr29Entries(c).some(item=>item.name==='grappled'),hasTarget=!!targetEnemy();
+  const canGrapple=hasTarget&&!grappled;
+  const controls='<section class="card"><h3>Grapple & Shove</h3><p class="smalltext muted">Grapple: hit with an Unarmed Strike, then the target chooses a Strength or Dexterity save. Shove: the target chooses a Strength or Dexterity save against your Shove DC; on a failure, push it 5 feet or knock it Prone.</p><div class="item-actions">'+
+    (canGrapple?'<button class="btn small" data-action="sr29-grapple">Unarmed Strike · Grapple</button>':'')+
+    (hasTarget?'<button class="btn small" data-action="sr29-shove-push">Shove · Push 5 ft</button><button class="btn small" data-action="sr29-shove-prone">Shove · Knock Prone</button>':'')+
     (grappled?'<button class="btn small" data-action="sr29-escape-grapple">Escape Grapple · Action</button>':'')+
     '</div></section>';
   return html+controls;
