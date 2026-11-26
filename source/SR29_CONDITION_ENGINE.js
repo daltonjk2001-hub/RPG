@@ -387,7 +387,8 @@ function sr29StartGrapple(grappler,target,options={}) {
   if(!Number.isInteger(saveRoll)||saveRoll<1||saveRoll>20)
     return {started:false,reason:'invalid-target-save-roll',escapeDC,ability:String(save.ability).toUpperCase()};
   const saveTotal=saveRoll+saveBonus;
-  if(saveTotal>=escapeDC)
+  const saveSuccess=typeof save.success==='boolean'?save.success:saveTotal>=escapeDC;
+  if(saveSuccess)
     return {started:false,reason:'target-saved',escapeDC,save:{ability:String(save.ability).toUpperCase(),roll:saveRoll,bonus:saveBonus,total:saveTotal,success:true}};
   const reach=Number(options.reach);
   const result=sr29Apply(target,'grappled','permanent',options.source||grappler.name||'Unarmed Strike',{
