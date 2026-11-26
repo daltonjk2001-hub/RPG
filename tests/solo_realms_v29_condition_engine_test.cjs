@@ -551,7 +551,7 @@ try{
  math.random=()=>0.99;
  let masteryAttackResult=false;
  try{masteryAttackResult=T.gameplay.heroAttack(masteryPlayer,masteryEnemy,false);}finally{math.random=priorMasteryRandom;}
- assert('A successful multiplayer Warhammer Push hit displaces the enemy and releases an out-of-reach grapple',masteryAttackResult===true&&masteryEnemy.pos.x>=4&&!T.has(masteryEnemy,'grappled'),JSON.stringify({masteryAttackResult,pos:masteryEnemy.pos,conditions:masteryEnemy.conditions,log:T18.state.log.slice(0,6)}));
+ assert('A successful multiplayer Warhammer Push hit displaces the enemy and releases an out-of-reach grapple',masteryAttackResult===true&&masteryEnemy.pos.x>=4&&!T.has(masteryEnemy,'grappled'),JSON.stringify({masteryAttackResult,masteryLookup:T.gameplay.weaponMasteryFor(masteryHero,'Warhammer'),pushable:T.gameplay.canPushTarget(masteryEnemy),pos:masteryEnemy.pos,conditions:masteryEnemy.conditions,log:T18.state.log.slice(0,6)}));
  const hugePushTarget=actor({id:'huge-push-target',name:'Huge Push Target',size:'Huge',pos:{x:2,y:1},hp:30});
  T18.state.combat.enemies=[hugePushTarget];
  const hugePush=T.gameplay.applyMasteryPush(hugePushTarget,masteryPlayer,{x:1,y:1},'Warhammer');
@@ -636,7 +636,7 @@ try{
  const reactionPlayerA={id:'reaction-hero-a',name:'Reaction Hero A',connected:true,character:reactionHeroA};
  const reactionPlayerB={id:'reaction-hero-b',name:'Reaction Hero B',connected:true,character:reactionHeroB};
  const reactionEnemy=actor({id:'reaction-enemy',name:'Reaction Enemy',hp:20,reactionAvailable:false});
- T18.state={character:reactionHeroA,campaign:{multiplayer:{players:[reactionPlayerA,reactionPlayerB]},companions:[]},combat:{round:1,mp:{heroPositions:{'reaction-hero-a':{x:1,y:1},'reaction-hero-b':{x:2,y:1}},turnOrder:[],index:0},enemies:[reactionEnemy]},log:[]};
+ T18.state={character:reactionHeroA,campaign:{multiplayer:{players:[reactionPlayerA,reactionPlayerB]},companions:[]},combat:{round:1,mp:{heroPositions:{'reaction-hero-a':{x:1,y:1},'reaction-hero-b':{x:2,y:1}},turnOrder:[{kind:'hero',id:'reaction-hero-a',faction:'hero'}],index:0},enemies:[reactionEnemy]},log:[]};
  T.gameplay.endRound();
  const reactionsPreserved=reactionHeroA.reactionAvailable===false&&reactionHeroB.reactionAvailable===true&&reactionEnemy.reactionAvailable===false;
  T.gameplay.beginHeroTurn(reactionPlayerA);
