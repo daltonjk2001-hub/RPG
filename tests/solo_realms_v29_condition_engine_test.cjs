@@ -619,6 +619,20 @@ try{
  T18.state={character:spentBarbarian,campaign:{multiplayer:{players:[barbarianPlayer]}},combat:{mp:null,enemies:[]},log:[]};
  const rageBlocked=T.gameplay.classPower(barbarianPlayer);
  assert('Rage remains gated by an already-spent Bonus Action',rageBlocked===false&&spentBarbarian.rageRounds===0&&spentBarbarian.bonusActionSpent===true);
+ const reactionHeroA=actor({id:'reaction-hero-a',name:'Reaction Hero A',reactionAvailable:false,actionSpent:true,bonusActionSpent:true});
+ const reactionHeroB=actor({id:'reaction-hero-b',name:'Reaction Hero B',reactionAvailable:true});
+ const reactionPlayerA={id:'reaction-hero-a',name:'Reaction Hero A',connected:true,character:reactionHeroA};
+ const reactionPlayerB={id:'reaction-hero-b',name:'Reaction Hero B',connected:true,character:reactionHeroB};
+ const reactionEnemy=actor({id:'reaction-enemy',name:'Reaction Enemy',hp:20,reactionAvailable:false});
+ T18.state={character:reactionHeroA,campaign:{multiplayer:{players:[reactionPlayerA,reactionPlayerB]},companions:[]},combat:{round:1,mp:{heroPositions:{'reaction-hero-a':{x:1,y:1},'reaction-hero-b':{x:2,y:1}},turnOrder:[],index:0},enemies:[reactionEnemy]},log:[]};
+ T.gameplay.endRound();
+ const reactionsPreserved=reactionHeroA.reactionAvailable===false&&reactionHeroB.reactionAvailable===true&&reactionEnemy.reactionAvailable===false;
+ T.gameplay.beginHeroTurn(reactionPlayerA);
+ const heroReactionReset=reactionHeroA.reactionAvailable===true&&reactionHeroA.actionSpent===false&&reactionHeroA.bonusActionSpent===false;
+ T18.state.campaign.multiplayer.players=[];
+ reactionEnemy.reactionAvailable=false;
+ T.gameplay.enemyTurn(reactionEnemy);
+ assert('Reactions refresh at each creature’s own turn, not at the round boundary',reactionsPreserved&&heroReactionReset&&reactionEnemy.reactionAvailable===true);
  T18.state=priorSpellState;
 
  assert('Solo grapple panel exposes both 2024 Shove outcomes',html.includes('data-action="sr29-shove-push"')&&html.includes('data-action="sr29-shove-prone"')&&html.includes('function sr29SoloShove(mode='));
