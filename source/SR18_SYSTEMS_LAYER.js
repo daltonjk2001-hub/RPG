@@ -358,11 +358,18 @@ function sr18ResolveMonsterAction(enemy,action,target){
   if(save){const result=sr133HeroSave(cc,save.ability,hero,enemy),raw=rollDice(dice),half=/half damage/i.test(desc),damage=result.success?(half?Math.floor(raw/2):0):raw,actual=sr18MonsterApplyDamage(t,damage,type,enemy),condition=sr18ParseCondition(desc);
    if(!result.success&&condition&&!sr18ConditionImmunity(t,condition)){
     const conditionDuration=Math.max(1,Number((desc.match(/(?:until the end of|for) (?:its|the target's|your) next turn/i)||[]).length?1:1),1);
+    const sourceId=String(enemy.id||enemy.name||'unknown-monster');
     if(condition==='grappled'&&typeof sr29Apply==='function'){
-     const grapplerId=String(enemy.id||enemy.name||'unknown-grappler');
      const grappleRange=Math.max(5,Number(range.ranged?range.normalRange:range.reach)||5);
-     sr29Apply(cc,condition,conditionDuration,enemy.name,{sourceId:grapplerId,grapplerId,grappleRange});
+     sr29Apply(cc,condition,conditionDuration,enemy.name,{sourceId,grapplerId:sourceId,grappleRange});
     }else sr11Add(cc,condition,conditionDuration,enemy.name);
+    // Reuse the canonical repeat-save contract for monster-applied conditions.
+    // Attach only after the failed save actually applied the condition.
+    const repeatSave=typeof sr29ParseRepeatSave==='function'?sr29ParseRepeatSave(desc):null;
+    if(repeatSave&&typeof sr29AttachRepeatSave==='function'){
+     const ability=save?.ability||repeatSave.ability,dc=Number(save?.dc);
+     if(ability&&Number.isFinite(dc))sr29AttachRepeatSave(cc,condition,enemy.name,enemy,ability,dc,repeatSave,sourceId);
+    }
    }
    if(!result.success)sr18DisplaceCombatant(t,enemy,desc);
    log(`${enemy.name} uses ${action.name}; ${hero.name} makes a ${save.ability} save (${result.total} vs DC ${save.dc}) and takes ${actual} ${type} damage${condition&&!result.success?` and gains ${condition}`:''}.`,'badlog');
