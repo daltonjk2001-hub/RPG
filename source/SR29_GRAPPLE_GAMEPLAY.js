@@ -121,7 +121,7 @@ function sr29SoloShove(mode='push'){
       log(`${e.name} is knocked Prone.`,'goodlog');
     }
   }else log(`${e.name} resists the shove.`,'rolllog');
-  afterPlayerAction();render();save();return true;
+  if(!globalThis.__SR29_TEST){afterPlayerAction();render();save();}return true;
 }
 
 const sr29SoloCombatPageBase=combatPage;
