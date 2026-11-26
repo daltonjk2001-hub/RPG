@@ -855,10 +855,11 @@ if(typeof sr14RunFeature==='function'){
   const sr29PriorRunFeature=sr14RunFeature;
   sr14RunFeature=function(player,key,option=''){
     const c=player?.character||state?.character,k=String(key||'');
-    const bonus=new Set(['rage','inspiration','wildShape','secondWind','actionSurge','flurry','layOnHands','huntersMark','cunningDash','cunningDisengage','cunningHide','innateSorcery']);
+    const bonus=new Set(['rage','inspiration','wildShape','secondWind','flurry','layOnHands','huntersMark','cunningDash','cunningDisengage','cunningHide','innateSorcery']);
     const action=new Set(['divineSpark','eldritchBlast']);
-    const kind=k==='cuttingWords'?'reaction':bonus.has(k)?'bonus-action':action.has(k)?'action':null;
-    if(kind&&!sr29ActionEconomyGate(c,kind))return false;
+    const free=new Set(['actionSurge']);
+    const kind=k==='cuttingWords'?'reaction':bonus.has(k)?'bonus-action':action.has(k)?'action':free.has(k)?'free':null;
+    if(kind&&!sr29ActionEconomyGate(c,kind,!free.has(k)))return false;
     const result=sr29PriorRunFeature.call(this,player,key,option);
     if(result&&kind==='reaction'&&state?.combat)c.reactionAvailable=false;
     return result;
