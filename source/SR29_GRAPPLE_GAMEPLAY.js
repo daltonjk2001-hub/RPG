@@ -710,6 +710,67 @@ function sr29ApplyMasteryPush(target,player,origin,weapon){
   if(moved){sr29ReconcileCombatGrapples();sr29ReconcileAbstractGrapples();}
   return moved;
 }
+function sr29PlayerTeleportRange(spellName,spell){
+  // Misty Step is the only short-range self-teleport represented in the installed spell
+  // reference without an explicit numeric distance. Other tactical teleports must state
+  // their range in their description; destination/companion travel remains a separate task.
+  if(String(spellName||'').trim().toLowerCase()==='misty step')return 30;
+  const description=String(spell?.description||spell?.desc||'');
+  const match=description.match(/\\bteleport(?:s|ed|ing)?[^.!?]{0,120}?(?:up to |within |no more than )?(\\d+)\\s*feet?/i)||
+    description.match(/(\\d+)\\s*feet?[^.!?]{0,120}\\bteleport/i);
+  return match?Math.max(5,Number(match[1])||0):null;
+}
+function sr29PlayerTeleportPlan(player,feet){
+  const combat=state?.combat,amount=Number(feet),id=String(player?.id||'solo');
+  if(!combat||!Number.isFinite(amount)||amount<=0)return null;
+  const origin=combat.mp&&typeof sr12PlayerPos==='function'?sr12PlayerPos(id):combat.heroPos;
+  if(!origin||!Number.isFinite(Number(origin.x))||!Number.isFinite(Number(origin.y)))return null;
+  const width=Math.max(1,Math.floor(Number(combat.map?.width)||8)),height=Math.max(1,Math.floor(Number(combat.map?.height)||6));
+  const enemies=(combat.enemies||[]).filter(enemy=>enemy&&enemy.hp>0);
+  const occupied=(x,y)=>{
+    if(typeof sr9Cell==='function'){
+      const cell=sr9Cell(x,y);
+      if(!cell||cell.blocked===true||cell.walkable===false||/^(?:wall|void|blocked)$/i.test(String(cell.kind||cell.type||'')))return true;
+    }
+    if(typeof sr11Blocked==='function'&&sr11Blocked(x,y))return true;
+    if(enemies.some(enemy=>{const p=enemy.pos||enemy.position;return p&&Number(p.x)===x&&Number(p.y)===y;}))return true;
+    if(combat.mp){
+      for(const [otherId,p] of Object.entries(combat.mp.heroPositions||{})){
+        if(otherId!==id&&p&&Number(p.x)===x&&Number(p.y)===y)return true;
+      }
+    }
+    return false;
+  };
+  const candidates=[];
+  for(let x=0;x<width;x++)for(let y=0;y<height;y++){
+    const to={x,y},travel=typeof sr12Distance==='function'?sr12Distance(origin,to):Math.max(Math.abs(x-origin.x),Math.abs(y-origin.y))*5;
+    if(travel<=0||travel>amount||occupied(x,y))continue;
+    if(typeof sr11HasLOS==='function'&&!sr11HasLOS(origin,to))continue;
+    const nearestEnemy=enemies.length?Math.min(...enemies.map(enemy=>{
+      const p=enemy.pos||enemy.position;
+      return p?(typeof sr12Distance==='function'?sr12Distance(to,p):Math.max(Math.abs(x-p.x),Math.abs(y-p.y))*5):Infinity;
+    })):Infinity;
+    candidates.push({from:{x:Number(origin.x),y:Number(origin.y)},to,travelFeet:travel,nearestEnemyFeet:nearestEnemy});
+  }
+  // Preserve the existing auto-placement behavior, but constrain it to a legal
+  // destination within the spell's actual range and visible to the caster.
+  candidates.sort((a,b)=>b.nearestEnemyFeet-a.nearestEnemyFeet||a.travelFeet-b.travelFeet||a.to.y-b.to.y||a.to.x-b.to.x);
+  return candidates[0]||null;
+}
+function sr29ApplyPlayerTeleport(player,plan){
+  const combat=state?.combat,id=String(player?.id||'solo');
+  if(!combat||!plan?.to)return false;
+  const destination={x:Number(plan.to.x),y:Number(plan.to.y)};
+  if(!Number.isFinite(destination.x)||!Number.isFinite(destination.y))return false;
+  if(combat.mp){
+    combat.mp.heroPositions=combat.mp.heroPositions||{};
+    combat.mp.heroPositions[id]=destination;
+  }
+  combat.heroPos=destination;
+  if(typeof sr29ReconcileAbstractGrapples==='function')sr29ReconcileAbstractGrapples();
+  if(typeof sr29ReconcileCombatGrapples==='function')sr29ReconcileCombatGrapples();
+  return true;
+}
 function sr29ApplyPlayerSpellDisplacement(target,caster,mode,feet,origin=null){
   const combat=state?.combat,amount=Number(feet);
   if(!combat||!target||target.dead===true||target.isDead===true||!['push','pull'].includes(mode)||!Number.isFinite(amount)||amount<=0)return false;
@@ -744,6 +805,15 @@ if(typeof sr14CastSpellComplete==='function'){
     const resourcesBefore={actionSpent:caster?.actionSpent,bonusActionSpent:caster?.bonusActionSpent};
     const combat=state?.combat,target=combat?.mp?(typeof sr4Target==='function'?sr4Target():null):(typeof targetEnemy==='function'?targetEnemy():null);
     const origin=combat?.mp&&typeof sr12PlayerPos==='function'?sr12PlayerPos(player.id):combat?.heroPos;
+    const hadCharacterPosition=!!caster&&Object.prototype.hasOwnProperty.call(caster,'position');
+    const previousCharacterPosition=hadCharacterPosition&&caster.position&&typeof caster.position==='object'?{...caster.position}:caster?.position;
+    let teleportPlan=null;
+    if(effect?.kind==='teleport'&&combat){
+      const teleportRange=sr29PlayerTeleportRange(spellName,spell);
+      if(!Number.isFinite(teleportRange)||teleportRange<=0){toast('This teleport needs a supported range and destination rule before it can be used in tactical combat.');return false;}
+      teleportPlan=sr29PlayerTeleportPlan(player,teleportRange);
+      if(!teleportPlan){toast('No visible, unoccupied destination is available within this teleport’s range.');return false;}
+    }
     let targets=[];
     if((displacement||repeatSave)&&combat&&effect&&['saveDamage','control','debuff','attack'].includes(effect.kind)){
       targets=effect.area&&typeof sr14TargetListComplete==='function'?sr14TargetListComplete(player,spell,effect,target,origin):[target].filter(Boolean);
@@ -752,6 +822,13 @@ if(typeof sr14CastSpellComplete==='function'){
     const beforeLog=Array.isArray(state?.log)?state.log.length:0;
     const result=sr29PriorCastSpell.apply(this,args);
     sr29FinalizeCastResources(caster,castKind,result,resourcesBefore);
+    if(result&&teleportPlan){
+      // The legacy cast path still performs its own fallback relocation. Replace it with
+      // the prevalidated V29 destination and restore the non-authoritative legacy field.
+      if(hadCharacterPosition)caster.position=previousCharacterPosition;else if(caster)delete caster.position;
+      sr29ApplyPlayerTeleport(player,teleportPlan);
+      log(`${player.name} teleports to an unoccupied space ${teleportPlan.travelFeet} feet away.`,'rolllog');
+    }
     if(result&&(displacement||repeatSave)&&targets.length){
       const entries=(state?.log||[]).slice(beforeLog);
       for(const victim of targets){
@@ -1008,5 +1085,5 @@ if(typeof sr10Dodge==='function'){
 }
 
 if(globalThis.__SR29_TEST){
-  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,actionEconomyGate:sr29ActionEconomyGate,finalizeCastResources:sr29FinalizeCastResources,runFeature:typeof sr14RunFeature==='function'?sr14RunFeature:null,classPower:typeof sr12ClassPower==='function'?sr12ClassPower:null,cunningAction:typeof sr137CunningAction==='function'?sr137CunningAction:null,heroAction:typeof sr12HeroAction==='function'?sr12HeroAction:null,heroAttack:typeof sr12HeroAttack==='function'?sr12HeroAttack:null,castSpell:typeof sr14CastSpellComplete==='function'?sr14CastSpellComplete:null,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,soloShove:sr29SoloShove,parseForcedDisplacement:sr29ParseForcedDisplacement,spellDisplacementSpec:sr29SpellDisplacementSpec,parseRepeatSave:sr29ParseRepeatSave,repeatSaveSpecForSpell:sr29RepeatSaveSpecForSpell,spellEffectComplete:typeof sr14SpellEffectComplete==='function'?sr14SpellEffectComplete:null,attachRepeatSave:sr29AttachRepeatSave,spellTargetFailedSave:sr29SpellTargetFailedSave,playerSpellDisplace:sr29ApplyPlayerSpellDisplacement,applyMastery:typeof sr7ApplyMastery==='function'?sr7ApplyMastery:null,weaponMasteryFor:sr29WeaponMasteryFor,canPushTarget:sr29CanPushTarget,applyMasteryPush:sr29ApplyMasteryPush,repeatSaveAfterDamage:sr29RepeatSaveAfterDamage,advanceIndex:typeof sr12AdvanceIndex==='function'?sr12AdvanceIndex:null,endRound:typeof sr12EndRound==='function'?sr12EndRound:null,beginHeroTurn:typeof sr12BeginHeroTurn==='function'?sr12BeginHeroTurn:null,beginEnemyTurn:sr29BeginEnemyTurn,enemyTurn:typeof sr12EnemyTurn==='function'?sr12EnemyTurn:null,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerResolveGrappleSave:sr29MpResolveGrappleSave,multiplayerPruneGrappleChallenges:sr29MpPruneGrappleChallenges,multiplayerGrappleMovePlan:sr29MpGrappleMovePlan,multiplayerVoluntaryMovementEligibility:sr29MpVoluntaryMovementEligibility,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
+  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,actionEconomyGate:sr29ActionEconomyGate,finalizeCastResources:sr29FinalizeCastResources,runFeature:typeof sr14RunFeature==='function'?sr14RunFeature:null,classPower:typeof sr12ClassPower==='function'?sr12ClassPower:null,cunningAction:typeof sr137CunningAction==='function'?sr137CunningAction:null,heroAction:typeof sr12HeroAction==='function'?sr12HeroAction:null,heroAttack:typeof sr12HeroAttack==='function'?sr12HeroAttack:null,castSpell:typeof sr14CastSpellComplete==='function'?sr14CastSpellComplete:null,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,soloShove:sr29SoloShove,parseForcedDisplacement:sr29ParseForcedDisplacement,spellDisplacementSpec:sr29SpellDisplacementSpec,parseRepeatSave:sr29ParseRepeatSave,repeatSaveSpecForSpell:sr29RepeatSaveSpecForSpell,spellEffectComplete:typeof sr14SpellEffectComplete==='function'?sr14SpellEffectComplete:null,attachRepeatSave:sr29AttachRepeatSave,spellTargetFailedSave:sr29SpellTargetFailedSave,playerSpellDisplace:sr29ApplyPlayerSpellDisplacement,playerTeleportRange:sr29PlayerTeleportRange,playerTeleportPlan:sr29PlayerTeleportPlan,applyPlayerTeleport:sr29ApplyPlayerTeleport,applyMastery:typeof sr7ApplyMastery==='function'?sr7ApplyMastery:null,weaponMasteryFor:sr29WeaponMasteryFor,canPushTarget:sr29CanPushTarget,applyMasteryPush:sr29ApplyMasteryPush,repeatSaveAfterDamage:sr29RepeatSaveAfterDamage,advanceIndex:typeof sr12AdvanceIndex==='function'?sr12AdvanceIndex:null,endRound:typeof sr12EndRound==='function'?sr12EndRound:null,beginHeroTurn:typeof sr12BeginHeroTurn==='function'?sr12BeginHeroTurn:null,beginEnemyTurn:sr29BeginEnemyTurn,enemyTurn:typeof sr12EnemyTurn==='function'?sr12EnemyTurn:null,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerResolveGrappleSave:sr29MpResolveGrappleSave,multiplayerPruneGrappleChallenges:sr29MpPruneGrappleChallenges,multiplayerGrappleMovePlan:sr29MpGrappleMovePlan,multiplayerVoluntaryMovementEligibility:sr29MpVoluntaryMovementEligibility,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
 }
