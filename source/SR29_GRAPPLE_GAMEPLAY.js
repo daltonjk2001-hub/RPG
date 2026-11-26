@@ -3,6 +3,7 @@
  * be tested and revised without changing condition storage semantics.
  */
 const SR29_GRAPPLE_GAMEPLAY_VERSION='29.1.0';
+let SR29_PLAYER_ATTACK_CONTEXT=null;
 
 function sr29SoloGrapplerId(actor){
   return String(actor?.id||actor?.name||'');
@@ -674,6 +675,14 @@ function sr29SpellTargetFailedSave(target,entries){
   const details=sr29SpellSaveDetails(target,entries);
   return details.failure===true;
 }
+function sr29ApplyMasteryPush(target,player,origin){
+  if(!target||!state?.combat?.mp||typeof sr18DisplaceCombatant!=='function')return false;
+  const sourcePos=origin||sr12PlayerPos(player?.id);
+  if(!sourcePos)return false;
+  const moved=sr18DisplaceCombatant({enemy:target},{pos:sourcePos},'Push up to 10 feet away from you.');
+  if(moved){sr29ReconcileCombatGrapples();sr29ReconcileAbstractGrapples();}
+  return moved;
+}
 function sr29ApplyPlayerSpellDisplacement(target,caster,mode,feet,origin=null){
   const combat=state?.combat,amount=Number(feet);
   if(!combat||!target||target.dead===true||target.isDead===true||!['push','pull'].includes(mode)||!Number.isFinite(amount)||amount<=0)return false;
@@ -813,6 +822,8 @@ if(typeof sr12ApplyDamage==='function'){
   sr12ApplyDamage=function(enemy,amount,...args){
     const result=sr29PriorApplyDamage.call(this,enemy,amount,...args);
     sr29RepeatSaveAfterDamage(enemy,result);
+    const attackContext=SR29_PLAYER_ATTACK_CONTEXT;
+    if(attackContext&&attackContext.target===enemy&&attackContext.mastery==='Push')sr29ApplyMasteryPush(enemy,attackContext.player,attackContext.origin);
     return result;
   };
 }
@@ -898,9 +909,15 @@ if(typeof sr137CunningAction==='function'){
 if(typeof sr12HeroAttack==='function'){
   const sr29PriorHeroAttack=sr12HeroAttack;
   sr12HeroAttack=function(player,targetOverride=null,reaction=false,...args){
-    const kind=reaction?'reaction':'action';
-    if(!sr29ActionEconomyGate(player?.character,kind,true))return false;
-    return sr29PriorHeroAttack.call(this,player,targetOverride,reaction,...args);
+    const kind=reaction?'reaction':'action',character=player?.character;
+    if(!sr29ActionEconomyGate(character,kind,true))return false;
+    const target=targetOverride||(typeof sr4Target==='function'?sr4Target():null),weapon=String(character?.weapon||''),mastery=SR6_MASTERY?.[weapon]||WEAPONS?.[weapon]?.mastery;
+    const previousContext=SR29_PLAYER_ATTACK_CONTEXT;
+    if(state?.combat?.mp&&mastery==='Push')SR29_PLAYER_ATTACK_CONTEXT={player,target,weapon,mastery,origin:sr12PlayerPos(player?.id)};
+    let result;
+    try{result=sr29PriorHeroAttack.call(this,player,targetOverride,reaction,...args);}
+    finally{SR29_PLAYER_ATTACK_CONTEXT=previousContext;}
+    return result;
   };
 }
 if(typeof sr9Attack==='function'){
@@ -933,5 +950,5 @@ if(typeof sr10Dodge==='function'){
 }
 
 if(globalThis.__SR29_TEST){
-  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,actionEconomyGate:sr29ActionEconomyGate,runFeature:typeof sr14RunFeature==='function'?sr14RunFeature:null,classPower:typeof sr12ClassPower==='function'?sr12ClassPower:null,cunningAction:typeof sr137CunningAction==='function'?sr137CunningAction:null,heroAction:typeof sr12HeroAction==='function'?sr12HeroAction:null,heroAttack:typeof sr12HeroAttack==='function'?sr12HeroAttack:null,castSpell:typeof sr14CastSpellComplete==='function'?sr14CastSpellComplete:null,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,soloShove:sr29SoloShove,parseForcedDisplacement:sr29ParseForcedDisplacement,spellDisplacementSpec:sr29SpellDisplacementSpec,parseRepeatSave:sr29ParseRepeatSave,repeatSaveSpecForSpell:sr29RepeatSaveSpecForSpell,spellEffectComplete:typeof sr14SpellEffectComplete==='function'?sr14SpellEffectComplete:null,attachRepeatSave:sr29AttachRepeatSave,spellTargetFailedSave:sr29SpellTargetFailedSave,playerSpellDisplace:sr29ApplyPlayerSpellDisplacement,repeatSaveAfterDamage:sr29RepeatSaveAfterDamage,advanceIndex:typeof sr12AdvanceIndex==='function'?sr12AdvanceIndex:null,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerResolveGrappleSave:sr29MpResolveGrappleSave,multiplayerPruneGrappleChallenges:sr29MpPruneGrappleChallenges,multiplayerGrappleMovePlan:sr29MpGrappleMovePlan,multiplayerVoluntaryMovementEligibility:sr29MpVoluntaryMovementEligibility,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
+  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,actionEconomyGate:sr29ActionEconomyGate,runFeature:typeof sr14RunFeature==='function'?sr14RunFeature:null,classPower:typeof sr12ClassPower==='function'?sr12ClassPower:null,cunningAction:typeof sr137CunningAction==='function'?sr137CunningAction:null,heroAction:typeof sr12HeroAction==='function'?sr12HeroAction:null,heroAttack:typeof sr12HeroAttack==='function'?sr12HeroAttack:null,castSpell:typeof sr14CastSpellComplete==='function'?sr14CastSpellComplete:null,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,soloShove:sr29SoloShove,parseForcedDisplacement:sr29ParseForcedDisplacement,spellDisplacementSpec:sr29SpellDisplacementSpec,parseRepeatSave:sr29ParseRepeatSave,repeatSaveSpecForSpell:sr29RepeatSaveSpecForSpell,spellEffectComplete:typeof sr14SpellEffectComplete==='function'?sr14SpellEffectComplete:null,attachRepeatSave:sr29AttachRepeatSave,spellTargetFailedSave:sr29SpellTargetFailedSave,playerSpellDisplace:sr29ApplyPlayerSpellDisplacement,applyMasteryPush:sr29ApplyMasteryPush,repeatSaveAfterDamage:sr29RepeatSaveAfterDamage,advanceIndex:typeof sr12AdvanceIndex==='function'?sr12AdvanceIndex:null,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerResolveGrappleSave:sr29MpResolveGrappleSave,multiplayerPruneGrappleChallenges:sr29MpPruneGrappleChallenges,multiplayerGrappleMovePlan:sr29MpGrappleMovePlan,multiplayerVoluntaryMovementEligibility:sr29MpVoluntaryMovementEligibility,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
 }
