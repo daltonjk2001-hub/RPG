@@ -606,9 +606,9 @@ if(typeof sr7ApplyMastery==='function'){
 
 function sr29ParseForcedDisplacement(description){
   const d=String(description||'');
-  let m=d.match(/\\b(push(?:es|ed)?|pull(?:s|ed)?)\\b[^.!?]{0,140}?(\\d+)\\s*feet?/i);
+  let m=d.match(/\b(push(?:es|ed)?|pull(?:s|ed)?)\b[^.!?]{0,140}?(\d+)\s*feet?/i);
   if(!m){
-    const reverse=d.match(/(\\d+)\\s*feet?[^.!?]{0,140}?\\b(push|pull)(?:es|ed)?\\b/i);
+    const reverse=d.match(/(\d+)\s*feet?[^.!?]{0,140}?\b(push|pull)(?:es|ed)?\b/i);
     if(!reverse)return null;
     return {mode:reverse[2].toLowerCase()==='push'?'push':'pull',feet:Number(reverse[1])};
   }
@@ -619,7 +619,7 @@ function sr29SpellTargetFailedSave(target,entries){
   if(!name)return false;
   return (entries||[]).some(entry=>{
     const message=String(entry?.msg??entry??'');
-    return message.startsWith(name+' ')&&/(?:makes|rolls)\\s+(?:STR|DEX|CON|INT|WIS|CHA)\\s+save\\b.*?:\\s*failure\\./i.test(message);
+    return message.startsWith(name+' ')&&/(?:makes|rolls)\s+(?:STR|DEX|CON|INT|WIS|CHA)\s+save\b.*?:\s*failure\./i.test(message);
   });
 }
 function sr29ApplyPlayerSpellDisplacement(target,caster,mode,feet,origin=null){
