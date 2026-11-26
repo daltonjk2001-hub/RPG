@@ -345,7 +345,7 @@ function sr18TeleportMonster(enemy,target,description){
 function sr18ResolveMonsterAction(enemy,action,target){
  if(!target?.player?.character||!action||!sr18CanUseAction(enemy))return false;
  const p=target.player,c=p.character,desc=sr18Text(action.description),save=sr14ParseMonsterSave(desc),dice=sr14MonsterActionDamage(action)||'1d4',type=sr18Text(action.damage?.[0]?.type||'physical').toLowerCase();
- const teleportIntent=/\\bteleport(?:s|ed|ing)?\\b/i.test(desc);
+ const teleportIntent=/\bteleport(?:s|ed|ing)?\b/i.test(desc);
  sr18TeleportMonster(enemy,target,desc);
  // A teleport-only stat-block action consumes its action; it must not fall through to the legacy default 1d4 attack.
  if(teleportIntent&&!save&&!sr14MonsterActionDamage(action)&&!action.damage?.length&&!/\\b(?:attack roll|melee attack|ranged attack|hit:|damage)\\b/i.test(desc))return true;
