@@ -139,13 +139,13 @@ def build_runtime() -> str:
     old_critical = "if(sr7HasCondition(c,'paralyzed')||sr7HasCondition(c,'unconscious'))damage+=rollDice(e.damage||'1d6');"
     if base.count(old_critical) != 1:
         raise SystemExit("Expected one V7 condition-based critical-damage expression.")
-    base = base.replace(old_critical, "if(d20!==20&&!e.ranged&&(Number(e.distance)||5)<=5&&sr29CriticalOnHit(c,{hit:true,melee:true,distance:Number(e.distance)||5}))damage+=rollDice(e.damage||'1d6');")
+    base = base.replace(old_critical, "if(d20!==20&&(Number(e.distance)||5)<=5&&sr29CriticalOnHit(c,{hit:true,distance:Number(e.distance)||5}))damage+=rollDice(e.damage||'1d6');")
 
     # V11 grid attack criticals also include the 2024 paralyzed/unconscious close-melee rule.
     old_grid_critical = "if(roll.r===20||(automaticCritical&&hit))dmg+=rollDice(w.damage);"
     if base.count(old_grid_critical) != 1:
         raise SystemExit("Expected one V11 grid-attack critical-damage expression.")
-    base = base.replace(old_grid_critical, "if(roll.r===20||(automaticCritical&&hit)||sr29CriticalOnHit(e,{hit,melee:!ranged,distance:dist}))dmg+=rollDice(w.damage);")
+    base = base.replace(old_grid_critical, "if(roll.r===20||(automaticCritical&&hit)||sr29CriticalOnHit(e,{hit,distance:dist}))dmg+=rollDice(w.damage);")
 
     # Route both solo spell-damage call sites through the typed-damage helper.
     old_damage = "(e.hp=Math.max(0,e.hp-amount),amount)"
