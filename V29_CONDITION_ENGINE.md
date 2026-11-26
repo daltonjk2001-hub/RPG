@@ -18,6 +18,14 @@ Each application is stored as an independent condition instance with an ID, sour
 
 The Exhaustion condition is handled separately as a cumulative level from 0 to 6. Under the 2024 profile, each level imposes a −2 penalty to D20 Tests and reduces Speed by 5 feet; reaching level 6 is fatal. The final Long Rest adapter reduces Exhaustion by one level, avoiding the multiple reductions previously layered into legacy wrappers. Long Rest no longer erases all condition instances as a side effect.
 
+## Multiplayer player-versus-player grapple flow
+
+The multiplayer grapple adapter now supports a connected party member as the grapple target, not only the selected monster. The attacker selects a living connected hero within 5 feet; the host resolves the Unarmed Strike attack roll against that hero's AC and consumes the attacker's Action on a hit or miss.
+
+On a hit against another player, the host stores a pending, source-linked save challenge with the attacker, target, escape DC, reach, size, and hand-capacity snapshot. The target hero receives the response controls on their own combat client and chooses Strength or Dexterity. The guest sends a bounded COMBAT response to the host; the host verifies that the responding peer owns the targeted hero and that the challenge is still pending, then resolves the selected save through the canonical creature saving-throw resolver. A successful save resists the grapple; a failed save creates the normal V29 Grappled instance with the attacker's source ID and escape DC. The initiator cannot take another action while awaiting the response.
+
+This is host-authoritative application logic and automated regression coverage. It does not replace physical two-device latency, reconnect, or mobile-client playtesting; those remain required before declaring multiplayer timing complete.
+
 ## Rules and integration delivered
 
 - A single registry and status service cover the fifteen conditions, derived Incapacitated/Prone state, Speed-zero state, condition immunity, and the condition-driven Strength/Dexterity saving-throw failure matrix.
