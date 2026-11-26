@@ -245,6 +245,13 @@ try{
  T.gameplay.attachRepeatSave(creatureDamageTarget,'charmed','Dominate Person',T18.state.character,'WIS',1,dominateRepeat);
  const creatureDamageActual=T.gameplay.damageEnemy(creatureDamageTarget,4,'psychic');
  assert('Creature damage through the typed damage adapter automatically triggers its attached repeat save',creatureDamageActual===4&&creatureDamageTarget.hp===16&&!T.has(creatureDamageTarget,'charmed'));
+ const directFeatureTarget=actor({id:'direct-feature-target',name:'Direct Feature Target',hp:20,maxHp:20});
+ const featureCaster=actor({id:'direct-feature-caster',name:'Direct Feature Caster',classId:'Druid',level:2,classLevels:{Druid:2},actionSpent:false});
+ T18.state={character:featureCaster,campaign:{},combat:{round:1,mp:null,target:0,enemies:[directFeatureTarget]},log:[]};
+ T.apply(directFeatureTarget,'charmed',10,'Dominate Person');
+ T.gameplay.attachRepeatSave(directFeatureTarget,'charmed','Dominate Person',featureCaster,'WIS',1,dominateRepeat);
+ const directFeatureResult=T.gameplay.runFeature({id:'solo',name:'Direct Feature Caster',character:featureCaster},'landAid');
+ assert('Legacy solo class-feature HP writes are captured and trigger repeat saves',directFeatureResult===true&&directFeatureTarget.hp<20&&!T.has(directFeatureTarget,'charmed'));
  const turnHookTarget=actor({id:'turn-hook-target',name:'Turn Hook Target',classId:'Wizard',level:1});
  const otherTurnPlayer=actor({id:'other-turn-player',name:'Other Turn Player'});
  const turnPlayer={id:'turn-hook-target',name:'Turn Hook Target',connected:true,character:turnHookTarget};
