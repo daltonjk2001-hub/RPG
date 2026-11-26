@@ -247,7 +247,7 @@ try{
  assert('Creature damage through the typed damage adapter automatically triggers its attached repeat save',creatureDamageActual===4&&creatureDamageTarget.hp===16&&!T.has(creatureDamageTarget,'charmed'));
  const directFeatureTarget=actor({id:'direct-feature-target',name:'Direct Feature Target',hp:20,maxHp:20});
  const featureCaster=actor({id:'direct-feature-caster',name:'Direct Feature Caster',classId:'Druid',level:2,classLevels:{Druid:2},actionSpent:false});
- T18.state={character:featureCaster,campaign:{},combat:{round:1,mp:null,target:0,enemies:[directFeatureTarget]},log:[]};
+ T18.state={character:featureCaster,campaign:{story:{},companions:[],npcs:[],flags:{},visited:['Test Region'],location:'Test Region'},combat:{round:1,mp:null,target:0,enemies:[directFeatureTarget]},log:[]};
  T.apply(directFeatureTarget,'charmed',10,'Dominate Person');
  T.gameplay.attachRepeatSave(directFeatureTarget,'charmed','Dominate Person',featureCaster,'WIS',1,dominateRepeat);
  const directFeatureResult=T.gameplay.runFeature({id:'solo',name:'Direct Feature Caster',character:featureCaster},'landAid');
