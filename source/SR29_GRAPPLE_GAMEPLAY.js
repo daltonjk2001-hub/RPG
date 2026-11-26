@@ -948,11 +948,12 @@ if(typeof sr12HeroAttack==='function'){
     const kind=reaction?'reaction':'action',character=player?.character;
     if(!sr29ActionEconomyGate(character,kind,true))return false;
     const target=targetOverride||(typeof sr4Target==='function'?sr4Target():null),weapon=String(character?.weapon||''),mastery=sr29WeaponMasteryFor(character,weapon);
-    const beforeLog=(state?.log||[]).length,origin=state?.combat?.mp?sr12PlayerPos(player?.id):null;
+    const beforeLog=(state?.log||[]).length,beforeLogHead=(state?.log||[])[0]||null,origin=state?.combat?.mp?sr12PlayerPos(player?.id):null;
     const result=sr29PriorHeroAttack.call(this,player,targetOverride,reaction,...args);
     if(result&&state?.combat?.mp&&mastery==='Push'&&target&&origin){
-      const prefix=`${player?.name||character?.name||''} attacks ${target.name}:`;
-      const hits=(state.log||[]).slice(beforeLog).filter(entry=>{const message=String(entry?.msg??entry??'');return message.startsWith(prefix)&&/\bHit\./.test(message);}).length;
+      const prefix=`${player?.name||character?.name||''} attacks ${target.name}:`,logs=state.log||[],headIndex=beforeLogHead?logs.indexOf(beforeLogHead):logs.length;
+      const newEntries=headIndex>=0?logs.slice(0,headIndex):logs.slice(0,Math.max(0,logs.length-beforeLog));
+      const hits=newEntries.filter(entry=>{const message=String(entry?.msg??entry??'');return message.startsWith(prefix)&&/\bHit\./.test(message);}).length;
       for(let i=0;i<hits;i++)sr29ApplyMasteryPush(target,player,origin,weapon);
     }
     return result;
