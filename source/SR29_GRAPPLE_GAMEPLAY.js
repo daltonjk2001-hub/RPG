@@ -674,6 +674,91 @@ if(typeof sr14CastSpellComplete==='function'){
   };
 }
 
+
+function sr29ActionEconomyGate(actor,kind,checkResource=!!state?.combat){
+  if(!actor)return false;
+  if(!sr29CanAct(actor,kind)){toast(`Your current condition prevents you from taking a ${kind==='bonus-action'?'Bonus Action':kind==='reaction'?'Reaction':'Action'}.`);return false;}
+  if(checkResource&&kind==='reaction'&&actor.reactionAvailable===false){toast('Your Reaction is already spent.');return false;}
+  return true;
+}
+// Central player entry-point gates: the condition registry, not a scattered list of
+// condition names, decides whether an action, Bonus Action, or Reaction is available.
+if(typeof sr12HeroAction==='function'){
+  const sr29PriorHeroAction=sr12HeroAction;
+  sr12HeroAction=function(player,action,...args){
+    const c=player?.character,a=String(action||'');
+    const nonAction=new Set(['target','move','end','death-save','sr14-feature','feature','spell']);
+    const bonusAction=new Set(['power','power-class','second-wind','cunning-dash','cunning-disengage','cunning-hide']);
+    if(bonusAction.has(a)&&!sr29ActionEconomyGate(c,'bonus-action'))return false;
+    if(!nonAction.has(a)&&!bonusAction.has(a)&&!sr29ActionEconomyGate(c,'action'))return false;
+    return sr29PriorHeroAction.call(this,player,action,...args);
+  };
+}
+if(typeof sr14RunFeature==='function'){
+  const sr29PriorRunFeature=sr14RunFeature;
+  sr14RunFeature=function(player,key,option=''){
+    const c=player?.character||state?.character,k=String(key||'');
+    const bonus=new Set(['rage','inspiration','wildShape','secondWind','actionSurge','flurry','layOnHands','huntersMark','cunningDash','cunningDisengage','cunningHide','innateSorcery']);
+    const action=new Set(['divineSpark','eldritchBlast']);
+    const kind=k==='cuttingWords'?'reaction':bonus.has(k)?'bonus-action':action.has(k)?'action':null;
+    if(kind&&!sr29ActionEconomyGate(c,kind))return false;
+    const result=sr29PriorRunFeature.call(this,player,key,option);
+    if(result&&kind==='reaction'&&state?.combat)c.reactionAvailable=false;
+    return result;
+  };
+}
+if(typeof sr12ClassPower==='function'){
+  const sr29PriorClassPower=sr12ClassPower;
+  sr12ClassPower=function(player,...args){
+    const c=player?.character;
+    if(!sr29ActionEconomyGate(c,'bonus-action',!!state?.combat))return false;
+    return sr29PriorClassPower.call(this,player,...args);
+  };
+}
+if(typeof sr137CunningAction==='function'){
+  const sr29PriorCunningAction=sr137CunningAction;
+  sr137CunningAction=function(player,mode,...args){
+    if(!sr29ActionEconomyGate(player?.character,'bonus-action',true))return false;
+    return sr29PriorCunningAction.call(this,player,mode,...args);
+  };
+}
+if(typeof sr12HeroAttack==='function'){
+  const sr29PriorHeroAttack=sr12HeroAttack;
+  sr12HeroAttack=function(player,targetOverride=null,reaction=false,...args){
+    const kind=reaction?'reaction':'action';
+    if(!sr29ActionEconomyGate(player?.character,kind,true))return false;
+    return sr29PriorHeroAttack.call(this,player,targetOverride,reaction,...args);
+  };
+}
+if(typeof sr9Attack==='function'){
+  const sr29PriorGridAttack=sr9Attack;
+  sr9Attack=function(...args){
+    if(state?.combat&&!sr29ActionEconomyGate(state.character,'action',true))return false;
+    return sr29PriorGridAttack.apply(this,args);
+  };
+}
+if(typeof playerAttack==='function'){
+  const sr29PriorSoloAttack=playerAttack;
+  playerAttack=function(...args){
+    if(state?.combat&&!sr29ActionEconomyGate(state.character,'action',true))return false;
+    return sr29PriorSoloAttack.apply(this,args);
+  };
+}
+if(typeof sr10Disengage==='function'){
+  const sr29PriorDisengage=sr10Disengage;
+  sr10Disengage=function(...args){
+    if(state?.combat&&!sr29ActionEconomyGate(state.character,'action',true))return false;
+    return sr29PriorDisengage.apply(this,args);
+  };
+}
+if(typeof sr10Dodge==='function'){
+  const sr29PriorDodge=sr10Dodge;
+  sr10Dodge=function(...args){
+    if(state?.combat&&!sr29ActionEconomyGate(state.character,'action',true))return false;
+    return sr29PriorDodge.apply(this,args);
+  };
+}
+
 if(globalThis.__SR29_TEST){
-  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,soloShove:sr29SoloShove,parseForcedDisplacement:sr29ParseForcedDisplacement,spellTargetFailedSave:sr29SpellTargetFailedSave,playerSpellDisplace:sr29ApplyPlayerSpellDisplacement,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerResolveGrappleSave:sr29MpResolveGrappleSave,multiplayerPruneGrappleChallenges:sr29MpPruneGrappleChallenges,multiplayerGrappleMovePlan:sr29MpGrappleMovePlan,multiplayerVoluntaryMovementEligibility:sr29MpVoluntaryMovementEligibility,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
+  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,actionEconomyGate:sr29ActionEconomyGate,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,soloShove:sr29SoloShove,parseForcedDisplacement:sr29ParseForcedDisplacement,spellTargetFailedSave:sr29SpellTargetFailedSave,playerSpellDisplace:sr29ApplyPlayerSpellDisplacement,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerResolveGrappleSave:sr29MpResolveGrappleSave,multiplayerPruneGrappleChallenges:sr29MpPruneGrappleChallenges,multiplayerGrappleMovePlan:sr29MpGrappleMovePlan,multiplayerVoluntaryMovementEligibility:sr29MpVoluntaryMovementEligibility,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
 }
