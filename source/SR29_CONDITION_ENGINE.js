@@ -186,7 +186,7 @@ function sr29AttackState(attacker,target,options={}) {
   const melee=!!options.melee,distance=Number.isFinite(Number(options.distance))?Number(options.distance):(melee?5:Infinity);
   let advantage=false,disadvantage=false;
   const add=(a,d)=>{advantage=advantage||a;disadvantage=disadvantage||d;};
-  add(sr29Has(attacker,'blinded')||sr29Has(attacker,'poisoned')||sr29Has(attacker,'prone')||sr29Has(attacker,'restrained'),false);
+  add(false,sr29Has(attacker,'blinded')||sr29Has(attacker,'poisoned')||sr29Has(attacker,'prone')||sr29Has(attacker,'restrained'));
   if(sr29Has(attacker,'frightened')&&sr29FrightSourceVisible(attacker,options))add(false,true);
   add(sr29Has(attacker,'invisible'),false);
   add(false,sr29Has(target,'invisible')&&!options.canSeeInvisible);
