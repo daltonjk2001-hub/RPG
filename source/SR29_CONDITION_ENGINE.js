@@ -608,7 +608,7 @@ if(typeof sr6Expire==='function')sr6Expire=function(t){return sr29Tick(t);};
 if(typeof sr11Names==='function')sr11Names=function(list){return (list||[]).flatMap(x=>{const n=sr29Name(x);return n?[n]:[];}).filter((x,i,a)=>a.indexOf(x)===i);};
 if(typeof sr11Has==='function')sr11Has=function(t,n){return sr29Has(t,n);};
 if(typeof sr11Add==='function')sr11Add=function(t,n,duration=1,source='combat'){return sr29Apply(t,n,duration,source);};
-if(typeof sr11Tick==='function')sr11Tick=function(t){return sr29Tick(t);};
+if(typeof sr11Tick==='function')sr11Tick=function(t){return sr29Tick(t,{phase:'round',cycle:Number(state?.combat?.round)||sr29CurrentCycle()});};
 
 // 2024 Exhaustion is a per-level D20 penalty and Speed reduction, not Disadvantage.
 if(typeof skillBonus==='function'){
