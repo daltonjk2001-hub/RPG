@@ -25,6 +25,8 @@ const SR29_CONDITION_NAMES = Object.freeze(Object.keys(SR29_CONDITIONS));
 let SR29_INSTANCE_SEQUENCE = 0;
 let SR29_COMBAT_CYCLE = 0;
 let SR29_PHASE = 'player';
+let SR29_DAMAGE_EVENT = 0;
+function sr29CurrentCycle(){const round=Number(state?.combat?.round);return Math.max(SR29_COMBAT_CYCLE,Number.isFinite(round)?round:0);}
 
 function sr29Name(value) {
   const raw = typeof value === 'string' ? value : value?.name || value?.condition || '';
@@ -114,9 +116,10 @@ function sr29Apply(target,name,duration=1,source='effect',options={}) {
     permanent:rawDuration===null||!!options.permanent,
     rounds:rawDuration===null||options.permanent?null:rawDuration,
     duration:rawDuration===null||options.permanent?-1:rawDuration,
-    appliedCycle:SR29_COMBAT_CYCLE,appliedPhase:SR29_PHASE};
+    appliedCycle:sr29CurrentCycle(),appliedPhase:SR29_PHASE,appliedRound:state?.combat?(Number(state.combat.round)||sr29CurrentCycle()):null};
   if(options.sourceId!==undefined)item.sourceId=String(options.sourceId);
   if(options.sourceVisible!==undefined)item.sourceVisible=!!options.sourceVisible;
+  if(options.repeatSave&&typeof options.repeatSave==='object')item.repeatSave={...options.repeatSave};
   if(options.grapplerId!==undefined)item.grapplerId=String(options.grapplerId);
   if(key==='grappled'){
     const grappleRange=Number(options.grappleRange??options.grappleReach??5);
@@ -147,19 +150,67 @@ function sr29Remove(target,name,options={}) {
 }
 function sr29Tick(target,options={}) {
   if(!target)return {expired:0,skipped:0,remaining:0};
-  const beforeUnconscious=sr29Has(target,'unconscious');
-  const cycle=Number.isInteger(options.cycle)?options.cycle:SR29_COMBAT_CYCLE,phase=String(options.phase||SR29_PHASE);
+  const beforeUnconscious=sr29Has(target,'unconscious'),inCombat=!!state?.combat;
+  const cycle=Number.isInteger(options.cycle)?options.cycle:(inCombat?sr29CurrentCycle():++SR29_COMBAT_CYCLE);
+  const phase=String(options.phase||SR29_PHASE);
   let expired=0,skipped=0;
   const kept=[];
   for(const item of sr29Entries(target)){
     if(item.permanent||!Number.isFinite(Number(item.rounds))){kept.push(item);continue;}
-    if(item.appliedCycle===cycle&&item.appliedPhase===phase&&phase==='enemy'){skipped++;kept.push(item);continue;}
+    if(inCombat){
+      if(item.appliedCycle===cycle&&item.appliedPhase==='enemy'){skipped++;kept.push(item);continue;}
+      if(item.lastTickRound===cycle){skipped++;kept.push(item);continue;}
+    }
     const next=Math.max(0,Number(item.rounds)-1);
-    if(next<=0)expired++;else kept.push({...item,rounds:next,duration:next});
+    if(next<=0)expired++;else kept.push(inCombat?{...item,rounds:next,duration:next,lastTickRound:cycle}:{...item,rounds:next,duration:next});
   }
   target.conditions=kept;
   if(beforeUnconscious&&!sr29Has(target,'unconscious'))sr29Apply(target,'prone','permanent','unconscious condition ended',{instanceId:'sr29-prone-after-unconscious'});
-  return {expired,skipped,remaining:kept.length};
+  return {expired,skipped,remaining:kept.length,cycle,phase};
+}
+function sr29RepeatSaveBonus(target,ability){
+  const key=String(ability||'').toUpperCase(),levels=target?.classLevels||{};
+  const player=target===state?.character||(state?.campaign?.multiplayer?.players||[]).some(p=>p?.character===target)||(state?.campaign?.companions||[]).includes(target);
+  if(player){
+    const classSaves=typeof CLASS_SAVES!=='undefined'?CLASS_SAVES:{},classes=typeof SR14_CLASSES!=='undefined'?SR14_CLASSES:{};
+    const proficient=(classSaves[target?.classId]||[]).includes(key)||Object.entries(levels).some(([name,level])=>Number(level)>0&&(classes[name]?.save||[]).includes(key));
+    let bonus=sr14AbilityMod(target?.stats?.[key])+(proficient?sr14Prof(target?.level):0);
+    const effects=typeof sr18ActiveEffect==='function'?sr18ActiveEffect(target):(target?.activeEffects||[]);
+    for(const effect of effects){if(effect.bonusType==='save'||effect.bonusType==='attackSave')bonus+=Number(effect.bonus||0)+(effect.bonusDice?rollDice(effect.bonusDice):0);}
+    return bonus;
+  }
+  return typeof sr12SaveBonus==='function'?Number(sr12SaveBonus(target,key)||0):sr14AbilityMod(target?.stats?.[key]);
+}
+function sr29ResolveRepeatSave(target,spec,rolls=null){
+  const ability=String(spec?.ability||'').toUpperCase(),dc=Number(spec?.dc);
+  if(!target||!SR29_ABILITIES.includes(ability)||!Number.isFinite(dc))return {success:false,invalid:true};
+  const effects=typeof sr18ActiveEffect==='function'?sr18ActiveEffect(target):(target?.activeEffects||[]);
+  const advantage=effects.some(x=>x.saveAdvantage===true);
+  const dice=Array.isArray(rolls)?rolls:(advantage?[die(20),die(20)]:[die(20)]);
+  const bonus=sr29RepeatSaveBonus(target,ability);
+  if(typeof sr25ResolveCreatureSavingThrow==='function'){
+    return sr25ResolveCreatureSavingThrow(target,ability,dice,bonus,dc,{advantage,autoFail:sr29AutoFailSave(target,ability),useLegendaryResistance:true,chooseToFail:spec?.chooseToFail===true});
+  }
+  const total=Number(dice[0])+bonus;
+  return {success:total>=dc,total,dc,autoFail:false};
+}
+function sr29ProcessRepeatSaves(target,trigger='end-turn',turnKey=''){
+  if(!target)return {attempted:0,ended:0,failed:0,skipped:0};
+  const entries=sr29Entries(target);target.conditions=entries;
+  const key=String(turnKey||`${sr29CurrentCycle()}:${trigger}:${target.id||target.name||'target'}`);
+  let attempted=0,ended=0,failed=0,skipped=0;
+  for(const item of entries){
+    const spec=item.repeatSave;
+    if(!spec||spec.trigger!==trigger)continue;
+    if(spec.lastTriggerKey===key){skipped++;continue;}
+    spec.lastTriggerKey=key;attempted++;
+    const result=sr29ResolveRepeatSave(target,spec);
+    log(`${target.name||'Target'} repeats ${spec.ability} save for ${spec.sourceSpell||item.source}: ${result.total??'—'} vs DC ${spec.dc} — ${result.success?'SUCCESS':'FAILURE'}.`,result.success?'goodlog':'rolllog');
+    if(result.legendaryResistanceUsed)log(`${target.name||'Target'} uses Legendary Resistance to overcome the repeat save.`,'rolllog');
+    if(result.success&&spec.endsOnSuccess===true){sr29Remove(target,item.name,{instanceId:item.id});ended++;}
+    else if(!result.success)failed++;
+  }
+  return {attempted,ended,failed,skipped};
 }
 function sr29Names(target) {
   const names=sr29Entries(target).map(x=>x.name);
@@ -898,7 +949,7 @@ if(typeof sr18MonsterApplyDamage==='function') {
 
 globalThis.__SR29_TEST={
   version:SR29_VERSION,schema:SR29_SCHEMA,names:SR29_CONDITION_NAMES.slice(),registry:SR29_CONDITIONS,
-  normalizeName:sr29Name,entries:sr29Entries,has:sr29Has,apply:sr29Apply,remove:sr29Remove,tick:sr29Tick,
+  normalizeName:sr29Name,entries:sr29Entries,has:sr29Has,apply:sr29Apply,remove:sr29Remove,tick:sr29Tick,processRepeatSaves:sr29ProcessRepeatSaves,resolveRepeatSave:sr29ResolveRepeatSave,
   namesFor:sr29Names,status:sr29Status,isImmune:sr29IsImmune,changeExhaustion:sr29ChangeExhaustion,
   longRestExhaustion:sr29LongRestExhaustion,autoFailSave:sr29AutoFailSave,attackState:sr29AttackState,
   skillMode:sr29SkillMode,criticalOnHit:sr29CriticalOnHit,canAct:sr29CanAct,canMove:sr29CanMove,
