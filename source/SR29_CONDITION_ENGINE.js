@@ -161,6 +161,7 @@ function sr29Tick(target,options={}) {
     if(inCombat){
       const liveRound=Number(state?.combat?.round),appliedRound=Number(item.appliedRound??item.appliedCycle);
       if(Number.isFinite(appliedRound)&&Number.isFinite(liveRound)&&liveRound<=appliedRound){skipped++;kept.push(item);continue;}
+      if(Number.isFinite(appliedRound)&&Number.isFinite(liveRound)&&item.appliedPhase==='enemy'&&liveRound===appliedRound+1){skipped++;kept.push(item);continue;}
       if(Number.isFinite(liveRound)&&item.lastTickRound===cycle){skipped++;kept.push(item);continue;}
     }
     const next=Math.max(0,Number(item.rounds)-1);
