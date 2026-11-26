@@ -364,6 +364,11 @@ try{
  assert('Solo grappled monsters spend their action on a source-specific canonical escape check',html.includes('sr7EnemySpecial=function(enemy)')&&html.includes('sr29EscapeGrapple(enemy,{instanceId:grapple.id')&&html.includes('bonusOverride:skillBonus'));
  assert('Monster-initiated grapples retain parsed escape DC, reach, size and action appendage metadata',html.includes('escape\\s+DC\\s*(\\d+)')&&html.includes('escapeDC,grapplerSize:sr29MpSize(enemy),targetSize:sr29MpSize(creature),handSlot}'));
  assert('Monster grapple appendage capacity uses explicit anatomy or a conservative creature default',T.gameplay.appendageCapacity(actor({type:'humanoid'}))===2&&T.gameplay.appendageCapacity(actor({type:'ooze'}))===1&&T.gameplay.appendageCapacity(actor({appendages:['tentacle-1','tentacle-2','tentacle-3']}))===3&&html.includes('active.length>=capacity'));
+ const appendageMonster=actor({type:'humanoid'});
+ assert('Monster grapple allocation reuses the first genuinely free appendage slot after a grapple ends',T.gameplay.nextAppendageSlot(appendageMonster,[{handSlot:'monster-appendage-1'},{handSlot:'monster-appendage-3'}])==='monster-appendage-2');
+ assert('Monster grapple allocation does not duplicate a surviving non-first appendage slot',T.gameplay.nextAppendageSlot(appendageMonster,[{handSlot:'monster-appendage-2'}])==='monster-appendage-1');
+ assert('Legacy monster grapples without slot metadata still reserve appendage capacity',T.gameplay.nextAppendageSlot(appendageMonster,[{}])==='monster-appendage-2');
+ assert('Monster grapple allocation reports no slot when every appendage is occupied',T.gameplay.nextAppendageSlot(appendageMonster,[{handSlot:'monster-appendage-1'},{handSlot:'monster-appendage-2'}])===null);
  assert('Monster grapple-on-hit attacks resolve AC, damage, appendage capacity and source-linked escape metadata',html.includes('attack=sr11RollAttack(bonus,enemy,c,!range.ranged)')&&html.includes("sr29Apply(c,'grappled','permanent',enemy.name")&&html.includes('freeHands:capacity,activeGrapples:active'));
 
 
