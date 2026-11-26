@@ -110,8 +110,12 @@ try{
  const grappleVictim=actor({id:'grapple-victim',size:'large'});
  const noHit=T.startGrapple(grappleHolder,grappleVictim,{attackHit:false,grapplerSize:'medium',targetSize:'large',freeHands:1,activeGrapples:[],distance:5,reach:5});
  assert('A grapple cannot begin unless the initiating Unarmed Strike hits',!noHit.started&&noHit.reason==='grapple-attack-did-not-hit');
- const started=T.startGrapple(grappleHolder,grappleVictim,{attackHit:true,grapplerSize:'medium',targetSize:'large',freeHands:1,activeGrapples:[],distance:5,reach:5,proficiencyBonus:3});
- assert('A successful legal grapple records its source, reach, and escape DC',started.started&&T.has(grappleVictim,'grappled')&&started.escapeDC===14&&started.instance.grapplerId==='grapple-starter'&&started.instance.grappleRange===5);
+ const missingTargetSave=T.startGrapple(grappleHolder,grappleVictim,{attackHit:true,grapplerSize:'medium',targetSize:'large',freeHands:1,activeGrapples:[],distance:5,reach:5,proficiencyBonus:3});
+ assert('Grapple initiation requires the target to make its choice of Strength or Dexterity save',!missingTargetSave.started&&missingTargetSave.reason==='target-save-required'&&!T.has(grappleVictim,'grappled'));
+ const resisted=T.startGrapple(grappleHolder,grappleVictim,{attackHit:true,grapplerSize:'medium',targetSize:'large',freeHands:1,activeGrapples:[],distance:5,reach:5,proficiencyBonus:3,targetSave:{ability:'DEX',roll:12,bonus:2}});
+ assert('A successful target saving throw prevents the grapple',!resisted.started&&resisted.reason==='target-saved'&&!T.has(grappleVictim,'grappled')&&resisted.escapeDC===14);
+ const started=T.startGrapple(grappleHolder,grappleVictim,{attackHit:true,grapplerSize:'medium',targetSize:'large',freeHands:1,activeGrapples:[],distance:5,reach:5,proficiencyBonus:3,targetSave:{ability:'STR',roll:10,bonus:2}});
+ assert('A failed target saving throw applies Grappled with source, reach, and escape DC',started.started&&T.has(grappleVictim,'grappled')&&started.escapeDC===14&&started.instance.grapplerId==='grapple-starter'&&started.instance.grappleRange===5&&started.save.success===false);
  const failedEscape=T.escapeGrapple(grappleVictim,{instanceId:started.instance.id,ability:'Athletics',roll:10,bonus:3});
  assert('An unsuccessful Athletics escape check leaves the grapple active',!failedEscape.escaped&&T.has(grappleVictim,'grappled')&&failedEscape.total===13&&failedEscape.dc===14,JSON.stringify({failedEscape,conditions:T.entries(grappleVictim)}));
  const escaped=T.escapeGrapple(grappleVictim,{instanceId:started.instance.id,ability:'Acrobatics',roll:12,bonus:2});
