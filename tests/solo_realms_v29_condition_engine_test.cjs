@@ -760,6 +760,11 @@ try{
  T18.state={character:dispatchedSurgeFighter,campaign:{multiplayer:{players:[dispatchedSurgePlayer]}},combat:{mp:{heroPositions:{'dispatched-surge-fighter':{x:1,y:1}},turnOrder:[{kind:'hero',id:'dispatched-surge-fighter',faction:'hero'}],index:0},enemies:[],map:{width:8,height:6,terrain:[]}},log:[]};
  const dispatchedSurge=T.gameplay.heroAction(dispatchedSurgePlayer,'power-class');
  assert('The legacy player-action dispatcher routes Fighter Action Surge through its free class-specific timing',dispatchedSurge===true&&dispatchedSurgeFighter.actionSurgeUsed===true&&dispatchedSurgeFighter.actionSpent===false&&dispatchedSurgeFighter.bonusActionSpent===true);
+ const oldPowerFighter=actor({id:'old-power-fighter',name:'Old Power Fighter',classId:'Fighter',level:2,classLevels:{Fighter:2},actionSpent:true,bonusActionSpent:true});
+ const oldPowerPlayer={id:'old-power-fighter',name:'Old Power Fighter',character:oldPowerFighter};
+ T18.state={character:oldPowerFighter,campaign:{multiplayer:{players:[oldPowerPlayer]}},combat:{mp:{heroPositions:{'old-power-fighter':{x:1,y:1}},turnOrder:[{kind:'hero',id:'old-power-fighter',faction:'hero'}],index:0},enemies:[],map:{width:8,height:6,terrain:[]}},log:[]};
+ const oldPowerSurge=T.gameplay.heroAction(oldPowerPlayer,'power');
+ assert('The original power action also routes Fighter Action Surge through free timing instead of wrongly requiring a Bonus Action',oldPowerSurge===true&&oldPowerFighter.actionSurgeUsed===true&&oldPowerFighter.actionSpent===false&&oldPowerFighter.bonusActionSpent===true);
  const actionCleric=actor({id:'action-cleric',name:'Action Cleric',classId:'Cleric',level:5,classLevels:{Cleric:5},hp:10,maxHp:30,actionSpent:false,bonusActionSpent:true});
  const clericPlayer={id:'action-cleric',name:'Action Cleric',connected:true,character:actionCleric};
  T18.state={character:actionCleric,campaign:{multiplayer:{players:[clericPlayer]}},combat:{mp:{heroPositions:{'action-cleric':{x:1,y:1}},turnOrder:[{kind:'hero',id:'action-cleric',faction:'hero'}],index:0},enemies:[],map:{width:8,height:6,terrain:[]}},log:[]};
