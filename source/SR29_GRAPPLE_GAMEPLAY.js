@@ -208,7 +208,7 @@ if(typeof sr13ProcessEnemyGroup==='function'&&typeof sr131OldEnemyTurn==='functi
         const athletics=Number(enemy.skills?.Athletics??enemy.skillBonuses?.Athletics??enemy.athletics??mod(enemy.stats?.STR||10));
         const acrobatics=Number(enemy.skills?.Acrobatics??enemy.skillBonuses?.Acrobatics??enemy.acrobatics??mod(enemy.stats?.DEX||10));
         const skill=athletics>=acrobatics?'Athletics':'Acrobatics',dc=Number(grapple.escapeDC??enemy.grappleDC??12);
-        const check=sr29CanonicalAbilityCheck(enemy,skill,dc,{roll:die(20),secondRoll:die(20)});
+        const skillBonus=skill==='Athletics'?athletics:acrobatics,check=sr29CanonicalAbilityCheck(enemy,skill,dc,{roll:die(20),secondRoll:die(20),bonusOverride:skillBonus});
         const result=sr29EscapeGrapple(enemy,{instanceId:grapple.id,ability:skill,roll:Number(check.roll)||1,bonus:Number(check.bonus)||0,dc,success:check.success===true});
         if(result.escaped)log(`${enemy.name} escapes the grapple with ${skill} (${result.total} vs DC ${dc}) using its action.`,'rolllog');
         else log(`${enemy.name} fails to escape the grapple with ${skill} (${result.total} vs DC ${dc}) and uses its action to try.`,'rolllog');
