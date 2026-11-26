@@ -73,7 +73,9 @@ The monster action resolver applies described Push/Pull displacement after the r
 
 Regression coverage checks tactical Push distance, Pull direction, blocked/occupied-square stopping, solo abstract Push, solo abstract Pull, and zero-distance clamping.
 
-Still open: actual teleport destination selection and relocation, player-originated forced movement, every monster feature wording, and a complete audit of direct position writes. Solo abstract displacement is implemented for monster-originated Push/Pull only; it is not evidence that all forced-movement sources are covered.
+Monster teleport actions now have a destination-selection layer: the planner searches within the stated range, rejects the current square and illegal/occupied destinations, requires line of sight, and prefers a legal destination that closes distance to the target. Solo theater-of-the-mind teleport actions update abstract monster separation. Tactical multiplayer teleport commits a selected grid position and reconciles grapples. Regression tests cover legal destination choice, blocked-destination rejection, stated range, and solo abstract relocation.
+
+Still open: player-originated forced movement, teleport effects that relocate a player or a target rather than the acting monster, every monster feature wording, and a complete audit of direct position writes. The current teleport behavior covers monster self-teleport actions with a range expressed in feet; it is not evidence that all teleport effects are covered.
 
 ## Duration semantics
 
