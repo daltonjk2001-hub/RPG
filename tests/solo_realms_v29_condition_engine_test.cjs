@@ -32,6 +32,17 @@ try{
  assert('Monster displacement planner pushes the requested 10 feet',T18.displacementPlan({x:2,y:2},{x:0,y:2},'push',10,()=>true)?.to.x===4);
  assert('Monster displacement planner pulls toward the source',T18.displacementPlan({x:3,y:2},{x:0,y:2},'pull',5,()=>true)?.to.x===2);
  assert('Monster displacement planner stops before blocked or occupied squares',T18.displacementPlan({x:1,y:2},{x:0,y:2},'push',15,p=>p.x<3)?.to.x===2);
+ const priorState=T18.state;
+ const soloMonster={id:'solo-displacer',name:'Solo Displacer',distance:10,hp:20};
+ T18.state={character:actor(),combat:{mp:null,enemies:[soloMonster],heroPos:{x:1,y:3}}};
+ const soloPush=T18.displaceCombatant({player:{id:'solo',name:'Solo Hero'}},soloMonster,'The target is pushed 10 feet away.');
+ assert('Monster Push changes theater-of-the-mind solo combat distance',soloPush&&soloMonster.distance===20);
+ const soloPull=T18.displaceCombatant({player:{id:'solo',name:'Solo Hero'}},soloMonster,'The target is pulled 15 feet toward the monster.');
+ assert('Monster Pull changes theater-of-the-mind solo combat distance',soloPull&&soloMonster.distance===5);
+ soloMonster.distance=5;
+ const soloPullClamp=T18.displaceCombatant({player:{id:'solo',name:'Solo Hero'}},soloMonster,'The target is pulled 10 feet.');
+ assert('Solo Pull never produces a negative separation',soloPullClamp&&soloMonster.distance===0);
+ T18.state=priorState;
  const stacked=actor();
  const first=T.apply(stacked,'poisoned',1,'venom A'),second=T.apply(stacked,'poisoned',3,'venom B');
  assert('Repeated condition applications retain independent instance IDs',first.instance.id!==second.instance.id&&T.entries(stacked).length===2);
