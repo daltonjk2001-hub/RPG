@@ -32,6 +32,9 @@ try{
  assert('Monster displacement planner pushes the requested 10 feet',T18.displacementPlan({x:2,y:2},{x:0,y:2},'push',10,()=>true)?.to.x===4);
  assert('Monster displacement planner pulls toward the source',T18.displacementPlan({x:3,y:2},{x:0,y:2},'pull',5,()=>true)?.to.x===2);
  assert('Monster displacement planner stops before blocked or occupied squares',T18.displacementPlan({x:1,y:2},{x:0,y:2},'push',15,p=>p.x<3)?.to.x===2);
+ const teleport=T18.teleportPlan({x:0,y:0},{x:10,y:0},30,p=>p.x===6&&p.y===0,()=>true);
+ assert('Teleport destination selection respects the maximum range and chooses an open closer square',teleport?.to.x===6&&teleport.travelFeet<=30&&teleport.remainingFeet<50);
+ assert('Teleport destination selection rejects blocked or occupied destinations',T18.teleportPlan({x:0,y:0},{x:10,y:0},30,()=>false,()=>true)===null);
  const priorState=T18.state;
  const soloMonster={id:'solo-displacer',name:'Solo Displacer',distance:10,hp:20};
  T18.state={character:actor(),log:[],combat:{mp:null,enemies:[soloMonster],heroPos:{x:1,y:3}}};
@@ -42,6 +45,10 @@ try{
  soloMonster.distance=5;
  const soloPullClamp=T18.displaceCombatant({player:{id:'solo',name:'Solo Hero'}},soloMonster,'The target is pulled 10 feet.');
  assert('Solo Pull never produces a negative separation',soloPullClamp&&soloMonster.distance===0);
+ soloMonster.distance=60;
+ const soloTeleport=T18.teleportMonster(soloMonster,{player:{id:'solo',name:'Solo Hero'}},'The monster teleports up to 30 feet to an unoccupied space it can see.');
+ assert('Monster teleport changes solo abstract separation by its stated range',soloTeleport&&soloMonster.distance===30);
+ assert('Actions without teleport wording do not move the monster',!T18.teleportMonster(soloMonster,{player:{id:'solo'}},'The monster makes a claw attack.')&&soloMonster.distance===30);
  T18.state=priorState;
  const stacked=actor();
  const first=T.apply(stacked,'poisoned',1,'venom A'),second=T.apply(stacked,'poisoned',3,'venom B');
