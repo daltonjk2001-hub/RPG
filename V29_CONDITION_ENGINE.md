@@ -25,9 +25,9 @@ The Exhaustion condition is handled separately as a cumulative level from 0 to 6
 - Incapacitating applications end concentration. The player action paths for attacks and spellcasting are guarded; the initiative enemy path skips incapacitated creatures.
 - Blinded sight-dependent and Deafened hearing-dependent checks can be represented as automatic failures in the skill-mode service. The legacy Perception path uses this automatic-failure behavior for Blinded.
 - Poisoned, Frightened, Prone, Restrained, Blinded, Invisible, and target-condition effects feed the shared attack-mode logic for the V7 and V11 attack paths. Advantage and Disadvantage cancel rather than accumulate.
-- Prone gives Advantage to melee attacks within 5 feet and Disadvantage to other attacks. Movement through the legacy player-movement adapter spends the existing half-speed allowance to stand and then removes Prone.
-- Paralyzed and Unconscious targets can receive the close-melee automatic critical hit. The grid attack path and the V7 enemy attack path include this exception without adding a second extra die on a natural 20.
-- Petrified targets gain Poisoned condition immunity and resistance to all damage through the existing damage adapter; the condition status service reports these effects.
+- Prone gives Advantage to any attack made from within 5 feet and Disadvantage to attacks made from farther away. Movement through the legacy player-movement adapter spends the existing half-speed allowance to stand and then removes Prone.
+- Paralyzed and Unconscious targets can receive an automatic critical hit from any attack roll that hits within 5 feet. The grid attack path and the V7 enemy attack path include this exception without adding a second extra die on a natural 20.
+- Petrified targets gain Poisoned condition immunity and resistance to all damage through the existing damage adapter; the condition status service reports these effects. Stunned does not set Speed to 0 under the 2024 rules.
 - Charmed and Frightened source restrictions are applied when the source ID is recorded with the condition instance. This is intentionally not guessed when an imported/legacy condition has no identifiable source.
 - The V10 initiative round-end condition cleanup now calls the canonical expiry service instead of deleting legacy strings. The other retained condition helpers are compatibility adapters into the same engine.
 
