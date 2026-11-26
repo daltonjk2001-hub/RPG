@@ -234,6 +234,22 @@ function sr29CreatureGrappleAppendageCapacity(actor){
   const kind=String(actor?.type||actor?.kind||actor?.name||'').toLowerCase();
   return /humanoid|giant|goblin|orc|human|elf|dwarf|gnoll|bandit|guard|veteran|cultist/.test(kind)?2:1;
 }
+function sr29NextMonsterAppendageSlot(actor,active=[]){
+  const capacity=sr29CreatureGrappleAppendageCapacity(actor),occupied=new Set();
+  for(const grapple of active){
+    const slot=String(grapple?.handSlot||'');
+    const match=slot.match(/^monster-appendage-(\\d+)$/);
+    if(match){const index=Number(match[1]);if(index>=1&&index<=capacity)occupied.add(index);}
+  }
+  // Older/manual grapple instances may not have a slot. Reserve the first
+  // remaining slot for each such instance rather than allowing it to be reused.
+  for(const grapple of active){
+    if(/^monster-appendage-\\d+$/.test(String(grapple?.handSlot||'')))continue;
+    for(let index=1;index<=capacity;index++)if(!occupied.has(index)){occupied.add(index);break;}
+  }
+  for(let index=1;index<=capacity;index++)if(!occupied.has(index))return 'monster-appendage-'+index;
+  return null;
+}
 if(typeof sr18ResolveMonsterAction==='function'&&typeof sr29Apply==='function'){
   const sr29PriorMonsterAction=sr18ResolveMonsterAction;
   sr18ResolveMonsterAction=function(enemy,action,target){
@@ -243,7 +259,8 @@ if(typeof sr18ResolveMonsterAction==='function'&&typeof sr29Apply==='function'){
     if(!p||!c)return sr29PriorMonsterAction.apply(this,arguments);
     const grapplerId=String(enemy?.id||enemy?.name||'unknown-grappler');
     const active=sr29MpActiveGrapples({id:grapplerId}),capacity=sr29CreatureGrappleAppendageCapacity(enemy);
-    if(active.length>=capacity){log(`${enemy.name} has no free appendage to grapple another creature.`,'muted');return false;}
+    const handSlot=sr29NextMonsterAppendageSlot(enemy,active);
+    if(!handSlot){log(`${enemy.name} has no free appendage to grapple another creature.`,'muted');return false;}
     const range=sr18ParseActionRange(action),dist=enemy.pos&&target.pos?sr12Distance(enemy.pos,target.pos):0;
     if(!range.ranged&&dist>range.reach){
       if(state.combat?.mp)sr12EnemyStep(enemy,target.pos);
@@ -253,7 +270,6 @@ if(typeof sr18ResolveMonsterAction==='function'&&typeof sr29Apply==='function'){
     if(enemy.pos&&target.pos&&!sr11HasLOS(enemy.pos,target.pos))return false;
     const escapeDC=Number(desc.match(/escape\s+DC\s*(\d+)/i)?.[1]||enemy.grappleDC||save?.dc||8+mod(enemy.stats?.STR||10)+Number(enemy.proficiencyBonus||enemy.profBonus||2));
     const grappleRange=Math.max(5,Number(range.ranged?range.normalRange:range.reach)||5);
-    const handSlot='monster-appendage-'+String(active.length+1);
     if(save){
       const priorApply=sr29Apply;
       sr29Apply=function(creature,name,duration,source,options={}){
@@ -395,5 +411,5 @@ if(typeof sr14CastSpellComplete==='function'){
 }
 
 if(globalThis.__SR29_TEST){
-  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity};
+  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
 }
