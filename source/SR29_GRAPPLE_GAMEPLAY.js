@@ -1150,8 +1150,8 @@ if(typeof sr12HeroAction==='function'){
   const sr29PriorHeroAction=sr12HeroAction;
   sr12HeroAction=function(player,action,...args){
     const c=player?.character,a=String(action||'');
-    const nonAction=new Set(['target','move','end','death-save','sr14-feature','feature','spell','power-class']);
-    const bonusAction=new Set(['power','second-wind','cunning-dash','cunning-disengage','cunning-hide']);
+    const nonAction=new Set(['target','move','end','death-save','sr14-feature','feature','spell','power','power-class']);
+    const bonusAction=new Set(['second-wind','cunning-dash','cunning-disengage','cunning-hide']);
     if(bonusAction.has(a)&&!sr29ActionEconomyGate(c,'bonus-action'))return false;
     if(!nonAction.has(a)&&!bonusAction.has(a)&&!sr29ActionEconomyGate(c,'action'))return false;
     return sr29PriorHeroAction.call(this,player,action,...args);
