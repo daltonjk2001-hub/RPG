@@ -540,6 +540,13 @@ try{
  let masteryAttackResult=false;
  try{masteryAttackResult=T.gameplay.heroAttack(masteryPlayer,masteryEnemy,false);}finally{math.random=priorMasteryRandom;}
  assert('A successful multiplayer Warhammer Push hit displaces the enemy and releases an out-of-reach grapple',masteryAttackResult===true&&masteryEnemy.pos.x>=4&&!T.has(masteryEnemy,'grappled'));
+ const hugePushTarget=actor({id:'huge-push-target',name:'Huge Push Target',size:'Huge',pos:{x:2,y:1},hp:30});
+ T18.state.combat.enemies=[hugePushTarget];
+ const hugePush=T.gameplay.applyMasteryPush(hugePushTarget,masteryPlayer,{x:1,y:1},'Warhammer');
+ const untrainedHero=actor({id:'untrained-hero',name:'Untrained Hero',classId:'Fighter',level:1,weaponMasteries:['Longsword']});
+ const untrainedPlayer={id:'untrained-hero',name:'Untrained Hero',character:untrainedHero};
+ const untrainedPush=T.gameplay.applyMasteryPush(hugePushTarget,untrainedPlayer,{x:1,y:1},'Warhammer');
+ assert('Push mastery rejects Huge targets and weapons the character has not mastered',hugePush===false&&hugePushTarget.pos.x===2&&untrainedPush===false);
  const spellSaveTarget=actor({name:'Thunderwave Target'});
  assert('Player spell displacement recognizes failed target-save results without treating successful saves as failures',T.gameplay.forcedSpellTargetFailedSave(spellSaveTarget,[{msg:'Thunderwave Target makes CON save 11 vs DC 13: failure.'}])&&!T.gameplay.forcedSpellTargetFailedSave(spellSaveTarget,[{msg:'Thunderwave Target makes CON save 18 vs DC 13: success.'}]));
  const movementOnlySpell=T18.inferSpell('Gust of Wind',{description:'The target must succeed on a Strength saving throw or be pushed 15 feet away.',save:true,saveAbility:'STR'},{kind:'control',condition:'restrained',save:'STR'});
