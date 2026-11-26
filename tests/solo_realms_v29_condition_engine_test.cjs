@@ -2,6 +2,7 @@
 // V29: canonical condition definitions, independent instances, expiry and core rules integration.
 const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
 const html=fs.readFileSync(path.join(__dirname,'..','Solo_Realms_V18_Main.html'),'utf8');
+const sw=fs.readFileSync(path.join(__dirname,'..','pwa','sw.js'),'utf8');
 const scripts=[...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(m=>m[1]);
 if(scripts.length!==1)throw new Error('Expected one self-contained game runtime.');
 function el(id=''){return {id,innerHTML:'',textContent:'',value:'',checked:false,dataset:{},style:{},attrs:{},files:[],
@@ -107,7 +108,7 @@ try{
  const short=actor();T.apply(short,'poisoned',1,'first');T.apply(short,'poisoned',4,'second');
  T.remove(short,'poisoned',{source:'first'});
  assert('Removal can target one source instance without clearing the other',T.entries(short).length===1&&T.entries(short)[0].source==='second');
- const integrity=html.includes("sr29Tick(e,{phase:'round',cycle:b.round})")&&html.includes('sr29CriticalOnHit')&&html.includes('solo-realms-systems-v29-');
+ const integrity=html.includes("sr29Tick(e,{phase:'round',cycle:b.round})")&&html.includes('sr29CriticalOnHit')&&sw.includes('solo-realms-systems-v29-');
  assert('Generated build includes V29 tick, critical-hit and service-worker cache integration',integrity);
 }catch(error){assert('V29 condition suite completes without uncaught runtime errors',false,error?.stack||String(error));}
 for(const check of checks)console.log((check.pass?'PASS ':'FAIL ')+check.name+(check.detail?' — '+check.detail:''));
