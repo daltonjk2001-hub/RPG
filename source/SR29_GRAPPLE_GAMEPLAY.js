@@ -195,6 +195,34 @@ function sr29MpEscapeGrapple(player,ability){
   else log(`${player.name} fails to escape the grapple with ${skill}: ${result.total} vs DC ${dc}. The grapple remains.`,'badlog');
   return true;
 }
+if(typeof sr13ProcessEnemyGroup==='function'&&typeof sr131OldEnemyTurn==='function'){
+  const sr29MpPriorEnemyGroup=sr13ProcessEnemyGroup;
+  sr13ProcessEnemyGroup=function(actor){
+    const b=state?.combat;if(!b?.mp||!actor)return sr29MpPriorEnemyGroup(actor);
+    let acted=0;const indexes=Array.isArray(actor.indexes)?actor.indexes:[Number(actor.index)];
+    for(const index of indexes){
+      const enemy=b.enemies?.[index];if(!enemy||enemy.hp<=0)continue;
+      enemy.reactionAvailable=true;
+      const grapple=sr29Entries(enemy).find(item=>item.name==='grappled');
+      if(grapple){
+        const athletics=Number(enemy.skills?.Athletics??enemy.skillBonuses?.Athletics??enemy.athletics??mod(enemy.stats?.STR||10));
+        const acrobatics=Number(enemy.skills?.Acrobatics??enemy.skillBonuses?.Acrobatics??enemy.acrobatics??mod(enemy.stats?.DEX||10));
+        const skill=athletics>=acrobatics?'Athletics':'Acrobatics',dc=Number(grapple.escapeDC??enemy.grappleDC??12);
+        const check=sr29CanonicalAbilityCheck(enemy,skill,dc,{roll:die(20),secondRoll:die(20)});
+        const result=sr29EscapeGrapple(enemy,{instanceId:grapple.id,ability:skill,roll:Number(check.roll)||1,bonus:Number(check.bonus)||0,dc,success:check.success===true});
+        if(result.escaped)log(`${enemy.name} escapes the grapple with ${skill} (${result.total} vs DC ${dc}) using its action.`,'rolllog');
+        else log(`${enemy.name} fails to escape the grapple with ${skill} (${result.total} vs DC ${dc}) and uses its action to try.`,'rolllog');
+        continue;
+      }
+      if(sr13HasCondition(enemy,'incapacitated')||sr13HasCondition(enemy,'stunned')||sr13HasCondition(enemy,'paralyzed')||sr13HasCondition(enemy,'unconscious')){log(`${enemy.name} cannot act while incapacitated.`,'rolllog');continue;}
+      const wasProne=sr11Has(enemy,'prone'),oldSpeed=enemy.speed;
+      if(wasProne){sr131RemoveCondition(enemy,'prone');enemy.speed=Math.floor((Number(enemy.speed)||30)/2);log(`${enemy.name} stands from prone, using half its movement.`,'rolllog');}
+      try{sr131OldEnemyTurn(enemy);acted++;}finally{if(wasProne)enemy.speed=oldSpeed;}
+      if(!state.combat?.mp)break;
+    }
+    return acted;
+  };
+}
 if(typeof sr12HeroAction==='function'){
   const sr29MpPriorHeroAction=sr12HeroAction;
   sr12HeroAction=function(player,action,spellName,targetId,data={}){
