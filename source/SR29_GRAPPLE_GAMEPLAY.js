@@ -708,6 +708,102 @@ if(typeof sr14CastSpellComplete==='function'){
 }
 
 
+function sr29RepeatSaveAfterDamage(target,amount){
+  if(Number(amount)>0&&target)sr29ProcessRepeatSaves(target,'damage',sr29NextDamageEventKey());
+}
+function sr29RepeatSaveTurnKey(kind,target){
+  return `${sr29CurrentCycle()}:${kind}:${target?.id||target?.name||'actor'}`;
+}
+if(typeof afterPlayerAction==='function'){
+  const sr29PriorAfterPlayerAction=afterPlayerAction;
+  afterPlayerAction=function(...args){
+    if(state?.combat&&state.character)sr29ProcessRepeatSaves(state.character,'end-turn',sr29RepeatSaveTurnKey('hero',state.character));
+    return sr29PriorAfterPlayerAction.apply(this,args);
+  };
+}
+if(typeof sr7ExpireConditions==='function'){
+  const sr29PriorExpireConditions=sr7ExpireConditions;
+  sr7ExpireConditions=function(target,...args){
+    if(target&&target!==state?.character)sr29ProcessRepeatSaves(target,'end-turn',sr29RepeatSaveTurnKey('enemy',target));
+    return sr29PriorExpireConditions.apply(this,[target,...args]);
+  };
+}
+if(typeof sr10EnemyTurn==='function'){
+  const sr29PriorSoloEnemyTurn=sr10EnemyTurn;
+  sr10EnemyTurn=function(entry,...args){
+    const enemy=state?.combat?.enemies?.[Number(entry?.index)],previous=SR29_PHASE;SR29_PHASE='enemy';
+    try{
+      const result=sr29PriorSoloEnemyTurn.call(this,entry,...args);
+      if(enemy)sr29ProcessRepeatSaves(enemy,'end-turn',sr29RepeatSaveTurnKey('enemy',enemy));
+      return result;
+    }finally{SR29_PHASE=previous;}
+  };
+}
+if(typeof sr10CompanionTurn==='function'){
+  const sr29PriorSoloCompanionTurn=sr10CompanionTurn;
+  sr10CompanionTurn=function(entry,...args){
+    const ally=state?.campaign?.companions?.[Number(entry?.index)];
+    const result=sr29PriorSoloCompanionTurn.call(this,entry,...args);
+    if(ally)sr29ProcessRepeatSaves(ally,'end-turn',sr29RepeatSaveTurnKey('companion',ally));
+    return result;
+  };
+}
+if(typeof sr12AdvanceIndex==='function'&&typeof sr12TurnActor==='function'){
+  const sr29PriorAdvanceIndex=sr12AdvanceIndex;
+  sr12AdvanceIndex=function(...args){
+    const b=state?.combat,actor=sr12TurnActor();let target=null;
+    if(actor?.kind==='hero')target=sr12PlayerById(actor.id)?.character||null;
+    else if(actor?.kind==='enemy')target=b?.enemies?.[Number(actor.index)]||null;
+    else if(actor?.kind==='companion')target=state?.campaign?.companions?.[Number(actor.index)]||null;
+    if(target)sr29ProcessRepeatSaves(target,'end-turn',typeof sr12CombatKey==='function'?sr12CombatKey(actor,b):sr29RepeatSaveTurnKey(actor.kind,target));
+    return sr29PriorAdvanceIndex.apply(this,args);
+  };
+}
+if(typeof sr18ResolveMonsterAction==='function'){
+  const sr29PriorMonsterActionPhase=sr18ResolveMonsterAction;
+  sr18ResolveMonsterAction=function(...args){
+    const previous=SR29_PHASE;SR29_PHASE='enemy';
+    try{return sr29PriorMonsterActionPhase.apply(this,args);}finally{SR29_PHASE=previous;}
+  };
+}
+if(typeof damagePlayer==='function'){
+  const sr29PriorDamagePlayer=damagePlayer;
+  damagePlayer=function(...args){
+    const result=sr29PriorDamagePlayer.apply(this,args);
+    sr29RepeatSaveAfterDamage(state?.character,result);
+    return result;
+  };
+}
+if(typeof sr12DamageHero==='function'){
+  const sr29PriorDamageHero=sr12DamageHero;
+  sr12DamageHero=function(player,amount,...args){
+    const result=sr29PriorDamageHero.call(this,player,amount,...args);
+    sr29RepeatSaveAfterDamage(player?.character,result);
+    return result;
+  };
+}
+if(typeof sr12ApplyDamage==='function'){
+  const sr29PriorApplyDamage=sr12ApplyDamage;
+  sr12ApplyDamage=function(enemy,amount,...args){
+    const result=sr29PriorApplyDamage.call(this,enemy,amount,...args);
+    sr29RepeatSaveAfterDamage(enemy,result);
+    return result;
+  };
+}
+if(typeof sr7PlayerAttack==='function'){
+  const sr29PriorSoloGridAttack=sr7PlayerAttack;
+  sr7PlayerAttack=function(...args){
+    const c=state?.character;if(state?.combat&&!sr29ActionEconomyGate(c,'action',true))return false;
+    const before=new Map((state?.combat?.enemies||[]).map(enemy=>[enemy,Number(enemy.hp)||0]));
+    const target=typeof targetEnemy==='function'?targetEnemy():null;
+    if(sr29CannotHarm(c,target)){toast('The Charmed condition prevents you from harming its source.');return false;}
+    const result=sr29PriorSoloGridAttack.apply(this,args);
+    for(const [enemy,hp] of before){const dealt=hp-(Number(enemy.hp)||0);if(dealt>0)sr29RepeatSaveAfterDamage(enemy,dealt);}
+    return result;
+  };
+}
+
+
 function sr29ActionEconomyGate(actor,kind,checkResource=!!state?.combat){
   if(!actor)return false;
   if(!sr29CanAct(actor,kind)){toast(`Your current condition prevents you from taking a ${kind==='bonus-action'?'Bonus Action':kind==='reaction'?'Reaction':'Action'}.`);return false;}
