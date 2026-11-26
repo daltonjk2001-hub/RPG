@@ -716,8 +716,8 @@ function sr29PlayerTeleportRange(spellName,spell){
   // their range in their description; destination/companion travel remains a separate task.
   if(String(spellName||'').trim().toLowerCase()==='misty step')return 30;
   const description=String(spell?.description||spell?.desc||'');
-  const match=description.match(/\\bteleport(?:s|ed|ing)?[^.!?]{0,120}?(?:up to |within |no more than )?(\\d+)\\s*feet?/i)||
-    description.match(/(\\d+)\\s*feet?[^.!?]{0,120}\\bteleport/i);
+  const match=description.match(/\bteleport(?:s|ed|ing)?[^.!?]{0,120}?(?:up to |within |no more than )?(\d+)\s*feet?/i)||
+    description.match(/(\d+)\s*feet?[^.!?]{0,120}\bteleport/i);
   return match?Math.max(5,Number(match[1])||0):null;
 }
 function sr29PlayerTeleportPlan(player,feet){
