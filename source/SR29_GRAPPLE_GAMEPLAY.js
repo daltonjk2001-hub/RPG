@@ -612,9 +612,10 @@ if(typeof sr131Maneuver==='function'){
 }
 if(typeof sr7ApplyMastery==='function'){
   const sr29PriorApplyMastery=sr7ApplyMastery;
-  sr7ApplyMastery=function(enemy,actor,weapon,...args){
+  sr7ApplyMastery=function(enemy,actor,weapon,hit,...args){
     const mastery=(typeof SR14_WEAPON_MASTERY!=='undefined'?SR14_WEAPON_MASTERY?.[weapon]:null)||(typeof SR6_MASTERY!=='undefined'?SR6_MASTERY?.[weapon]:null)||WEAPONS?.[weapon]?.mastery;
     if(mastery==='Push'){
+      if(hit!==true)return false;
       if(!sr29CanPushTarget(enemy)||sr29WeaponMasteryFor(actor,weapon)!=='Push'){
         log(!sr29CanPushTarget(enemy)?`${enemy?.name||'Target'} is too large for Push mastery.`:'This character has not learned this weapon’s Push mastery.','muted');
         return false;
@@ -624,7 +625,7 @@ if(typeof sr7ApplyMastery==='function'){
       sr29ReconcileAbstractGrapples();sr29ReconcileCombatGrapples();
       return true;
     }
-    const result=sr29PriorApplyMastery.call(this,enemy,actor,weapon,...args);
+    const result=sr29PriorApplyMastery.call(this,enemy,actor,weapon,hit,...args);
     sr29ReconcileAbstractGrapples();
     sr29ReconcileCombatGrapples();
     return result;
