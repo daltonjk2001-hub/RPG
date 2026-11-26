@@ -795,7 +795,7 @@ function sr29CanonicalAbilityCheck(target,skill,dc,options={},fatiguePenalty=0) 
   const disadvantage=!!opts.disadvantage&&!opts.advantage;
   const fallback=typeof sr21SkillBonus==='function'?sr21SkillBonus(target,skill):{total:0};
   const exhaustion=Math.max(0,Math.min(6,Math.floor(Number(target?.exhaustion)||0)));
-  const bonus=Number(fallback?.total)||0;
+  const bonus=Number.isFinite(Number(opts.bonusOverride))?Number(opts.bonusOverride):(Number(fallback?.total)||0);
   if(mode==='auto-fail')return {
     roll:null,first:null,second:null,advantage:false,disadvantage:false,
     bonus:bonus-2*exhaustion,total:null,success:false,skill,dc,
