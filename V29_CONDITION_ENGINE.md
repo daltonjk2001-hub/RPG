@@ -63,11 +63,17 @@ The V29.4 audit distinguishes post-resolution reconciliation from actual movemen
 
 Accordingly, teleport classification is not counted as teleport gameplay, and the spell-completion hook is not counted as proof of complete forced-movement coverage. The next implementation slice must add a shared, collision-aware displacement transaction for supported tactical and abstract combat modes, route actual teleport and monster Push/Pull effects through it, then reconcile source-linked grapples after the position commit. Until that transaction exists, these cases remain explicitly Partial.
 
-## V29.5 tactical monster displacement
+## V29.5 forced displacement
 
-The monster action resolver now applies described Push/Pull displacement in multiplayer tactical combat after the relevant attack hits or the target fails its saving throw. A shared displacement planner derives direction from the source and target positions, applies the described distance in 5-foot grid steps, and stops before missing, blocked, or occupied cells. Successful position commits immediately invoke abstract and tactical grapple reconciliation.
+The monster action resolver applies described Push/Pull displacement after the relevant attack hits or the target fails its saving throw.
 
-Scope is deliberately bounded: this first transaction is for tactical multiplayer positions with grid-cell data. It does not yet implement teleport destinations, solo abstract-distance forced displacement, player-originated forced movement, or every monster feature wording. Those remain open until the respective position models and targeting rules are integrated and tested. The regression suite now checks Push distance, Pull direction, and stopping at blocked/occupied cells.
+- **Multiplayer tactical combat:** a shared grid-step planner derives direction from source and target positions, applies the described distance in 5-foot steps, and stops before missing, blocked, or occupied cells.
+- **Solo theater-of-the-mind combat:** the resolver updates the monster's abstract separation from the hero, increasing it for Push and decreasing it for Pull without allowing negative distance.
+- **Grapples:** successful position/distance commits invoke abstract and tactical grapple reconciliation.
+
+Regression coverage checks tactical Push distance, Pull direction, blocked/occupied-square stopping, solo abstract Push, solo abstract Pull, and zero-distance clamping.
+
+Still open: actual teleport destination selection and relocation, player-originated forced movement, every monster feature wording, and a complete audit of direct position writes. Solo abstract displacement is implemented for monster-originated Push/Pull only; it is not evidence that all forced-movement sources are covered.
 
 ## Duration semantics
 
