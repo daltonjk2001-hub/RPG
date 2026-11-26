@@ -860,7 +860,11 @@ if(typeof sr14RunFeature==='function'){
     const free=new Set(['actionSurge']);
     const kind=k==='cuttingWords'?'reaction':bonus.has(k)?'bonus-action':action.has(k)?'action':free.has(k)?'free':null;
     if(kind&&!sr29ActionEconomyGate(c,kind,!free.has(k)))return false;
-    const result=sr29PriorRunFeature.call(this,player,key,option);
+    const previousBonus=c?.bonusActionSpent;
+    if(k==='actionSurge'&&c)c.bonusActionSpent=false;
+    let result;
+    try{result=sr29PriorRunFeature.call(this,player,key,option);}
+    finally{if(k==='actionSurge'&&c)c.bonusActionSpent=previousBonus;}
     if(result&&kind==='reaction'&&state?.combat)c.reactionAvailable=false;
     return result;
   };
