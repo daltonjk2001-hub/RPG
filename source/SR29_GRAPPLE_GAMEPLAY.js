@@ -803,6 +803,24 @@ if(typeof sr10CompanionTurn==='function'){
     return result;
   };
 }
+if(typeof sr12EndRound==='function'){
+  const sr29PriorEndRound=sr12EndRound;
+  sr12EndRound=function(...args){
+    const players=state?.campaign?.multiplayer?.players||[],enemies=state?.combat?.enemies||[];
+    const playerReactions=players.map(p=>[p?.character,p?.character?.reactionAvailable]),enemyReactions=enemies.map(e=>[e,e?.reactionAvailable]);
+    const result=sr29PriorEndRound.apply(this,args);
+    for(const [actor,available] of playerReactions)if(actor)actor.reactionAvailable=available;
+    for(const [enemy,available] of enemyReactions)if(enemy)enemy.reactionAvailable=available;
+    return result;
+  };
+}
+if(typeof sr12EnemyTurn==='function'){
+  const sr29PriorEnemyTurn=sr12EnemyTurn;
+  sr12EnemyTurn=function(enemy,...args){
+    if(enemy)enemy.reactionAvailable=true;
+    return sr29PriorEnemyTurn.call(this,enemy,...args);
+  };
+}
 if(typeof sr12AdvanceIndex==='function'&&typeof sr12TurnActor==='function'){
   const sr29PriorAdvanceIndex=sr12AdvanceIndex;
   sr12AdvanceIndex=function(...args){
@@ -970,5 +988,5 @@ if(typeof sr10Dodge==='function'){
 }
 
 if(globalThis.__SR29_TEST){
-  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,actionEconomyGate:sr29ActionEconomyGate,runFeature:typeof sr14RunFeature==='function'?sr14RunFeature:null,classPower:typeof sr12ClassPower==='function'?sr12ClassPower:null,cunningAction:typeof sr137CunningAction==='function'?sr137CunningAction:null,heroAction:typeof sr12HeroAction==='function'?sr12HeroAction:null,heroAttack:typeof sr12HeroAttack==='function'?sr12HeroAttack:null,castSpell:typeof sr14CastSpellComplete==='function'?sr14CastSpellComplete:null,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,soloShove:sr29SoloShove,parseForcedDisplacement:sr29ParseForcedDisplacement,spellDisplacementSpec:sr29SpellDisplacementSpec,parseRepeatSave:sr29ParseRepeatSave,repeatSaveSpecForSpell:sr29RepeatSaveSpecForSpell,spellEffectComplete:typeof sr14SpellEffectComplete==='function'?sr14SpellEffectComplete:null,attachRepeatSave:sr29AttachRepeatSave,spellTargetFailedSave:sr29SpellTargetFailedSave,playerSpellDisplace:sr29ApplyPlayerSpellDisplacement,applyMasteryPush:sr29ApplyMasteryPush,repeatSaveAfterDamage:sr29RepeatSaveAfterDamage,advanceIndex:typeof sr12AdvanceIndex==='function'?sr12AdvanceIndex:null,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerResolveGrappleSave:sr29MpResolveGrappleSave,multiplayerPruneGrappleChallenges:sr29MpPruneGrappleChallenges,multiplayerGrappleMovePlan:sr29MpGrappleMovePlan,multiplayerVoluntaryMovementEligibility:sr29MpVoluntaryMovementEligibility,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
+  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,actionEconomyGate:sr29ActionEconomyGate,runFeature:typeof sr14RunFeature==='function'?sr14RunFeature:null,classPower:typeof sr12ClassPower==='function'?sr12ClassPower:null,cunningAction:typeof sr137CunningAction==='function'?sr137CunningAction:null,heroAction:typeof sr12HeroAction==='function'?sr12HeroAction:null,heroAttack:typeof sr12HeroAttack==='function'?sr12HeroAttack:null,castSpell:typeof sr14CastSpellComplete==='function'?sr14CastSpellComplete:null,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,soloShove:sr29SoloShove,parseForcedDisplacement:sr29ParseForcedDisplacement,spellDisplacementSpec:sr29SpellDisplacementSpec,parseRepeatSave:sr29ParseRepeatSave,repeatSaveSpecForSpell:sr29RepeatSaveSpecForSpell,spellEffectComplete:typeof sr14SpellEffectComplete==='function'?sr14SpellEffectComplete:null,attachRepeatSave:sr29AttachRepeatSave,spellTargetFailedSave:sr29SpellTargetFailedSave,playerSpellDisplace:sr29ApplyPlayerSpellDisplacement,applyMasteryPush:sr29ApplyMasteryPush,repeatSaveAfterDamage:sr29RepeatSaveAfterDamage,advanceIndex:typeof sr12AdvanceIndex==='function'?sr12AdvanceIndex:null,endRound:typeof sr12EndRound==='function'?sr12EndRound:null,enemyTurn:typeof sr12EnemyTurn==='function'?sr12EnemyTurn:null,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerResolveGrappleSave:sr29MpResolveGrappleSave,multiplayerPruneGrappleChallenges:sr29MpPruneGrappleChallenges,multiplayerGrappleMovePlan:sr29MpGrappleMovePlan,multiplayerVoluntaryMovementEligibility:sr29MpVoluntaryMovementEligibility,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
 }
