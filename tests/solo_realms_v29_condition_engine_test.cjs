@@ -51,6 +51,12 @@ try{
  const soloPlayerTeleport=T.gameplay.playerTeleportPlan({id:'solo',character:soloTeleportHero},30);
  const soloTeleportApplied=soloPlayerTeleport&&T.gameplay.applyPlayerTeleport({id:'solo',character:soloTeleportHero},soloPlayerTeleport);
  assert('Applying player teleport updates solo tactical position through the same movement transaction',soloTeleportApplied&&T18.state.combat.heroPos.x===soloPlayerTeleport.to.x&&T18.state.combat.heroPos.y===soloPlayerTeleport.to.y);
+ const mistyCaster=actor({id:'misty-caster',name:'Misty Caster',classId:'Wizard',level:3,classLevels:{Wizard:3},spells:['Misty Step'],preparedSpells:['Misty Step'],spellSlotsByLevel:{2:1},actionSpent:false});
+ const mistyEnemy=actor({id:'misty-enemy',name:'Misty Enemy',hp:20,pos:{x:6,y:3}});
+ T18.state={character:mistyCaster,campaign:{},combat:{mp:null,heroPos:{x:1,y:3},target:0,enemies:[mistyEnemy],map:{width:8,height:6,terrain:teleportTerrain}},log:[]};
+ const mistyCast=T.gameplay.castSpell({id:'solo',name:'Misty Caster',character:mistyCaster},'Misty Step');
+ const mistyDestination=T18.state.combat.heroPos;
+ assert('Casting Misty Step uses a visible unoccupied destination within 30 feet, spends its slot/action, and does not leave the legacy zero-coordinate position',mistyCast&&T18.state.combat.heroPos.x>=0&&T18.state.combat.heroPos.y>=0&&T18.state.combat.heroPos.x!==1||mistyCast&&T18.state.combat.heroPos.y!==3,JSON.stringify({mistyCast,mistyDestination,legacyPosition:mistyCaster.position,slots:mistyCaster.spellSlotsByLevel,actionSpent:mistyCaster.actionSpent}));
  const priorState=T18.state;
  const soloMonster={id:'solo-displacer',name:'Solo Displacer',distance:10,hp:20};
  T18.state={character:actor(),log:[],combat:{mp:null,enemies:[soloMonster],heroPos:{x:1,y:3}}};
