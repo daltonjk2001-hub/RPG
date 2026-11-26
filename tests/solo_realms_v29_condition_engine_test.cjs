@@ -232,6 +232,7 @@ try{
  assert('Multiplayer monster damage applies Petrified resistance and restores character resistances',multiplayerDamage===9&&multiplayerStone.hp===21&&!multiplayerStone.resistances.includes('all'));
 
  const integrity=html.includes("sr29Tick(e,{phase:'round',cycle:b.round})")&&html.includes('sr29CriticalOnHit')&&sw.includes('solo-realms-systems-v29-');
+ assert('Generated player grid attack uses the V29 automatic-critical rule for Paralyzed and Unconscious targets within 5 feet',html.includes("automaticCritical=sr29CriticalOnHit(e,{hit:true,distance:dist})"));
  assert('Generated build includes V29 tick, critical-hit and service-worker cache integration',integrity);
 }catch(error){assert('V29 condition suite completes without uncaught runtime errors',false,error?.stack||String(error));}
 for(const check of checks)console.log((check.pass?'PASS ':'FAIL ')+check.name+(check.detail?' — '+check.detail:''));

@@ -147,6 +147,17 @@ def build_runtime() -> str:
         raise SystemExit("Expected one V11 grid-attack critical-damage expression.")
     base = base.replace(old_grid_critical, "if(roll.r===20||(automaticCritical&&hit)||sr29CriticalOnHit(e,{hit,distance:dist}))dmg+=rollDice(w.damage);")
 
+    # The player-facing grid Attack action also uses an earlier automatic-critical
+    # shortcut. Route it through the 2024 condition helper so Paralyzed as well as
+    # Unconscious targets are covered, including ranged attack rolls from within 5 ft.
+    old_player_automatic_critical = "automaticCritical=!ranged&&dist<=5&&sr11Has(e,'unconscious')"
+    if base.count(old_player_automatic_critical) != 1:
+        raise SystemExit("Expected one player grid automatic-critical expression.")
+    base = base.replace(
+        old_player_automatic_critical,
+        "automaticCritical=sr29CriticalOnHit(e,{hit:true,distance:dist})",
+    )
+
     # Route both solo spell-damage call sites through the typed-damage helper.
     old_damage = "(e.hp=Math.max(0,e.hp-amount),amount)"
     damage_count = base.count(old_damage)
