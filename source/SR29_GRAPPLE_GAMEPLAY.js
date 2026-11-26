@@ -140,6 +140,104 @@ sr7Move=function(direction){
   }else{c.movementSpent=before;enemy.distance=oldDistance;}
 };
 
+
+/* V29.2 — multiplayer hero grapple and escape adapters. */
+function sr29MpSize(actor){
+  const rank=Number(actor?.sizeRank);
+  if(Number.isInteger(rank)&&rank>=0&&rank<=5)return ['tiny','small','medium','large','huge','gargantuan'][rank];
+  return sr29SoloSize(actor)||'medium';
+}
+function sr29MpActiveGrapples(player){
+  const id=String(player?.id||player?.name||'');
+  const actors=[...(state?.combat?.enemies||[]),...(state?.campaign?.multiplayer?.players||[]).map(p=>p.character),state?.character].filter(Boolean);
+  return actors.flatMap(target=>sr29Entries(target).filter(item=>item.name==='grappled'&&String(item.grapplerId||item.sourceId||'')===id));
+}
+function sr29MpStartGrapple(player){
+  const b=state?.combat,c=player?.character,e=sr4Target();
+  if(!b?.mp||!player||!c||!e||e.hp<=0)return false;
+  if(sr12TurnActor()?.id!==player.id){toast('It is not your initiative turn.');return false;}
+  if(c.actionSpent){toast('Your Action is already spent.');return false;}
+  if(!sr29CanAct(c,'action')){toast('Your condition prevents you from taking this action.');return false;}
+  const from=sr12PlayerPos(player.id),distance=sr12Distance(from,e.pos),reach=5;
+  const grappler={...c,id:player.id,name:player.name||c.name};
+  const grapplerSize=sr29MpSize(c),targetSize=sr29MpSize(e);
+  const freeHands=c.freeHands===false?0:Number.isFinite(Number(c.freeHands))?Math.max(0,Number(c.freeHands)):sr29SoloFreeHands(c);
+  const activeGrapples=sr29MpActiveGrapples(player);
+  const eligibility=sr29GrappleEligibility(grappler,e,{grapplerSize,targetSize,freeHands,activeGrapples,distance,reach});
+  if(!eligibility.legal){toast(({ 'target-too-large':'The target is too large to grapple.','no-free-hand':'You need a free hand.','out-of-reach':'Move within 5 feet first.'})[eligibility.reason]||'You cannot grapple that target.');return false;}
+  const bonus=mod(c.stats.STR)+profBonus(),attack=sr11RollAttack(bonus,c,e,true);
+  const hit=attack.r===20||(attack.r!==1&&attack.total>=Number(e.ac||10));
+  c.actionSpent=true;
+  log(`${player.name} makes an Unarmed Strike to grapple ${e.name}: d20 ${attack.r} + ${bonus} = ${attack.total} vs AC ${e.ac||10}. ${hit?'Hit.':'Miss.'}`,hit?'goodlog':'badlog');
+  if(hit){
+    const ability=sr29SoloChooseTargetSaveAbility(e),escapeDC=sr29GrappleEscapeDC(grappler,{proficiencyBonus:profBonus()}),targetSave=sr29SoloTargetSave(e,ability,escapeDC);
+    const result=sr29StartGrapple(grappler,e,{attackHit:true,grapplerSize,targetSize,freeHands,activeGrapples,distance,reach,proficiencyBonus:profBonus(),strengthScore:c.stats.STR,targetSave,source:'Unarmed Strike',handSlot:'main'});
+    if(result.started)log(`${player.name} grapples ${e.name}; its ${ability} save is ${targetSave.total} vs DC ${result.escapeDC}.`,'goodlog');
+    else if(result.reason==='target-saved')log(`${e.name} resists the grapple with its ${ability} save (${targetSave.total} vs DC ${result.escapeDC}).`,'rolllog');
+    else log(`Grapple attempt did not apply: ${result.reason||'unknown reason'}.`,'muted');
+  }
+  sr29ReconcileCombatGrapples(state);
+  return true;
+}
+function sr29MpEscapeGrapple(player,ability){
+  const c=player?.character,b=state?.combat;
+  if(!b?.mp||!player||!c||sr12TurnActor()?.id!==player.id)return false;
+  if(c.actionSpent){toast('Your Action is already spent.');return false;}
+  if(!sr29CanAct(c,'action')){toast('Your condition prevents you from taking this action.');return false;}
+  const grapple=sr29Entries(c).find(item=>item.name==='grappled');
+  if(!grapple){toast('You are not Grappled.');return false;}
+  const skill=String(ability||'Athletics').toLowerCase()==='acrobatics'?'Acrobatics':'Athletics';
+  const dc=Number(grapple.escapeDC??c.grappleDC??12);
+  const check=sr29CanonicalAbilityCheck(c,skill,dc,{roll:die(20),secondRoll:die(20)});
+  const result=sr29EscapeGrapple(c,{instanceId:grapple.id,ability:skill,roll:Number(check.roll)||1,bonus:Number(check.bonus)||0,dc,success:check.success===true});
+  c.actionSpent=true;
+  if(result.escaped)log(`${player.name} escapes the grapple with ${skill}: ${result.total} vs DC ${dc}.`,'goodlog');
+  else log(`${player.name} fails to escape the grapple with ${skill}: ${result.total} vs DC ${dc}. The grapple remains.`,'badlog');
+  return true;
+}
+if(typeof sr12HeroAction==='function'){
+  const sr29MpPriorHeroAction=sr12HeroAction;
+  sr12HeroAction=function(player,action,spellName,targetId,data={}){
+    if(state?.combat?.mp&&action==='grapple'){
+      let result=false;sr12WithHero(player,()=>{result=sr29MpStartGrapple(player);});
+      if(result){sr4Broadcast();save();render();}return result;
+    }
+    if(state?.combat?.mp&&action==='escape-grapple'){
+      let result=false;sr12WithHero(player,()=>{result=sr29MpEscapeGrapple(player,data?.ability||'Athletics');});
+      if(result){sr4Broadcast();save();render();}return result;
+    }
+    return sr29MpPriorHeroAction(player,action,spellName,targetId,data);
+  };
+}
+if(typeof sr12HandleCombat==='function'){
+  const sr29MpPriorHandleCombat=sr12HandleCombat;
+  sr12HandleCombat=function(player,msg){
+    if(msg?.action==='escape-grapple')return sr12HeroAction(player,'escape-grapple',null,null,{ability:msg.ability});
+    return sr29MpPriorHandleCombat(player,msg);
+  };
+}
+if(typeof sr12CombatPage==='function'){
+  const sr29MpPriorCombatPage=sr12CombatPage;
+  sr12CombatPage=function(){
+    let html=sr29MpPriorCombatPage();
+    html=html.replace('data-move="grapple"','data-move="grapple"');
+    html=html.replace('<button class="btn small" data-action="mp-combat" data-move="escape-grapple">Escape grapple</button>',
+      '<button class="btn small" data-action="sr29-mp-escape" data-ability="Athletics">Escape · Athletics</button><button class="btn small" data-action="sr29-mp-escape" data-ability="Acrobatics">Escape · Acrobatics</button>');
+    return html;
+  };
+}
+document.addEventListener('click',function(event){
+  const button=event.target?.closest?.('button[data-action="sr29-mp-escape"]');
+  if(!button||!state?.combat?.mp)return;
+  event.preventDefault();event.stopImmediatePropagation();
+  const ability=button.dataset.ability==='Acrobatics'?'Acrobatics':'Athletics';
+  if(SR4.role==='guest')sr4Send({type:'COMBAT',action:'escape-grapple',ability});
+  else if(SR4.role==='host'){
+    const player=(state.campaign?.multiplayer?.players||[]).find(p=>p.id===SR4.myPlayerId);
+    if(player)sr12HeroAction(player,'escape-grapple',null,null,{ability});
+  }
+},true);
+
 if(globalThis.__SR29_TEST){
-  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,chooseTargetSave:sr29SoloChooseTargetSaveAbility};
+  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerEscapeGrapple:sr29MpEscapeGrapple};
 }
