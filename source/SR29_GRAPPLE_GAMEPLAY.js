@@ -628,10 +628,12 @@ function sr29ParseRepeatSave(description){
 }
 function sr29SpellSaveDetails(target,entries){
   const name=String(target?.name||'');
-  const message=(entries||[]).map(entry=>String(entry?.msg??entry??'')).find(text=>text.startsWith(name+' ')&&/(?:makes|rolls)\s+(?:STR|DEX|CON|INT|WIS|CHA)\s+save\b/i.test(text));
+  const message=(entries||[]).map(entry=>String(entry?.msg??entry??'')).find(text=>text.startsWith(name+' ')&&/(?:makes\\s+a?\\s+|rolls\\s+)(?:STR|DEX|CON|INT|WIS|CHA)\\s+save\\b/i.test(text));
   if(!message)return {};
-  const match=message.match(/(?:makes|rolls)\s+(STR|DEX|CON|INT|WIS|CHA)\s+save\b.*?\bvs DC\s+(\d+)/i);
-  return match?{ability:match[1].toUpperCase(),dc:Number(match[2]),message}:{message};
+  const match=message.match(/(?:makes\\s+a?\\s+|rolls\\s+)(STR|DEX|CON|INT|WIS|CHA)\\s+save\\s+(-?\\d+)\\s+vs DC\\s+(\\d+)/i);
+  if(!match)return {message};
+  const total=Number(match[2]),dc=Number(match[3]),markedFailure=/:\\s*failure\\./i.test(message),markedSuccess=/:\\s*success\\./i.test(message);
+  return {ability:match[1].toUpperCase(),total,dc,success:markedSuccess||(!markedFailure&&total>=dc),failure:markedFailure||(!markedSuccess&&total<dc),message};
 }
 function sr29AttachRepeatSave(target,condition,spellName,caster,ability,dc,spec){
   if(!target||!condition||!spec||!ability||!Number.isFinite(Number(dc)))return false;
@@ -641,12 +643,8 @@ function sr29AttachRepeatSave(target,condition,spellName,caster,ability,dc,spec)
   target.conditions=entries;return true;
 }
 function sr29SpellTargetFailedSave(target,entries){
-  const name=String(target?.name||'');
-  if(!name)return false;
-  return (entries||[]).some(entry=>{
-    const message=String(entry?.msg??entry??'');
-    return message.startsWith(name+' ')&&/(?:makes|rolls)\s+(?:STR|DEX|CON|INT|WIS|CHA)\s+save\b.*?:\s*failure\./i.test(message);
-  });
+  const details=sr29SpellSaveDetails(target,entries);
+  return details.failure===true;
 }
 function sr29ApplyPlayerSpellDisplacement(target,caster,mode,feet,origin=null){
   const combat=state?.combat,amount=Number(feet);
@@ -693,7 +691,7 @@ if(typeof sr14CastSpellComplete==='function'){
       for(const victim of targets){
         const failed=sr29SpellTargetFailedSave(victim,entries);
         const attackHit=effect.kind==='attack'&&!entries.some(entry=>String(entry?.msg??entry??'').includes(`${spellName} misses ${victim.name}`));
-        if(failed&&repeatSave&&effect.condition){
+        if(repeatSave&&effect.condition){
           const details=sr29SpellSaveDetails(victim,entries),ability=String(effect.save||details.ability||repeatSave.ability||'').toUpperCase();
           const dc=Number(details.dc)||(typeof sr12SpellDC==='function'?Number(sr12SpellDC(caster)):0);
           sr29AttachRepeatSave(victim,effect.condition,spellName,caster,ability,dc,repeatSave);
