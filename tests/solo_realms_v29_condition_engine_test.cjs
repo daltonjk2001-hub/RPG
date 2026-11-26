@@ -326,6 +326,13 @@ try{
  assert('Generated build contains canonical V18 reaction eligibility gates',html.includes('sr18CanUseReaction(target)')&&html.includes('sr18CanUseReaction(enemy)'));
  assert('Generated build gates solo and multiplayer monster actions through V29',html.includes('if(!sr18CanUseAction(enemy))'));
  assert('Generated build includes V29 tick, critical-hit and service-worker cache integration',integrity);
+  assert('Generated build includes the live V29.1 grapple gameplay adapter',html.includes("const SR29_GRAPPLE_GAMEPLAY_VERSION='29.1.0';"));
+  assert('Solo combat exposes the Unarmed Strike grapple action',html.includes('data-action="sr29-grapple"')&&html.includes('Unarmed Strike · Grapple'));
+  assert('Solo combat exposes the action-based grapple escape control',html.includes('data-action="sr29-escape-grapple"')&&html.includes('Escape Grapple · Action'));
+  assert('Live grapple flow performs a target STR/DEX saving throw after a hit',html.includes('The target chooses a saving throw')&&html.includes('targetSave:save'));
+  assert('Live grapple flow uses canonical escape checks and source-linked conditions',html.includes('sr29EscapeGrapple(c,{instanceId:grapple.id')&&html.includes('sr29StartGrapple(c,e'));
+  assert('Solo grapple movement charges doubled drag cost and keeps the held target adjacent',html.includes('cost.movementCost')&&html.includes('enemy.distance=5'));
+  assert('Free-hand calculation accounts for weapon hand use and an equipped shield',T.gameplay?.freeHands?.({weapon:'Dagger'})===1&&T.gameplay.freeHands({weapon:'Dagger',shieldEquipped:true})===0);
 }catch(error){assert('V29 condition suite completes without uncaught runtime errors',false,error?.stack||String(error));}
 for(const check of checks)console.log((check.pass?'PASS ':'FAIL ')+check.name+(check.detail?' — '+check.detail:''));
 const passed=checks.filter(x=>x.pass).length;
