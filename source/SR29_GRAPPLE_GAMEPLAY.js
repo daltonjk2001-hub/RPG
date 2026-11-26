@@ -603,10 +603,70 @@ if(typeof sr7ApplyMastery==='function'){
     return result;
   };
 }
+
+function sr29ParseForcedDisplacement(description){
+  const d=String(description||'');
+  let m=d.match(/\\b(push(?:es|ed)?|pull(?:s|ed)?)\\b[^.!?]{0,140}?(\\d+)\\s*feet?/i);
+  if(!m){
+    const reverse=d.match(/(\\d+)\\s*feet?[^.!?]{0,140}?\\b(push|pull)(?:es|ed)?\\b/i);
+    if(!reverse)return null;
+    return {mode:reverse[2].toLowerCase()==='push'?'push':'pull',feet:Number(reverse[1])};
+  }
+  return {mode:m[1].toLowerCase().startsWith('push')?'push':'pull',feet:Number(m[2])};
+}
+function sr29SpellTargetFailedSave(target,entries){
+  const name=String(target?.name||'');
+  if(!name)return false;
+  return (entries||[]).some(entry=>{
+    const message=String(entry?.msg??entry??'');
+    return message.startsWith(name+' ')&&/(?:makes|rolls)\\s+(?:STR|DEX|CON|INT|WIS|CHA)\\s+save\\b.*?:\\s*failure\\./i.test(message);
+  });
+}
+function sr29ApplyPlayerSpellDisplacement(target,caster,mode,feet,origin=null){
+  const combat=state?.combat,amount=Number(feet);
+  if(!combat||!target||target.hp<=0||!['push','pull'].includes(mode)||!Number.isFinite(amount)||amount<=0)return false;
+  if(!combat.mp){
+    const before=Number.isFinite(Number(target.distance))?Math.max(0,Number(target.distance)):5;
+    const after=mode==='push'?before+amount:Math.max(0,before-amount);
+    if(after===before)return false;
+    target.distance=after;
+    log(`${target.name} is ${mode==='push'?'pushed':'pulled'} ${Math.abs(after-before)} feet by the spell.`,'rolllog');
+    sr29ReconcileAbstractGrapples();
+    sr29ReconcileCombatGrapples();
+    return true;
+  }
+  const sourcePos=origin||(caster?.id&&typeof sr12PlayerPos==='function'?sr12PlayerPos(caster.id):combat.heroPos);
+  if(!sourcePos||typeof sr18DisplaceCombatant!=='function')return false;
+  const moved=sr18DisplaceCombatant({enemy:target},{pos:sourcePos},`The target is ${mode} ${amount} feet.`);
+  if(moved&&target.position)target.position={...target.pos};
+  return moved;
+}
+
 if(typeof sr14CastSpellComplete==='function'){
   const sr29PriorCastSpell=sr14CastSpellComplete;
   sr14CastSpellComplete=function(...args){
+    const playerArg=args[0],spellName=args[1],spell=SRD52_SPELLS?.[spellName];
+    const caster=playerArg?.character||state?.character;
+    const player=playerArg||{id:typeof SR4!=='undefined'?(SR4.myPlayerId||'solo'):'solo',name:caster?.name||'Hero',character:caster};
+    const effect=spell&&typeof sr14SpellEffectComplete==='function'?sr14SpellEffectComplete(spellName,spell):null;
+    const displacement=spell?sr29ParseForcedDisplacement(spell.description):null;
+    const combat=state?.combat,target=combat?.mp?(typeof sr4Target==='function'?sr4Target():null):(typeof targetEnemy==='function'?targetEnemy():null);
+    const origin=combat?.mp&&typeof sr12PlayerPos==='function'?sr12PlayerPos(player.id):combat?.heroPos;
+    let targets=[];
+    if(displacement&&combat&&effect&&['saveDamage','control','debuff','attack'].includes(effect.kind)){
+      targets=effect.area&&typeof sr14TargetListComplete==='function'?sr14TargetListComplete(player,spell,effect,target,origin):[target].filter(Boolean);
+      targets=(targets||[]).filter(item=>item&&!item.player&&Number(item.hp)>0);
+    }
+    const beforeLog=Array.isArray(state?.log)?state.log.length:0;
     const result=sr29PriorCastSpell.apply(this,args);
+    if(result&&displacement&&targets.length){
+      const entries=(state?.log||[]).slice(beforeLog);
+      for(const victim of targets){
+        const failed=sr29SpellTargetFailedSave(victim,entries);
+        const attackHit=effect.kind==='attack'&&!entries.some(entry=>String(entry?.msg??entry??'').includes(`${spellName} misses ${victim.name}`));
+        if(failed||attackHit)sr29ApplyPlayerSpellDisplacement(victim,player,displacement.mode,displacement.feet,origin);
+      }
+    }
     sr29ReconcileAbstractGrapples();
     sr29ReconcileCombatGrapples();
     return result;
@@ -614,5 +674,5 @@ if(typeof sr14CastSpellComplete==='function'){
 }
 
 if(globalThis.__SR29_TEST){
-  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,soloShove:sr29SoloShove,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerResolveGrappleSave:sr29MpResolveGrappleSave,multiplayerPruneGrappleChallenges:sr29MpPruneGrappleChallenges,multiplayerGrappleMovePlan:sr29MpGrappleMovePlan,multiplayerVoluntaryMovementEligibility:sr29MpVoluntaryMovementEligibility,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
+  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,soloShove:sr29SoloShove,parseForcedDisplacement:sr29ParseForcedDisplacement,spellTargetFailedSave:sr29SpellTargetFailedSave,playerSpellDisplace:sr29ApplyPlayerSpellDisplacement,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerResolveGrappleSave:sr29MpResolveGrappleSave,multiplayerPruneGrappleChallenges:sr29MpPruneGrappleChallenges,multiplayerGrappleMovePlan:sr29MpGrappleMovePlan,multiplayerVoluntaryMovementEligibility:sr29MpVoluntaryMovementEligibility,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
 }
