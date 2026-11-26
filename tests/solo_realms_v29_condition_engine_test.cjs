@@ -539,7 +539,7 @@ try{
  math.random=()=>0.99;
  let masteryAttackResult=false;
  try{masteryAttackResult=T.gameplay.heroAttack(masteryPlayer,masteryEnemy,false);}finally{math.random=priorMasteryRandom;}
- assert('A successful multiplayer Warhammer Push hit displaces the enemy and releases an out-of-reach grapple',masteryAttackResult===true&&masteryEnemy.pos.x>=4&&!T.has(masteryEnemy,'grappled'));
+ assert('A successful multiplayer Warhammer Push hit displaces the enemy and releases an out-of-reach grapple',masteryAttackResult===true&&masteryEnemy.pos.x>=4&&!T.has(masteryEnemy,'grappled'),JSON.stringify({masteryAttackResult,pos:masteryEnemy.pos,conditions:masteryEnemy.conditions,log:T18.state.log.slice(0,6)}));
  const hugePushTarget=actor({id:'huge-push-target',name:'Huge Push Target',size:'Huge',pos:{x:2,y:1},hp:30});
  T18.state.combat.enemies=[hugePushTarget];
  const hugePush=T.gameplay.applyMasteryPush(hugePushTarget,masteryPlayer,{x:1,y:1},'Warhammer');
@@ -550,7 +550,7 @@ try{
  const untrainedPush=T.gameplay.applyMasteryPush(untrainedTarget,untrainedPlayer,{x:1,y:1},'Warhammer');
  assert('Push mastery rejects Huge targets and weapons the character has not mastered',hugePush===false&&hugePushTarget.pos.x===2&&untrainedPush===false&&untrainedTarget.pos.x===2);
  const spellSaveTarget=actor({name:'Thunderwave Target'});
- assert('Player spell displacement recognizes failed target-save results without treating successful saves as failures',T.gameplay.forcedSpellTargetFailedSave(spellSaveTarget,[{msg:'Thunderwave Target makes CON save 11 vs DC 13: failure.'}])&&!T.gameplay.forcedSpellTargetFailedSave(spellSaveTarget,[{msg:'Thunderwave Target makes CON save 18 vs DC 13: success.'}]));
+ assert('Player spell displacement recognizes failed target-save results without treating successful saves as failures',T.gameplay.spellTargetFailedSave(spellSaveTarget,[{msg:'Thunderwave Target makes CON save 11 vs DC 13: failure.'}])&&!T.gameplay.spellTargetFailedSave(spellSaveTarget,[{msg:'Thunderwave Target makes CON save 18 vs DC 13: success.'}]));
  const movementOnlySpell=T18.inferSpell('Gust of Wind',{description:'The target must succeed on a Strength saving throw or be pushed 15 feet away.',save:true,saveAbility:'STR'},{kind:'control',condition:'restrained',save:'STR'});
  assert('Movement-only control spells do not receive an invented Restrained condition',movementOnlySpell.kind==='control'&&!movementOnlySpell.condition);
  const priorSpellState=T18.state;
