@@ -220,6 +220,18 @@ try{
  T.gameplay.attachRepeatSave(soloDamageTarget,'charmed','Dominate Person',soloDamageTarget,'WIS',1,dominateRepeat);
  const soloDamageActual=T.gameplay.damagePlayer(4);
  assert('Solo HP damage automatically triggers its attached repeat save after mitigation',soloDamageActual===4&&soloDamageTarget.hp===26&&!T.has(soloDamageTarget,'charmed'));
+ const tempDamageTarget=actor({id:'temp-damage-target',name:'Temporary HP Damage Target',tempHP:4});
+ T18.state={character:tempDamageTarget,combat:{round:1},campaign:{},log:[]};
+ T.apply(tempDamageTarget,'charmed',10,'Dominate Person');
+ T.gameplay.attachRepeatSave(tempDamageTarget,'charmed','Dominate Person',tempDamageTarget,'WIS',1,dominateRepeat);
+ const tempDamageActual=T.gameplay.damagePlayer(4);
+ assert('Damage absorbed by temporary HP still triggers a damage-based repeat save',tempDamageActual===0&&tempDamageTarget.hp===30&&tempDamageTarget.tempHP===0&&!T.has(tempDamageTarget,'charmed'));
+ const guardedDamageTarget=actor({id:'guarded-damage-target',name:'Guarded Damage Target',guard:4});
+ T18.state={character:guardedDamageTarget,combat:{round:1},campaign:{},log:[]};
+ T.apply(guardedDamageTarget,'charmed',10,'Dominate Person');
+ T.gameplay.attachRepeatSave(guardedDamageTarget,'charmed','Dominate Person',guardedDamageTarget,'WIS',1,dominateRepeat);
+ const guardedDamageActual=T.gameplay.damagePlayer(4);
+ assert('Damage fully prevented by Guard does not trigger a damage-based repeat save',guardedDamageActual===0&&guardedDamageTarget.hp===30&&T.has(guardedDamageTarget,'charmed'));
  const mpDamageTarget=actor({id:'mp-damage-target',name:'MP Damage Target',classId:'Wizard',level:1});
  const mpDamagePlayer={id:'mp-damage-target',name:'MP Damage Target',connected:true,character:mpDamageTarget};
  T18.state={character:mpDamageTarget,campaign:{multiplayer:{players:[mpDamagePlayer]}},combat:{round:1,mp:{}},log:[]};
