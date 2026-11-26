@@ -1029,27 +1029,36 @@ function sr29RepeatSaveAfterDamage(target,amount,rolls=null){
 if(typeof damagePlayer==='function'){
   const sr29PriorDamagePlayer=damagePlayer;
   damagePlayer=function(amount,...args){
-    const target=state?.character;
-    const actual=sr29PriorDamagePlayer.call(this,amount,...args);
-    if(target&&Number(actual)>0)sr29RepeatSaveAfterDamage(target,actual);
-    return actual;
+    const target=state?.character,hpBefore=Number(target?.hp)||0,tempBefore=Number(target?.tempHP)||0;
+    const result=sr29PriorDamagePlayer.call(this,amount,...args);
+    // Temporary HP absorbs damage but does not prevent a "takes damage" trigger.
+    const damageTaken=Math.max(0,hpBefore-(Number(target?.hp)||0))+Math.max(0,tempBefore-(Number(target?.tempHP)||0));
+    if(target&&damageTaken>0)sr29RepeatSaveAfterDamage(target,damageTaken);
+    return result;
   };
 }
 if(typeof sr12DamageHero==='function'){
   const sr29PriorDamageHero=sr12DamageHero;
-  sr12DamageHero=function(player,amount,...args){
-    const actual=sr29PriorDamageHero.call(this,player,amount,...args);
-    const target=player?.character;
-    if(target&&Number(actual)>0)sr29RepeatSaveAfterDamage(target,actual);
-    return actual;
+  sr12DamageHero=function(player,amount,damageType='physical',...args){
+    const target=player?.character,hpBefore=Number(target?.hp)||0,tempBefore=Number(target?.tempHP)||0;
+    const result=sr29PriorDamageHero.call(this,player,amount,damageType,...args);
+    // Count HP and temporary-HP loss. Damage to an already-downed, non-dead
+    // hero still counts when it creates a failed death save.
+    const damageTaken=Math.max(0,hpBefore-(Number(target?.hp)||0))+Math.max(0,tempBefore-(Number(target?.tempHP)||0));
+    const multiplier=target&&typeof sr14DamageMultiplier==='function'?sr14DamageMultiplier(target,damageType):1;
+    const downedDamage=hpBefore<=0&&target&&!target.mpDead&&Math.floor(Math.max(0,Number(amount)||0)*multiplier)>0;
+    if(target&&(damageTaken>0||downedDamage))sr29RepeatSaveAfterDamage(target,damageTaken||Math.max(1,Math.floor(Math.max(0,Number(amount)||0)*multiplier)));
+    return result;
   };
 }
 if(typeof sr12ApplyDamage==='function'){
   const sr29PriorCreatureDamage=sr12ApplyDamage;
   sr12ApplyDamage=function(target,amount,...args){
-    const actual=sr29PriorCreatureDamage.call(this,target,amount,...args);
-    if(target&&Number(actual)>0)sr29RepeatSaveAfterDamage(target,actual);
-    return actual;
+    const hpBefore=Number(target?.hp)||0;
+    const result=sr29PriorCreatureDamage.call(this,target,amount,...args);
+    const damageTaken=Math.max(0,hpBefore-(Number(target?.hp)||0));
+    if(target&&hpBefore>0&&damageTaken>0)sr29RepeatSaveAfterDamage(target,damageTaken);
+    return result;
   };
 }
 function sr29RepeatSaveTurnKey(kind,target){
