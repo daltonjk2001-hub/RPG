@@ -618,6 +618,13 @@ if(typeof sr9Move==='function'){
     if(before+movementCost>allowance){
       toast('This move requires '+movementCost+' feet of movement; you have '+Math.max(0,allowance-before)+' remaining.');return false;
     }
+    const heldOriginalPos=dragTarget?{...(dragTarget.pos||dragTarget.position||{})}:null;
+    // Move the held creature into the vacated square before the legacy mover renders;
+    // otherwise an intermediate render sees an over-reach gap and releases the grapple.
+    if(dragTarget){
+      dragTarget.pos={...from};
+      if(dragTarget.position&&typeof dragTarget.position==='object')dragTarget.position={...from};
+    }
     const result=sr29PriorSoloGridMove.apply(this,arguments);
     // The legacy grid mover signals success by mutating heroPos rather than returning true.
     const moved=Number(combat.heroPos?.x)===to.x&&Number(combat.heroPos?.y)===to.y;
@@ -625,12 +632,13 @@ if(typeof sr9Move==='function'){
       c.movementSpent=before+movementCost;
       if(standCost)sr29Remove(c,'prone');
       if(dragTarget){
-        dragTarget.pos={...from};
-        if(dragTarget.position&&typeof dragTarget.position==='object')dragTarget.position={...from};
         log('You drag '+String(dragTarget.name||'the grappled creature')+' with you; this move costs '+movementCost+' feet'+(speedHalved?' (speed is halved while dragging)':'')+'.','rolllog');
         render();save();
       }
       sr29ReconcileCombatGrapples();
+    }else if(dragTarget){
+      dragTarget.pos=heldOriginalPos;
+      if(dragTarget.position&&typeof dragTarget.position==='object')dragTarget.position={...heldOriginalPos};
     }
     return result===undefined?moved:result;
   };
