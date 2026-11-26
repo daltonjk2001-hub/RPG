@@ -572,6 +572,68 @@ if(typeof sr12MoveHero==='function'){
     return result;
   };
 }
+// The older single-player tactical grid has its own direct hero-position writer.
+// Route it through the same Grappled eligibility, drag-cost, and reach-reconciliation rules.
+if(typeof sr9Move==='function'){
+  const sr29PriorSoloGridMove=sr9Move;
+  sr9Move=function(dx,dy){
+    const combat=state?.combat,c=state?.character;
+    if(!combat||combat.mp||!c)return sr29PriorSoloGridMove.apply(this,arguments);
+    if(typeof sr9EnsureCombat==='function')sr9EnsureCombat();
+    sr29ReconcileCombatGrapples();
+    if(sr29Entries(c).some(item=>item.name==='grappled')){
+      toast('You cannot move while Grappled. Use your action to escape first.');return false;
+    }
+    const x=Number(dx),y=Number(dy);
+    if(!Number.isInteger(x)||!Number.isInteger(y)||Math.abs(x)>1||Math.abs(y)>1||(!x&&!y))return false;
+    const from={x:Number(combat.heroPos.x),y:Number(combat.heroPos.y)},to={x:from.x+x,y:from.y+y};
+    const cell=typeof sr9Cell==='function'?sr9Cell(to.x,to.y):null;
+    if(typeof sr11Blocked==='function'&&sr11Blocked(to.x,to.y)){
+      toast('That space is blocked.');return false;
+    }
+    if((combat.enemies||[]).some(enemy=>enemy.hp>0&&enemy.pos&&enemy.pos.x===to.x&&enemy.pos.y===to.y)){
+      toast('That space is occupied.');return false;
+    }
+    const stepCost=cell?.kind==='difficult'?10:5;
+    const standCost=sr29Has(c,'prone')?Math.ceil((Number(c.movement)||30)/2):0;
+    const baseCost=stepCost+standCost,before=Number(c.movementSpent)||0,allowance=Number(c.movement)||30;
+    const holderId=sr29SoloGrapplerId(c);
+    const held=(combat.enemies||[]).filter(enemy=>enemy.hp>0&&sr29Entries(enemy).some(item=>item.name==='grappled'&&String(item.grapplerId||item.sourceId||'')===holderId));
+    if(held.length>1){
+      toast('You cannot drag multiple creatures through one grid space. Release a grapple first.');return false;
+    }
+    let movementCost=baseCost,dragTarget=null,speedHalved=false;
+    if(held.length===1){
+      dragTarget=held[0];
+      const grapple=sr29Entries(dragTarget).find(item=>item.name==='grappled'&&String(item.grapplerId||item.sourceId||'')===holderId);
+      const position=dragTarget.pos||dragTarget.position;
+      const distance=position?sr9Dist(from,position):Infinity,reach=Number(grapple?.grappleRange??grapple?.grappleReach??5);
+      if(!Number.isFinite(distance)||distance>reach){
+        toast('The grapple is already beyond reach; reconcile or release it before moving.');return false;
+      }
+      const movement=sr29GrappleMovementCost(c,dragTarget,baseCost,{grapplerSize:sr29SoloSize(c)||'medium',targetSize:sr29SoloSize(dragTarget)||'medium'});
+      if(!movement.valid){toast('You cannot drag that creature with the available size data.');return false;}
+      movementCost=movement.movementCost;speedHalved=movement.speedHalved;
+    }
+    if(before+movementCost>allowance){
+      toast('This move requires '+movementCost+' feet of movement; you have '+Math.max(0,allowance-before)+' remaining.');return false;
+    }
+    const result=sr29PriorSoloGridMove.apply(this,arguments);
+    if(result){
+      c.movementSpent=before+movementCost;
+      if(standCost)sr29Remove(c,'prone');
+      if(dragTarget){
+        dragTarget.pos={...from};
+        if(dragTarget.position&&typeof dragTarget.position==='object')dragTarget.position={...from};
+        log('You drag '+String(dragTarget.name||'the grappled creature')+' with you; this move costs '+movementCost+' feet'+(speedHalved?' (speed is halved while dragging)':'')+'.','rolllog');
+        render();save();
+      }
+      sr29ReconcileCombatGrapples();
+    }
+    return result;
+  };
+}
+
 // Enemy displacement must reconcile source-linked grapples too. This covers normal enemy
 // pathing and any effect-driven displacement that routes through these movement primitives.
 if(typeof sr10EnemyMove==='function'){
@@ -1168,5 +1230,5 @@ if(typeof sr10Dodge==='function'){
 }
 
 if(globalThis.__SR29_TEST){
-  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,actionEconomyGate:sr29ActionEconomyGate,finalizeCastResources:sr29FinalizeCastResources,runFeature:typeof sr14RunFeature==='function'?sr14RunFeature:null,classPower:typeof sr12ClassPower==='function'?sr12ClassPower:null,cunningAction:typeof sr137CunningAction==='function'?sr137CunningAction:null,heroAction:typeof sr12HeroAction==='function'?sr12HeroAction:null,heroAttack:typeof sr12HeroAttack==='function'?sr12HeroAttack:null,castSpell:typeof sr14CastSpellComplete==='function'?sr14CastSpellComplete:null,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,soloShove:sr29SoloShove,parseForcedDisplacement:sr29ParseForcedDisplacement,spellDisplacementSpec:sr29SpellDisplacementSpec,parseRepeatSave:sr29ParseRepeatSave,repeatSaveSpecForSpell:sr29RepeatSaveSpecForSpell,spellEffectComplete:typeof sr14SpellEffectComplete==='function'?sr14SpellEffectComplete:null,attachRepeatSave:sr29AttachRepeatSave,spellTargetFailedSave:sr29SpellTargetFailedSave,playerSpellDisplace:sr29ApplyPlayerSpellDisplacement,playerTeleportRange:sr29PlayerTeleportRange,playerTeleportPlan:sr29PlayerTeleportPlan,applyPlayerTeleport:sr29ApplyPlayerTeleport,setSpellData:(name,spell)=>{if(typeof SRD52_SPELLS==='object')SRD52_SPELLS[name]=spell;},setLegacySpellData:(name,spell)=>{if(typeof SPELLS==='object')SPELLS[name]=spell;if(typeof SR9_SPELLS==='object')SR9_SPELLS[name]=spell;if(typeof SRD52_SPELLS==='object')delete SRD52_SPELLS[name];},castLegacySpell:(player,name,allyId=null)=>sr12CastSpell(player,name,allyId),spellDiagnostics:(c,name)=>{const sp=SRD52_SPELLS?.[name],klass=sp?sr14CasterClass(c,sp):null;return {exists:!!sp,known:sr14SpellKnown(c,name),classCanCast:!!sp&&sr14ClassCanCast(c,sp),prepared:!!sp&&sr14SpellPrepared(c,name),effect:sp?sr14SpellEffectComplete(name,sp):null,klass,maxLevel:sp?sr14MaxSpellLevel(c,klass):0,slot:sp?sr14GetCastSlot(c,sp.level):null,actionGate:sr29ActionEconomyGate(c,'bonus-action',true)};},applyMastery:typeof sr7ApplyMastery==='function'?sr7ApplyMastery:null,weaponMasteryFor:sr29WeaponMasteryFor,canPushTarget:sr29CanPushTarget,applyMasteryPush:sr29ApplyMasteryPush,repeatSaveAfterDamage:sr29RepeatSaveAfterDamage,advanceIndex:typeof sr12AdvanceIndex==='function'?sr12AdvanceIndex:null,endRound:typeof sr12EndRound==='function'?sr12EndRound:null,beginHeroTurn:typeof sr12BeginHeroTurn==='function'?sr12BeginHeroTurn:null,beginEnemyTurn:sr29BeginEnemyTurn,enemyTurn:typeof sr12EnemyTurn==='function'?sr12EnemyTurn:null,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerResolveGrappleSave:sr29MpResolveGrappleSave,multiplayerPruneGrappleChallenges:sr29MpPruneGrappleChallenges,multiplayerGrappleMovePlan:sr29MpGrappleMovePlan,multiplayerVoluntaryMovementEligibility:sr29MpVoluntaryMovementEligibility,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
+  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,actionEconomyGate:sr29ActionEconomyGate,finalizeCastResources:sr29FinalizeCastResources,runFeature:typeof sr14RunFeature==='function'?sr14RunFeature:null,classPower:typeof sr12ClassPower==='function'?sr12ClassPower:null,cunningAction:typeof sr137CunningAction==='function'?sr137CunningAction:null,heroAction:typeof sr12HeroAction==='function'?sr12HeroAction:null,heroAttack:typeof sr12HeroAttack==='function'?sr12HeroAttack:null,castSpell:typeof sr14CastSpellComplete==='function'?sr14CastSpellComplete:null,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,soloShove:sr29SoloShove,parseForcedDisplacement:sr29ParseForcedDisplacement,spellDisplacementSpec:sr29SpellDisplacementSpec,parseRepeatSave:sr29ParseRepeatSave,repeatSaveSpecForSpell:sr29RepeatSaveSpecForSpell,spellEffectComplete:typeof sr14SpellEffectComplete==='function'?sr14SpellEffectComplete:null,attachRepeatSave:sr29AttachRepeatSave,spellTargetFailedSave:sr29SpellTargetFailedSave,playerSpellDisplace:sr29ApplyPlayerSpellDisplacement,playerTeleportRange:sr29PlayerTeleportRange,playerTeleportPlan:sr29PlayerTeleportPlan,applyPlayerTeleport:sr29ApplyPlayerTeleport,setSpellData:(name,spell)=>{if(typeof SRD52_SPELLS==='object')SRD52_SPELLS[name]=spell;},setLegacySpellData:(name,spell)=>{if(typeof SPELLS==='object')SPELLS[name]=spell;if(typeof SR9_SPELLS==='object')SR9_SPELLS[name]=spell;if(typeof SRD52_SPELLS==='object')delete SRD52_SPELLS[name];},castLegacySpell:(player,name,allyId=null)=>sr12CastSpell(player,name,allyId),gridMove:typeof sr9Move==='function'?sr9Move:null,spellDiagnostics:(c,name)=>{const sp=SRD52_SPELLS?.[name],klass=sp?sr14CasterClass(c,sp):null;return {exists:!!sp,known:sr14SpellKnown(c,name),classCanCast:!!sp&&sr14ClassCanCast(c,sp),prepared:!!sp&&sr14SpellPrepared(c,name),effect:sp?sr14SpellEffectComplete(name,sp):null,klass,maxLevel:sp?sr14MaxSpellLevel(c,klass):0,slot:sp?sr14GetCastSlot(c,sp.level):null,actionGate:sr29ActionEconomyGate(c,'bonus-action',true)};},applyMastery:typeof sr7ApplyMastery==='function'?sr7ApplyMastery:null,weaponMasteryFor:sr29WeaponMasteryFor,canPushTarget:sr29CanPushTarget,applyMasteryPush:sr29ApplyMasteryPush,repeatSaveAfterDamage:sr29RepeatSaveAfterDamage,advanceIndex:typeof sr12AdvanceIndex==='function'?sr12AdvanceIndex:null,endRound:typeof sr12EndRound==='function'?sr12EndRound:null,beginHeroTurn:typeof sr12BeginHeroTurn==='function'?sr12BeginHeroTurn:null,beginEnemyTurn:sr29BeginEnemyTurn,enemyTurn:typeof sr12EnemyTurn==='function'?sr12EnemyTurn:null,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerResolveGrappleSave:sr29MpResolveGrappleSave,multiplayerPruneGrappleChallenges:sr29MpPruneGrappleChallenges,multiplayerGrappleMovePlan:sr29MpGrappleMovePlan,multiplayerVoluntaryMovementEligibility:sr29MpVoluntaryMovementEligibility,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
 }
