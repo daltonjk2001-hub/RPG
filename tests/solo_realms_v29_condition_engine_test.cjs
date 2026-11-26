@@ -346,6 +346,11 @@ try{
   assert('Free-hand calculation recognizes two-handed weapons',T.gameplay.freeHands({weapon:'Greatsword'})===0&&T.gameplay.freeHands({weapon:'Longbow'})===0);
  assert('Solo monster targets choose the stronger legal grapple save',T.gameplay.chooseTargetSave(actor({stats:{STR:10,DEX:16,CON:10,INT:10,WIS:10,CHA:10}}))==='DEX');
  assert('Restrained targets account for Dexterity-save disadvantage when choosing',T.gameplay.chooseTargetSave(actor({stats:{STR:10,DEX:16,CON:10,INT:10,WIS:10,CHA:10},conditions:['restrained']}))==='STR');
+ assert('Multiplayer heroes use the V29 Unarmed Strike grapple adapter',typeof T.gameplay.multiplayerStartGrapple==='function'&&html.includes('sr29MpStartGrapple(player)'));
+ assert('Multiplayer heroes can choose Athletics or Acrobatics for Escape',typeof T.gameplay.multiplayerEscapeGrapple==='function'&&html.includes('Escape · Athletics')&&html.includes('Escape · Acrobatics'));
+ assert('Multiplayer grappled monsters use their stored escape DC and release one grapple instance',html.includes('sr29EscapeGrapple(enemy,{instanceId:grapple.id')&&html.includes('grapple.escapeDC??enemy.grappleDC??12'));
+ assert('Multiplayer grapple initiation uses source-linked V29 conditions and the canonical target save resolver',html.includes('sr29StartGrapple(grappler,e')&&html.includes('sr29SoloTargetSave(e,ability,escapeDC)'));
+
 }catch(error){assert('V29 condition suite completes without uncaught runtime errors',false,error?.stack||String(error));}
 for(const check of checks)console.log((check.pass?'PASS ':'FAIL ')+check.name+(check.detail?' — '+check.detail:''));
 const passed=checks.filter(x=>x.pass).length;
