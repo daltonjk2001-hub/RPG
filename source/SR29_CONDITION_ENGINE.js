@@ -1,0 +1,352 @@
+/* SOLO REALMS V29 — canonical 2024 SRD condition engine.
+ * Condition applications retain independent durations; their effects do not stack.
+ * Exhaustion is the explicit cumulative exception. Legacy string/object saves remain readable.
+ */
+const SR29_VERSION = '29.0.0';
+const SR29_SCHEMA = 'solo-realms-condition-instance-v1';
+const SR29_CONDITIONS = Object.freeze({
+  blinded: Object.freeze({name:'Blinded', sight:false, attackDisadvantage:true, attacksAgainstAdvantage:true, sightChecksAutoFail:true}),
+  charmed: Object.freeze({name:'Charmed', cannotHarmSource:true, sourceSocialAdvantage:true}),
+  deafened: Object.freeze({name:'Deafened', hearing:false, hearingChecksAutoFail:true}),
+  exhaustion: Object.freeze({name:'Exhaustion', cumulative:true, d20PenaltyPerLevel:2, speedPenaltyPerLevel:5, deathAtLevel:6}),
+  frightened: Object.freeze({name:'Frightened', checksAndAttacksDisadvantageWhenSourceVisible:true, cannotApproachSource:true}),
+  grappled: Object.freeze({name:'Grappled', speedZero:true, attacksAgainstOthersDisadvantage:true, endsIfGrapplerIncapacitated:true}),
+  incapacitated: Object.freeze({name:'Incapacitated', actions:false, bonusActions:false, reactions:false, endsConcentration:true}),
+  invisible: Object.freeze({name:'Invisible', initiativeAdvantage:true, attackAdvantage:true, attacksAgainstDisadvantage:true}),
+  paralyzed: Object.freeze({name:'Paralyzed', incapacitated:true, speedZero:true, autoFail:['STR','DEX'], attacksAgainstAdvantage:true, meleeCriticalWithin5:true}),
+  petrified: Object.freeze({name:'Petrified', incapacitated:true, speedZero:true, autoFail:['STR','DEX'], attacksAgainstAdvantage:true, resistanceAllDamage:true, immuneConditions:['poisoned']}),
+  poisoned: Object.freeze({name:'Poisoned', attacksAndChecksDisadvantage:true}),
+  prone: Object.freeze({name:'Prone', attacksDisadvantage:true, meleeAttacksAgainstAdvantageWithin5:true, rangedAttacksAgainstDisadvantage:true, crawlOrStand:true}),
+  restrained: Object.freeze({name:'Restrained', speedZero:true, attacksAgainstAdvantage:true, attacksDisadvantage:true, dexSavesDisadvantage:true}),
+  stunned: Object.freeze({name:'Stunned', incapacitated:true, speedZero:true, autoFail:['STR','DEX'], attacksAgainstAdvantage:true}),
+  unconscious: Object.freeze({name:'Unconscious', incapacitated:true, prone:true, speedZero:true, autoFail:['STR','DEX'], attacksAgainstAdvantage:true, meleeCriticalWithin5:true})
+});
+const SR29_CONDITION_NAMES = Object.freeze(Object.keys(SR29_CONDITIONS));
+let SR29_INSTANCE_SEQUENCE = 0;
+let SR29_COMBAT_CYCLE = 0;
+let SR29_PHASE = 'player';
+
+function sr29Name(value) {
+  const raw = typeof value === 'string' ? value : value?.name || value?.condition || '';
+  return String(raw).trim().toLowerCase().replace(/[\s_]+/g,'-');
+}
+function sr29RoundCount(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.floor(n) : null;
+}
+function sr29NextId(target) {
+  const next = Math.max(0, Number(target?._sr29NextConditionId) || 0) + 1;
+  if (target) target._sr29NextConditionId = next;
+  SR29_INSTANCE_SEQUENCE++;
+  return 'sr29-' + next + '-' + SR29_INSTANCE_SEQUENCE;
+}
+function sr29Entries(target) {
+  if (!target) return [];
+  if (!Array.isArray(target.conditions)) target.conditions = [];
+  const normalized = [];
+  for (const raw of target.conditions) {
+    const name = sr29Name(raw);
+    if (!name) continue;
+    const old = typeof raw === 'string' ? {name,source:'legacy save',permanent:true} : {...raw,name};
+    let duration = sr29RoundCount(old.rounds);
+    if (duration === null) duration = sr29RoundCount(old.duration);
+    const permanent = !!old.permanent || duration === null || duration < 0;
+    if (!permanent && duration <= 0) continue;
+    const rounds = permanent ? null : duration;
+    normalized.push({...old,id:old.id||old.instanceId||sr29NextId(target),name,
+      source:String(old.source||'legacy save'),permanent,rounds,duration:permanent?-1:rounds});
+  }
+  target.conditions = normalized;
+  return normalized;
+}
+function sr29BaseHas(target, name) {
+  const key = sr29Name(name);
+  if (!target || !key) return false;
+  if (key === 'exhaustion') return Math.max(0,Number(target.exhaustion)||0)>0 ||
+    sr29Entries(target).some(x=>x.name==='exhaustion');
+  return sr29Entries(target).some(x=>x.name===key && (x.permanent || Number(x.rounds)>0));
+}
+function sr29Has(target, name) {
+  const key = sr29Name(name);
+  if (key === 'incapacitated' && ['paralyzed','petrified','stunned','unconscious'].some(n=>sr29BaseHas(target,n))) return true;
+  if (key === 'prone' && sr29BaseHas(target,'unconscious')) return true;
+  return sr29BaseHas(target,key);
+}
+function sr29IsImmune(target, name) {
+  const key=sr29Name(name);
+  if (!key) return false;
+  const list=[...(Array.isArray(target?.conditionImmunities)?target.conditionImmunities:[]),
+    ...(Array.isArray(target?.immunities?.conditions)?target.immunities.conditions:[]),
+    ...(Array.isArray(target?.immunities?.condition)?target.immunities.condition:[])].map(sr29Name);
+  return list.includes(key) || (sr29Has(target,'petrified') && key==='poisoned');
+}
+function sr29BreakConcentration(target) {
+  if (!target || !sr29Has(target,'incapacitated')) return false;
+  const had=!!target.concentration;
+  target.concentration=null;
+  if (Array.isArray(target.activeEffects)) target.activeEffects=target.activeEffects.filter(x=>!x?.concentration&&x?.kind!=='concentration');
+  return had;
+}
+function sr29ChangeExhaustion(target, delta=1) {
+  if (!target) throw new Error('An exhaustion target is required.');
+  const amount=Number(delta);
+  if (!Number.isFinite(amount)||!Number.isInteger(amount)) throw new Error('Exhaustion change must be a whole number.');
+  const before=Math.max(0,Math.min(6,Math.floor(Number(target.exhaustion)||0)));
+  const after=Math.max(0,Math.min(6,before+amount));
+  target.exhaustion=after;
+  const result={before,after,delta:after-before,dead:after>=6,changed:after!==before};
+  if(result.dead){target.hp=0;target.dead=true;target.exhaustionDeath=true;}
+  return result;
+}
+function sr29Apply(target,name,duration=1,source='effect',options={}) {
+  if(!target)return {applied:false,reason:'missing-target'};
+  const key=sr29Name(name);
+  if(!key)return {applied:false,reason:'missing-condition'};
+  if(key==='exhaustion')return {applied:true,exhaustion:sr29ChangeExhaustion(target,Number(options.levels)||1)};
+  if(sr29IsImmune(target,key))return {applied:false,immune:true,condition:key};
+  const entries=sr29Entries(target);
+  const rawDuration=duration==='permanent'||duration===null?null:sr29RoundCount(duration);
+  if(rawDuration!==null&&rawDuration<0)throw new Error('Condition duration must be a positive whole number or permanent.');
+  if(rawDuration===0)return {applied:false,reason:'zero-duration'};
+  const instanceId=String(options.instanceId||options.id||sr29NextId(target));
+  const existing=entries.find(x=>x.id===instanceId);
+  const item={...(existing||{}),schema:SR29_SCHEMA,id:instanceId,name:key,source:String(source||options.source||'effect'),
+    permanent:rawDuration===null||!!options.permanent,
+    rounds:rawDuration===null||options.permanent?null:rawDuration,
+    duration:rawDuration===null||options.permanent?-1:rawDuration,
+    appliedCycle:SR29_COMBAT_CYCLE,appliedPhase:SR29_PHASE};
+  if(options.sourceId!==undefined)item.sourceId=String(options.sourceId);
+  if(options.sourceVisible!==undefined)item.sourceVisible=!!options.sourceVisible;
+  if(options.grapplerId!==undefined)item.grapplerId=String(options.grapplerId);
+  if(existing)Object.assign(existing,item);else entries.push(item);
+  target.conditions=entries;
+  const brokeConcentration=sr29BreakConcentration(target);
+  return {applied:true,condition:key,instance:item,brokeConcentration,activeInstances:entries.filter(x=>x.name===key).length};
+}
+function sr29Remove(target,name,options={}) {
+  if(!target)return {removed:0};
+  const key=sr29Name(name),beforeUnconscious=sr29Has(target,'unconscious'),entries=sr29Entries(target),kept=[];
+  let removed=0;
+  for(const item of entries){
+    const match=item.name===key&&(options.instanceId===undefined||item.id===String(options.instanceId))&&
+      (options.source===undefined||item.source===String(options.source));
+    if(match)removed++;else kept.push(item);
+  }
+  target.conditions=kept;
+  if(key==='exhaustion'&&Number.isInteger(options.levels))sr29ChangeExhaustion(target,-Math.abs(options.levels));
+  if(beforeUnconscious&&!sr29Has(target,'unconscious'))sr29Apply(target,'prone','permanent','unconscious condition ended',{instanceId:'sr29-prone-after-unconscious'});
+  return {removed,remaining:kept.filter(x=>x.name===key).length};
+}
+function sr29Tick(target,options={}) {
+  if(!target)return {expired:0,skipped:0,remaining:0};
+  const beforeUnconscious=sr29Has(target,'unconscious');
+  const cycle=Number.isInteger(options.cycle)?options.cycle:SR29_COMBAT_CYCLE,phase=String(options.phase||SR29_PHASE);
+  let expired=0,skipped=0;
+  const kept=[];
+  for(const item of sr29Entries(target)){
+    if(item.permanent||!Number.isFinite(Number(item.rounds))){kept.push(item);continue;}
+    if(item.appliedCycle===cycle&&item.appliedPhase===phase&&phase==='enemy'){skipped++;kept.push(item);continue;}
+    const next=Math.max(0,Number(item.rounds)-1);
+    if(next<=0)expired++;else kept.push({...item,rounds:next,duration:next});
+  }
+  target.conditions=kept;
+  if(beforeUnconscious&&!sr29Has(target,'unconscious'))sr29Apply(target,'prone','permanent','unconscious condition ended',{instanceId:'sr29-prone-after-unconscious'});
+  return {expired,skipped,remaining:kept.length};
+}
+function sr29Names(target) {
+  const names=sr29Entries(target).map(x=>x.name);
+  if(sr29Has(target,'exhaustion'))names.push('exhaustion');
+  if(sr29Has(target,'incapacitated'))names.push('incapacitated');
+  if(sr29Has(target,'prone'))names.push('prone');
+  return [...new Set(names)];
+}
+function sr29Status(target) {
+  const exhaustion=Math.max(0,Math.min(6,Math.floor(Number(target?.exhaustion)||0)));
+  const speedZero=['grappled','paralyzed','petrified','restrained','stunned','unconscious'].some(n=>sr29Has(target,n));
+  const incap=sr29Has(target,'incapacitated');
+  return {conditions:sr29Names(target),exhaustion,d20Penalty:2*exhaustion,speedPenalty:5*exhaustion,
+    speedOverride:speedZero?0:null,incapacitated:incap,canAct:!incap,canBonusAction:!incap,canReact:!incap,
+    movementMode:sr29Has(target,'prone')?'crawl-or-stand':'normal',concentrationEnds:incap,
+    autoFailAbilities:['STR','DEX'].filter(a=>sr29AutoFailSave(target,a)),
+    resistanceAllDamage:sr29Has(target,'petrified'),conditionImmunities:sr29Has(target,'petrified')?['poisoned']:[]};
+}
+function sr29AutoFailSave(target,ability) {
+  const key=String(ability||'').toUpperCase().slice(0,3);
+  if(!['STR','DEX'].includes(key))return false;
+  return ['paralyzed','petrified','stunned','unconscious'].some(n=>sr29Has(target,n));
+}
+function sr29FrightSourceVisible(actor,options={}) {
+  if(typeof options.frightenedSourceVisible==='boolean')return options.frightenedSourceVisible;
+  const item=sr29Entries(actor).find(x=>x.name==='frightened');
+  if(item&&typeof item.sourceVisible==='boolean')return item.sourceVisible;
+  return item?.sourceOutOfSight===true?false:true;
+}
+function sr29AttackState(attacker,target,options={}) {
+  const melee=!!options.melee,distance=Number.isFinite(Number(options.distance))?Number(options.distance):(melee?5:Infinity);
+  let advantage=false,disadvantage=false;
+  const add=(a,d)=>{advantage=advantage||a;disadvantage=disadvantage||d;};
+  add(sr29Has(attacker,'blinded')||sr29Has(attacker,'poisoned')||sr29Has(attacker,'prone')||sr29Has(attacker,'restrained'),false);
+  if(sr29Has(attacker,'frightened')&&sr29FrightSourceVisible(attacker,options))add(false,true);
+  if(sr29Has(attacker,'grappled')){
+    const grapple=sr29Entries(attacker).find(x=>x.name==='grappled');
+    const source=String(grapple?.grapplerId||grapple?.sourceId||grapple?.source||''),targetId=String(target?.id||target?.name||'');
+    if(!source||source!==targetId)add(false,true);
+  }
+  add(false,sr29Has(target,'invisible')&&!options.canSeeInvisible);
+  add(sr29Has(target,'blinded')||sr29Has(target,'restrained')||sr29Has(target,'paralyzed')||
+      sr29Has(target,'petrified')||sr29Has(target,'stunned')||sr29Has(target,'unconscious'),false);
+  if(sr29Has(target,'prone')){if(melee&&distance<=5)add(true,false);else add(false,true);}
+  if(advantage&&disadvantage)return {mode:'normal',advantage:false,disadvantage:false,cancelled:true};
+  return {mode:advantage?'advantage':disadvantage?'disadvantage':'normal',advantage,disadvantage,cancelled:false};
+}
+function sr29SkillMode(actor,skill,options={}) {
+  let disadvantage=false;
+  if(sr29Has(actor,'poisoned'))disadvantage=true;
+  if(sr29Has(actor,'frightened')&&sr29FrightSourceVisible(actor,options))disadvantage=true;
+  const key=String(skill||'').toLowerCase();
+  if(sr29Has(actor,'blinded')&&(options.requiresSight===true||(!options.requiresSight&&key==='perception')))disadvantage=true;
+  if(sr29Has(actor,'deafened')&&(options.requiresHearing===true||/hearing|listen|sound/.test(key)))return 'auto-fail';
+  return disadvantage?'disadvantage':'normal';
+}
+function sr29CriticalOnHit(target,options={}) {
+  return !!options.hit&&!!options.melee&&Number(options.distance??5)<=5&&
+    (sr29Has(target,'paralyzed')||sr29Has(target,'unconscious'));
+}
+function sr29CanAct(actor,actionType='action') {
+  const status=sr29Status(actor);
+  if(actionType==='reaction')return status.canReact;
+  if(actionType==='bonus'||actionType==='bonus-action')return status.canBonusAction;
+  return status.canAct;
+}
+function sr29CanMove(actor){return sr29Status(actor).speedOverride!==0;}
+function sr29LongRestExhaustion(actor) {
+  if(!actor||Number(actor.exhaustion)<=0)return {changed:false,before:Number(actor?.exhaustion)||0,after:Number(actor?.exhaustion)||0};
+  const result=sr29ChangeExhaustion(actor,-1);
+  return {changed:result.changed,before:result.before,after:result.after};
+}
+
+// Compatibility adapters route legacy V5–V11 entry points through one engine.
+if(typeof sr7ConditionName==='function')sr7ConditionName=function(x){return sr29Name(x);};
+if(typeof sr7HasCondition==='function')sr7HasCondition=function(t,n){return sr29Has(t,n);};
+if(typeof sr7ApplyCondition==='function')sr7ApplyCondition=function(t,n,rounds=1,source='effect'){return sr29Apply(t,n,rounds,source);};
+if(typeof sr7ExpireConditions==='function')sr7ExpireConditions=function(t){return sr29Tick(t);};
+if(typeof sr5ApplyCondition==='function')sr5ApplyCondition=function(t,n,duration=1){return sr29Apply(t,n,duration,'legacy sr5 effect');};
+if(typeof sr5HasCondition==='function')sr5HasCondition=function(t,n){return sr29Has(t,n);};
+if(typeof sr6Apply==='function')sr6Apply=function(t,n,rounds=1){return sr29Apply(t,n,rounds,'legacy sr6 effect');};
+if(typeof sr6Has==='function')sr6Has=function(t,n){return sr29Has(t,n);};
+if(typeof sr6Expire==='function')sr6Expire=function(t){return sr29Tick(t);};
+if(typeof sr11Names==='function')sr11Names=function(list){return (list||[]).flatMap(x=>{const n=sr29Name(x);return n?[n]:[];}).filter((x,i,a)=>a.indexOf(x)===i);};
+if(typeof sr11Has==='function')sr11Has=function(t,n){return sr29Has(t,n);};
+if(typeof sr11Add==='function')sr11Add=function(t,n,duration=1,source='combat'){return sr29Apply(t,n,duration,source);};
+if(typeof sr11Tick==='function')sr11Tick=function(t){return sr29Tick(t);};
+
+// 2024 Exhaustion is a per-level D20 penalty and Speed reduction, not Disadvantage.
+if(typeof skillBonus==='function'){
+  const sr29PriorSkillBonus=skillBonus;
+  skillBonus=function(skill){
+    const c=state?.character,exhaustion=Math.max(0,Math.min(6,Math.floor(Number(c?.exhaustion)||0)));
+    const poison=sr29Has(c,'poisoned')?2:0;
+    return sr29PriorSkillBonus(skill)+Math.min(5,exhaustion)+poison-(2*exhaustion);
+  };
+}
+if(typeof sr7SkillCheck==='function'){
+  sr7SkillCheck=function(skill,dc,context=''){
+    const c=state?.character,mode=sr29SkillMode(c,skill,{});
+    const finalDC=Math.max(5,Math.min(30,Number(dc)+sr7DifficultyShift()));
+    if(mode==='auto-fail'){
+      log((context||skill)+': the required sense is unavailable; the check automatically fails.','badlog');
+      return {ok:false,d:null,total:null,bonus:skillBonus(skill),dc:finalDC,mode:'auto-fail'};
+    }
+    const bonus=skillBonus(skill),r=sr7RollD20(mode),total=r+bonus,ok=total>=finalDC;
+    log((context||skill)+': d20 '+r+(mode==='disadvantage'?' (disadvantage)':'')+' + '+bonus+' = '+total+' vs DC '+finalDC+' — '+(ok?'SUCCESS':'FAILURE')+'.',ok?'goodlog':'badlog');
+    return {ok,d:r,total,bonus,dc:finalDC,mode};
+  };
+  skillCheck=sr7SkillCheck;
+}
+if(typeof sr7AttackMode==='function'){
+  sr7AttackMode=function(attacker,target){
+    const distance=Number(target?.distance??attacker?.distance??5);
+    const mode=sr29AttackState(attacker,target,{melee:distance<=5,distance});
+    let adv=mode.advantage,dis=mode.disadvantage;
+    if(attacker===state?.character){
+      if(attacker.vexTarget===target?.name&&attacker.vexAdvantage)adv=true;
+      if(attacker.hidden)adv=true;
+      if(sr29Has(target,'marked'))adv=true;
+    }else{
+      if(attacker.vexed)adv=true;
+      if(attacker.sapRounds>0)dis=true;
+    }
+    return adv===dis?'normal':adv?'advantage':'disadvantage';
+  };
+}
+if(typeof sr11RollAttack==='function'){
+  sr11RollAttack=function(base,actor,target,melee=false){
+    const distance=Number(target?.distance??actor?.distance??(melee?5:Infinity));
+    const mode=sr29AttackState(actor,target,{melee,distance});
+    const r1=die(20),r2=mode.mode==='normal'?r1:die(20);
+    const r=mode.mode==='advantage'?Math.max(r1,r2):mode.mode==='disadvantage'?Math.min(r1,r2):r1;
+    return {r,r1,r2,adv:mode.mode==='advantage',dis:mode.mode==='disadvantage',total:r+base};
+  };
+}
+if(typeof sr25ResolveCreatureSavingThrow==='function'){
+  const sr29PriorCreatureSave=sr25ResolveCreatureSavingThrow;
+  sr25ResolveCreatureSavingThrow=function(target,ability,rolls,modifier,dc,options={}){
+    const forced=sr29AutoFailSave(target,ability);
+    return sr29PriorCreatureSave(target,ability,rolls,modifier,dc,{...options,autoFail:!!options.autoFail||forced});
+  };
+  if(globalThis.__SR25_TEST)globalThis.__SR25_TEST.resolveCreatureSavingThrow=sr25ResolveCreatureSavingThrow;
+}
+if(typeof sr7EnemyTurn==='function'){
+  const sr29PriorEnemyTurn=sr7EnemyTurn;
+  sr7EnemyTurn=function(...args){
+    SR29_COMBAT_CYCLE=Math.max(SR29_COMBAT_CYCLE,Number(state?.combat?.round)||0)+1;
+    const previous=SR29_PHASE;SR29_PHASE='enemy';
+    try{return sr29PriorEnemyTurn.apply(this,args);}finally{SR29_PHASE=previous;}
+  };
+  if(globalThis.__SR7_TEST)globalThis.__SR7_TEST.enemyTurn=sr7EnemyTurn;
+}
+if(typeof playerAttack==='function'){
+  const sr29PriorPlayerAttack=playerAttack;
+  playerAttack=function(...args){
+    if(!sr29CanAct(state?.character,'action')){toast('You cannot attack while incapacitated.');return false;}
+    return sr29PriorPlayerAttack.apply(this,args);
+  };
+}
+if(typeof sr11HeroAttack==='function'){
+  const sr29PriorHeroAttack=sr11HeroAttack;
+  sr11HeroAttack=function(...args){
+    if(!sr29CanAct(state?.character,'action')){toast('You cannot attack while incapacitated.');return false;}
+    return sr29PriorHeroAttack.apply(this,args);
+  };
+}
+if(typeof sr7CastSpell==='function'){
+  const sr29PriorCast=sr7CastSpell;
+  sr7CastSpell=function(...args){
+    if(!sr29CanAct(state?.character,'action')){toast('You cannot cast while incapacitated.');return false;}
+    return sr29PriorCast.apply(this,args);
+  };
+  castSpell=sr7CastSpell;
+}
+if(typeof sr7Move==='function'){
+  const sr29PriorMove=sr7Move;
+  sr7Move=function(...args){
+    if(!sr29CanMove(state?.character)){toast('Your current condition sets your Speed to 0.');return false;}
+    return sr29PriorMove.apply(this,args);
+  };
+}
+if(typeof sr10EnemyMove==='function'){
+  const sr29PriorEnemyMove=sr10EnemyMove;
+  sr10EnemyMove=function(actor,...args){if(!sr29CanMove(actor))return false;return sr29PriorEnemyMove.call(this,actor,...args);};
+}
+if(typeof sr10EnemyAttack==='function'){
+  const sr29PriorEnemyAttack=sr10EnemyAttack;
+  sr10EnemyAttack=function(actor,...args){if(!sr29CanAct(actor,'action'))return false;return sr29PriorEnemyAttack.call(this,actor,...args);};
+}
+globalThis.__SR29_TEST={
+  version:SR29_VERSION,schema:SR29_SCHEMA,names:SR29_CONDITION_NAMES.slice(),registry:SR29_CONDITIONS,
+  normalizeName:sr29Name,entries:sr29Entries,has:sr29Has,apply:sr29Apply,remove:sr29Remove,tick:sr29Tick,
+  namesFor:sr29Names,status:sr29Status,isImmune:sr29IsImmune,changeExhaustion:sr29ChangeExhaustion,
+  longRestExhaustion:sr29LongRestExhaustion,autoFailSave:sr29AutoFailSave,attackState:sr29AttackState,
+  skillMode:sr29SkillMode,criticalOnHit:sr29CriticalOnHit,canAct:sr29CanAct,canMove:sr29CanMove,
+  currentPhase:()=>({phase:SR29_PHASE,cycle:SR29_COMBAT_CYCLE})
+};
