@@ -188,15 +188,15 @@ function sr29AttackState(attacker,target,options={}) {
   const add=(a,d)=>{advantage=advantage||a;disadvantage=disadvantage||d;};
   add(false,sr29Has(attacker,'blinded')||sr29Has(attacker,'poisoned')||sr29Has(attacker,'prone')||sr29Has(attacker,'restrained'));
   if(sr29Has(attacker,'frightened')&&sr29FrightSourceVisible(attacker,options))add(false,true);
-  add(sr29Has(attacker,'invisible')&&!options.targetCanSeeInvisible,false);
+  add(sr29Has(attacker,'invisible')||attacker?.invisible===true||attacker?.hidden===true,false);
   const grappleEffect=sr29Entries(attacker).find(x=>x.name==='grappled');
   if(grappleEffect){
     const grapplerId=String(grappleEffect.grapplerId||grappleEffect.sourceId||'');
     const targetId=String(target?.id||target?.name||'');
     if(!grapplerId||grapplerId!==targetId)add(false,true);
   }
-  add(false,sr29Has(target,'invisible')&&!options.canSeeInvisible);
-  add(sr29Has(target,'blinded')||sr29Has(target,'restrained')||sr29Has(target,'paralyzed')||
+  add(false,(sr29Has(target,'invisible')||target?.invisible===true)&&!options.canSeeInvisible);
+  add(sr29Has(target,'blinded')||target?.blinded===true||sr29Has(target,'restrained')||sr29Has(target,'paralyzed')||
       sr29Has(target,'petrified')||sr29Has(target,'stunned')||sr29Has(target,'unconscious'),false);
   if(sr29Has(target,'prone')){if(distance<=5)add(true,false);else add(false,true);}
   if(advantage&&disadvantage)return {mode:'normal',advantage:false,disadvantage:false,cancelled:true};
@@ -389,6 +389,24 @@ if(typeof sr7AttackMode==='function'){
     return adv===dis?'normal':adv?'advantage':'disadvantage';
   };
 }
+
+function sr29CanSeeInvisible(creature) {
+  const senses=creature?.senses||{};
+  return creature?.canSeeInvisible===true||creature?.seeInvisible===true||creature?.trueSight===true||
+    Number(senses.truesight||senses.blindsight||0)>0;
+}
+function sr29AttackDistance(actor,target,melee=false) {
+  for(const value of [target?.distance,actor?.distance])if(value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value)))return Number(value);
+  let actorPos=actor?.pos||null,targetPos=target?.pos||null;
+  const players=state?.campaign?.multiplayer?.players||[];
+  const actorOwner=players.find(p=>p.character===actor),targetOwner=players.find(p=>p.character===target);
+  if(actorOwner)actorPos=state?.combat?.mp?.heroPositions?.[actorOwner.id]||actorPos||(typeof sr12PlayerPos==='function'?sr12PlayerPos(actorOwner.id):null);
+  else if(actor===state?.character)actorPos=state?.combat?.heroPos||actorPos;
+  if(targetOwner)targetPos=state?.combat?.mp?.heroPositions?.[targetOwner.id]||targetPos||(typeof sr12PlayerPos==='function'?sr12PlayerPos(targetOwner.id):null);
+  else if(target===state?.character)targetPos=state?.combat?.heroPos||targetPos;
+  if(actorPos&&targetPos&&typeof sr12Distance==='function')return sr12Distance(actorPos,targetPos);
+  return melee?5:Infinity;
+}
 if(typeof sr11RollAttack==='function'){
   const sr29PriorRollAttack=sr11RollAttack;
   sr11RollAttack=function(base,actor,target,melee=false){
@@ -396,20 +414,52 @@ if(typeof sr11RollAttack==='function'){
     const originalActorConditions=Array.isArray(actor?.conditions)?actor.conditions.slice():null;
     const originalTargetConditions=Array.isArray(target?.conditions)?target.conditions.slice():null;
     const actorHadConditions=Array.isArray(actor?.conditions),targetHadConditions=Array.isArray(target?.conditions);
+    const originalActorInvisible=actor?.invisible,originalTargetInvisible=target?.invisible;
     const temporarilyAdd=(creature,name)=>{
       if(!creature)return;
       if(!Array.isArray(creature.conditions))creature.conditions=[];
       if(!creature.conditions.some(x=>sr29Name(x)===name))creature.conditions.push(name);
     };
+    const temporarilyRemove=(creature,name)=>{
+      if(creature&&Array.isArray(creature.conditions))creature.conditions=creature.conditions.filter(x=>sr29Name(x)!==name);
+    };
+    const distance=sr29AttackDistance(actor,target,melee);
+    const targetCanSeeActor=sr29CanSeeInvisible(target);
+    const actorCanSeeTarget=sr29CanSeeInvisible(actor);
+    const targetIsProne=sr29Has(target,'prone');
+    const targetIsInvisible=sr29Has(target,'invisible')||target?.invisible===true;
+    const actorIsInvisible=sr29Has(actor,'invisible')||actor?.invisible===true;
     try{
-      // Preserve all later combat layers (Dodge, Bardic Inspiration, cover/threat,
-      // outline bonuses and Improved Critical) while supplying the V29-only cases.
+      // Project only condition modifiers missing from legacy wrappers; do not replace
+      // the older Dodge, Vex, outline, resource, or spell-effect layers.
       if(sr29Has(actor,'frightened')&&sr29FrightSourceVisible(actor,{}))temporarilyAdd(actor,'poisoned');
+      if(sr29Has(actor,'grappled')){
+        const grapple=sr29Entries(actor).find(x=>x.name==='grappled');
+        const grapplerId=String(grapple?.grapplerId||grapple?.sourceId||'');
+        const targetId=String(target?.id||target?.name||'');
+        if(!grapplerId||grapplerId!==targetId)temporarilyAdd(actor,'poisoned');
+      }
       if(sr29Has(target,'petrified'))temporarilyAdd(target,'restrained');
+      if(targetIsProne){
+        temporarilyRemove(target,'prone');
+        if(distance<=5)temporarilyAdd(target,'stunned');
+        else temporarilyAdd(actor,'poisoned');
+      }
+      if(targetIsInvisible&&actorCanSeeTarget){
+        temporarilyRemove(target,'invisible');
+        if(target)target.invisible=false;
+      }
+      if(actorIsInvisible&&targetCanSeeActor){
+        temporarilyRemove(actor,'invisible');
+        if(actor)actor.invisible=false;
+      }
+      if(actor?.hidden===true&&actor&&!targetCanSeeActor)actor.invisible=true;
       return sr29PriorRollAttack(Number(base||0)-2*exhaustion,actor,target,melee);
     }finally{
       if(actorHadConditions)actor.conditions=originalActorConditions;else if(actor&&Object.prototype.hasOwnProperty.call(actor,'conditions'))delete actor.conditions;
       if(targetHadConditions)target.conditions=originalTargetConditions;else if(target&&Object.prototype.hasOwnProperty.call(target,'conditions'))delete target.conditions;
+      if(actor){if(originalActorInvisible===undefined)delete actor.invisible;else actor.invisible=originalActorInvisible;}
+      if(target){if(originalTargetInvisible===undefined)delete target.invisible;else target.invisible=originalTargetInvisible;}
     }
   };
 }
@@ -632,6 +682,7 @@ globalThis.__SR29_TEST={
   canonicalAbilityCheck:sr29CanonicalAbilityCheck,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,
   damageMultiplier:sr29DamageMultiplier,applyEnemyDamage:typeof sr12ApplyDamage==='function'?sr12ApplyDamage:null,
   applyMonsterDamage:typeof sr18MonsterApplyDamage==='function'?sr18MonsterApplyDamage:null,
+  attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,
   applyUiCondition:sr29ApplyUiCondition,removeUiCondition:sr29RemoveUiCondition,
   currentPhase:()=>({phase:SR29_PHASE,cycle:SR29_COMBAT_CYCLE})
 };

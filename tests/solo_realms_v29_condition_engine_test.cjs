@@ -92,6 +92,38 @@ try{
  const invisibleTarget=actor();T.apply(invisibleTarget,'invisible',2,'spell');
  assert('Attacks against Invisible targets have Disadvantage',T.attackState(attacker,invisibleTarget,{melee:true,distance:5}).mode==='disadvantage');
  assert('Seeing an Invisible target removes that Disadvantage',T.attackState(attacker,invisibleTarget,{melee:true,distance:5,canSeeInvisible:true}).mode==='normal');
+
+ const frightenedAttacker=actor({id:'frightened-attacker'});T.apply(frightenedAttacker,'frightened',2,'dragon',{sourceId:'dragon',sourceVisible:true});
+ const frightenedAttack=T.attackRoll(5,frightenedAttacker,actor({id:'frightened-target'}),true);
+ assert('Actual attack rolls apply Frightened Disadvantage while the source is visible',frightenedAttack.dis&&!frightenedAttack.adv);
+ const grappledAttacker=actor({id:'grappled-attacker'});T.apply(grappledAttacker,'grappled',2,'grab',{grapplerId:'grappler'});
+ const grappleAttack=T.attackRoll(5,grappledAttacker,actor({id:'not-grappler'}),true);
+ assert('Actual attack rolls apply Grappled Disadvantage against other targets',grappleAttack.dis&&!grappleAttack.adv);
+ const closeProne=actor({id:'close-prone',distance:5});T.apply(closeProne,'prone',2,'trip');
+ const closeProneAttack=T.attackRoll(5,actor(),closeProne,false);
+ assert('Actual ranged attacks from within 5 feet gain Advantage against Prone targets',closeProneAttack.adv&&!closeProneAttack.dis);
+ const farProne=actor({id:'far-prone',distance:15});T.apply(farProne,'prone',2,'trip');
+ const farProneAttack=T.attackRoll(5,actor(),farProne,false);
+ assert('Actual attacks from beyond 5 feet have Disadvantage against Prone targets',farProneAttack.dis&&!farProneAttack.adv);
+ const invisibleAttacker=actor({id:'invisible-attacker'});T.apply(invisibleAttacker,'invisible',2,'spell');
+ const invisibleAttack=T.attackRoll(5,invisibleAttacker,actor(),true);
+ assert('Actual attacks by Invisible creatures gain Advantage',invisibleAttack.adv&&!invisibleAttack.dis);
+ const visibleInvisible=actor({canSeeInvisible:true}),invisibleEnemy=actor({id:'invisible-enemy'});T.apply(invisibleEnemy,'invisible',2,'spell');
+ const seeInvisibleAttack=T.attackRoll(5,visibleInvisible,invisibleEnemy,true);
+ assert('Actual attacks against Invisible targets are normal when the attacker can see them',!seeInvisibleAttack.adv&&!seeInvisibleAttack.dis);
+ const invisibleTargetCanSee=actor({canSeeInvisible:true}),hiddenInvisibleAttacker=actor({id:'hidden-invisible'});T.apply(hiddenInvisibleAttacker,'invisible',2,'spell');
+ const suppressedInvisibleAttack=T.attackRoll(5,hiddenInvisibleAttacker,invisibleTargetCanSee,true);
+ assert('Invisible attackers gain no Advantage against targets that can see them',!suppressedInvisibleAttack.adv&&!suppressedInvisibleAttack.dis);
+ const hiddenAttacker=actor({hidden:true});
+ const hiddenAttack=T.attackRoll(5,hiddenAttacker,actor(),true);
+ assert('Hidden attackers gain Advantage in the actual attack-roll path',hiddenAttack.adv&&!hiddenAttack.dis);
+ const dodgingTarget=actor({dodging:true});
+ const dodgeAttack=T.attackRoll(5,actor(),dodgingTarget,true);
+ assert('V29 condition projection preserves the earlier Dodge attack penalty',dodgeAttack.dis&&!dodgeAttack.adv);
+ const outlinedTarget=actor({outlinedRounds:1});
+ const outlineAttack=T.attackRoll(5,actor(),outlinedTarget,true);
+ assert('V29 condition projection preserves the earlier Outlined attack Advantage',outlineAttack.adv&&!outlineAttack.dis);
+
  const prone=actor();T.apply(prone,'prone',2,'trip');
  assert('Prone targets grant Advantage to attacks from within 5 feet',T.attackState(attacker,prone,{melee:true,distance:5}).mode==='advantage');
  assert('Prone targets also grant Advantage to ranged attacks from within 5 feet',T.attackState(attacker,prone,{melee:false,distance:5}).mode==='advantage');
