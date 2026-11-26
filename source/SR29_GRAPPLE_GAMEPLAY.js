@@ -833,6 +833,8 @@ if(typeof sr7PlayerAttack==='function'){
 function sr29ActionEconomyGate(actor,kind,checkResource=!!state?.combat){
   if(!actor)return false;
   if(!sr29CanAct(actor,kind)){toast(`Your current condition prevents you from taking a ${kind==='bonus-action'?'Bonus Action':kind==='reaction'?'Reaction':'Action'}.`);return false;}
+  if(checkResource&&kind==='action'&&actor.actionSpent===true){toast('Your Action is already spent.');return false;}
+  if(checkResource&&kind==='bonus-action'&&actor.bonusActionSpent===true){toast('Your Bonus Action is already spent.');return false;}
   if(checkResource&&kind==='reaction'&&actor.reactionAvailable===false){toast('Your Reaction is already spent.');return false;}
   return true;
 }
