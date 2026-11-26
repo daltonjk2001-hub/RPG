@@ -187,7 +187,15 @@ try{
  const stoneResistant=T.applyEnemyDamage(stoneRedundant,9,'physical');
  assert('Petrified resistance does not stack with another resistance to the same damage',stoneResistant===4&&stoneRedundant.hp===16);
  const stonePlayer=actor({resistances:[],vulnerabilities:['fire']});T.apply(stonePlayer,'petrified','permanent','stone');
- assert('Petrified damage multiplier cancels fire vulnerability for multiplayer damage',T.damageMultiplier(stonePlayer,'fire')===1);
+ assert('Petrified condition resistance cancels fire vulnerability in the effective damage multiplier',T.damageMultiplier(stonePlayer,'fire')===1);
+ const oldWorld=T21.state;
+ const multiplayerStone=actor({hp:30,maxHp:30,resistances:[],vulnerabilities:['fire']});T.apply(multiplayerStone,'petrified','permanent','stone');
+ const multiplayerPlayer={id:'mp-stone',name:'Stone Hero',character:multiplayerStone};
+ T21.state={...(oldWorld||{}),combat:{...((oldWorld||{}).combat||{}),mp:{}}};
+ let multiplayerDamage=0;
+ try{multiplayerDamage=T.applyMonsterDamage({player:multiplayerPlayer},9,'fire',{name:'Dragon'});}
+ finally{T21.state=oldWorld;}
+ assert('Multiplayer monster damage applies Petrified resistance and restores character resistances',multiplayerDamage===9&&multiplayerStone.hp===21&&!multiplayerStone.resistances.includes('all'));
 
  const integrity=html.includes("sr29Tick(e,{phase:'round',cycle:b.round})")&&html.includes('sr29CriticalOnHit')&&sw.includes('solo-realms-systems-v29-');
  assert('Generated build includes V29 tick, critical-hit and service-worker cache integration',integrity);

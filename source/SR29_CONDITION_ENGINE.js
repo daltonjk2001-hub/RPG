@@ -631,6 +631,7 @@ globalThis.__SR29_TEST={
   conditionPanel:sr29ConditionPanel,uiTargets:sr29UiTargets,resolveUiTarget:sr29UiTarget,
   canonicalAbilityCheck:sr29CanonicalAbilityCheck,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,
   damageMultiplier:sr29DamageMultiplier,applyEnemyDamage:typeof sr12ApplyDamage==='function'?sr12ApplyDamage:null,
+  applyMonsterDamage:typeof sr18MonsterApplyDamage==='function'?sr18MonsterApplyDamage:null,
   applyUiCondition:sr29ApplyUiCondition,removeUiCondition:sr29RemoveUiCondition,
   currentPhase:()=>({phase:SR29_PHASE,cycle:SR29_COMBAT_CYCLE})
 };
