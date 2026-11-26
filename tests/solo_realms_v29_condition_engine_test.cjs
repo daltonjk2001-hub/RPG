@@ -252,6 +252,14 @@ try{
  T.gameplay.attachRepeatSave(directFeatureTarget,'charmed','Dominate Person',featureCaster,'WIS',1,dominateRepeat);
  const directFeatureResult=T.gameplay.runFeature({id:'solo',name:'Direct Feature Caster',character:featureCaster},'landAid');
  assert('Legacy solo class-feature HP writes are captured and trigger repeat saves',directFeatureResult===true&&directFeatureTarget.hp<20&&!T.has(directFeatureTarget,'charmed'));
+ const blastTarget=actor({id:'blast-repeat-target',name:'Blast Repeat Target',hp:100,maxHp:100,ac:1});
+ const blastCaster=actor({id:'blast-repeat-caster',name:'Blast Repeat Caster',classId:'Warlock',level:5,classLevels:{Warlock:5},stats:{STR:10,DEX:10,CON:10,INT:10,WIS:10,CHA:16},actionSpent:false});
+ T18.state={character:blastCaster,campaign:{day:1,region:'Test Region',location:'Test Region',visited:['Test Region'],companions:[],npcs:[],sideQuests:[],story:{faction:'Test Faction',motive:'Test Motive',complication:'Test Complication',personalBond:'Test Bond',villain:'Test Villain',relic:'Test Relic',region:{name:'Test Region'},twist:'Test Twist'},flags:{},mainQuest:{kind:'test',title:'Test',goal:1}},combat:{round:1,mp:null,target:0,enemies:[blastTarget]},log:[]};
+ T.apply(blastTarget,'charmed',10,'Dominate Person');
+ T.gameplay.attachRepeatSave(blastTarget,'charmed','Dominate Person',blastCaster,'WIS',100,dominateRepeat);
+ const blastResult=T.gameplay.runFeature({id:'solo',name:'Blast Repeat Caster',character:blastCaster},'eldritchBlast');
+ const blastRepeatCount=T18.state.log.filter(entry=>String(entry.msg||'').includes('Blast Repeat Target repeats WIS save for Dominate Person')).length;
+ assert('Each Eldritch Blast beam is routed through typed damage and triggers its own repeat save',blastResult===true&&blastRepeatCount===2&&blastTarget.hp<100&&T.has(blastTarget,'charmed'),JSON.stringify({blastResult,blastRepeatCount,hp:blastTarget.hp,repeatSave:blastTarget.conditions[0]?.repeatSave}));
  const turnHookTarget=actor({id:'turn-hook-target',name:'Turn Hook Target',classId:'Wizard',level:1});
  const otherTurnPlayer=actor({id:'other-turn-player',name:'Other Turn Player'});
  const turnPlayer={id:'turn-hook-target',name:'Turn Hook Target',connected:true,character:turnHookTarget};
