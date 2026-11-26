@@ -158,7 +158,8 @@ function sr29Tick(target,options={}) {
   for(const item of sr29Entries(target)){
     if(item.permanent||!Number.isFinite(Number(item.rounds))){kept.push(item);continue;}
     if(inCombat){
-      if(item.appliedCycle===cycle&&item.appliedPhase==='enemy'){skipped++;kept.push(item);continue;}
+      const liveRound=Number(state?.combat?.round),appliedRound=Number(item.appliedRound??item.appliedCycle);
+      if(Number.isFinite(appliedRound)&&Number.isFinite(liveRound)&&liveRound<=appliedRound){skipped++;kept.push(item);continue;}
       if(item.lastTickRound===cycle){skipped++;kept.push(item);continue;}
     }
     const next=Math.max(0,Number(item.rounds)-1);
@@ -183,7 +184,7 @@ function sr29RepeatSaveBonus(target,ability){
 }
 function sr29ResolveRepeatSave(target,spec,rolls=null){
   const ability=String(spec?.ability||'').toUpperCase(),dc=Number(spec?.dc);
-  if(!target||!SR29_ABILITIES.includes(ability)||!Number.isFinite(dc))return {success:false,invalid:true};
+  if(!target||!['STR','DEX','CON','INT','WIS','CHA'].includes(ability)||!Number.isFinite(dc))return {success:false,invalid:true};
   const effects=typeof sr18ActiveEffect==='function'?sr18ActiveEffect(target):(target?.activeEffects||[]);
   const advantage=effects.some(x=>x.saveAdvantage===true);
   const dice=Array.isArray(rolls)?rolls:(advantage?[die(20),die(20)]:[die(20)]);
