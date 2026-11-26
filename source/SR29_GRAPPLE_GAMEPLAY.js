@@ -635,11 +635,21 @@ function sr29SpellSaveDetails(target,entries){
   const total=Number(match[2]),dc=Number(match[3]),markedFailure=/:\s*failure\./i.test(message),markedSuccess=/:\s*success\./i.test(message);
   return {ability:match[1].toUpperCase(),total,dc,success:markedSuccess||(!markedFailure&&total>=dc),failure:markedFailure||(!markedSuccess&&total<dc),message};
 }
+function sr29NormalizeSaveAbility(value){
+  const key=String(value||'').trim().toUpperCase();
+  return ({STRENGTH:'STR',DEXTERITY:'DEX',CONSTITUTION:'CON',INTELLIGENCE:'INT',WISDOM:'WIS',CHARISMA:'CHA'})[key]||key;
+}
+function sr29SpellSaveDC(caster,spell){
+  if(!caster)return 0;
+  const klass=typeof sr14CasterClass==='function'?sr14CasterClass(caster,spell):(spell?.classes||[]).find(k=>Number(caster.classLevels?.[k])>0)||caster.classId;
+  const ability=typeof sr14CasterAbility==='function'?sr14CasterAbility(klass):'CHA';
+  return 8+(typeof sr14Prof==='function'?sr14Prof(caster.level):2)+(typeof sr14AbilityMod==='function'?sr14AbilityMod(caster.stats?.[ability]):0)+(Number(caster.spellDCBonus)||0);
+}
 function sr29AttachRepeatSave(target,condition,spellName,caster,ability,dc,spec){
   if(!target||!condition||!spec||!ability||!Number.isFinite(Number(dc)))return false;
-  const entries=sr29Entries(target),matches=entries.filter(item=>item.name===String(condition).toLowerCase()&&item.source===String(spellName));
+  const normalized=sr29NormalizeSaveAbility(ability),entries=sr29Entries(target),matches=entries.filter(item=>item.name===String(condition).toLowerCase()&&item.source===String(spellName));
   const item=matches[matches.length-1];if(!item)return false;
-  item.repeatSave={trigger:spec.trigger,endsOnSuccess:true,ability:String(ability).toUpperCase(),dc:Number(dc),sourceSpell:String(spellName),sourceId:String(caster?.id||''),sourceName:String(caster?.name||''),appliedRound:Number(state?.combat?.round)||sr29CurrentCycle()};
+  item.repeatSave={trigger:spec.trigger,endsOnSuccess:true,ability:normalized,dc:Number(dc),sourceSpell:String(spellName),sourceId:String(caster?.id||''),sourceName:String(caster?.name||''),appliedRound:Number(state?.combat?.round)||sr29CurrentCycle()};
   target.conditions=entries;return true;
 }
 function sr29SpellTargetFailedSave(target,entries){
@@ -692,8 +702,8 @@ if(typeof sr14CastSpellComplete==='function'){
         const failed=sr29SpellTargetFailedSave(victim,entries);
         const attackHit=effect.kind==='attack'&&!entries.some(entry=>String(entry?.msg??entry??'').includes(`${spellName} misses ${victim.name}`));
         if(repeatSave&&effect.condition){
-          const details=sr29SpellSaveDetails(victim,entries),ability=String(effect.save||details.ability||repeatSave.ability||'').toUpperCase();
-          const dc=Number(details.dc)||(typeof sr12SpellDC==='function'?Number(sr12SpellDC(caster)):0);
+          const details=sr29SpellSaveDetails(victim,entries),ability=sr29NormalizeSaveAbility(effect.save||details.ability||repeatSave.ability||'');
+          const dc=Number(details.dc)||sr29SpellSaveDC(caster,spell);
           sr29AttachRepeatSave(victim,effect.condition,spellName,caster,ability,dc,repeatSave);
         }
         if(displacement&&(failed||attackHit))sr29ApplyPlayerSpellDisplacement(victim,player,displacement.mode,displacement.feet,origin);
