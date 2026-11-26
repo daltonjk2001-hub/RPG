@@ -531,9 +531,9 @@ try{
  assert('Player spell Push and Pull update abstract distance and reconcile grapples after forced movement',spellPush&&forcedSpellTarget.distance===15&&spellPushReleased&&spellPull&&forcedSpellPullTarget.distance===15);
  T18.state=priorSpellMoveState;
  const priorMasteryRandom=math.random;
- const masteryHero=actor({id:'mastery-hero',name:'Mastery Hero',classId:'Fighter',level:1,classLevels:{Fighter:1},weapon:'Warhammer',actionSpent:false,bonusActionSpent:false,stats:{STR:18,DEX:10,CON:10,INT:10,WIS:10,CHA:10}});
+ const masteryHero=actor({id:'mastery-hero',name:'Mastery Hero',classId:'Fighter',level:1,classLevels:{Fighter:1},weapon:'Warhammer',weaponMasteries:['Warhammer'],actionSpent:false,bonusActionSpent:false,stats:{STR:18,DEX:10,CON:10,INT:10,WIS:10,CHA:10}});
  const masteryPlayer={id:'mastery-hero',name:'Mastery Hero',connected:true,character:masteryHero};
- const masteryEnemy=actor({id:'mastery-enemy',name:'Mastery Enemy',hp:100,maxHp:100,ac:1,pos:{x:2,y:1},stats:{STR:12,DEX:10,CON:10,INT:10,WIS:10,CHA:10}});
+ const masteryEnemy=actor({id:'mastery-enemy',name:'Mastery Enemy',size:'Medium',hp:100,maxHp:100,ac:1,pos:{x:2,y:1},stats:{STR:12,DEX:10,CON:10,INT:10,WIS:10,CHA:10}});
  T18.state={character:masteryHero,campaign:{multiplayer:{players:[masteryPlayer]},companions:[]},combat:{round:1,mp:{heroPositions:{'mastery-hero':{x:1,y:1}},turnOrder:[{kind:'hero',id:'mastery-hero'}],index:0},enemies:[masteryEnemy]},log:[]};
  T.apply(masteryEnemy,'grappled','permanent','Mastery Hero',{grapplerId:'mastery-hero',sourceId:'mastery-hero',grappleRange:5,escapeDC:12});
  math.random=()=>0.99;
