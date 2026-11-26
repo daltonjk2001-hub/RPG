@@ -650,6 +650,8 @@ if(typeof sr14CastSpellComplete==='function'){
     const caster=playerArg?.character||state?.character;
     const player=playerArg||{id:typeof SR4!=='undefined'?(SR4.myPlayerId||'solo'):'solo',name:caster?.name||'Hero',character:caster};
     const effect=spell&&typeof sr14SpellEffectComplete==='function'?sr14SpellEffectComplete(spellName,spell):null;
+    const castTime=String(spell?.castingTime||'Action'),castKind=/bonus action/i.test(castTime)?'bonus-action':/reaction/i.test(castTime)?'reaction':'action';
+    if(!sr29ActionEconomyGate(caster,castKind,!!state?.combat))return false;
     const displacement=spell?sr29ParseForcedDisplacement(spell.description):null;
     const combat=state?.combat,target=combat?.mp?(typeof sr4Target==='function'?sr4Target():null):(typeof targetEnemy==='function'?targetEnemy():null);
     const origin=combat?.mp&&typeof sr12PlayerPos==='function'?sr12PlayerPos(player.id):combat?.heroPos;
