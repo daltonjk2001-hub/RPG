@@ -253,12 +253,26 @@ function sr18DisplacementPlan(from,source,direction,feet,isOpen){
 }
 function sr18DisplaceCombatant(target,source,description){
  const d=sr18Text(description),mode=/\b(?:pulls?|pulled)\b/i.test(d)?'pull':/\b(?:pushes?|pushed)\b/i.test(d)?'push':null;
- if(!mode||!state.combat?.mp||typeof sr9Cell!=='function')return false;
+ if(!mode||!state.combat)return false;
  const b=state.combat,player=target?.player,enemyTarget=target?.enemy;
+ const feet=Number((d.match(/(?:up to\s+)?(\d+)\s*feet?/i)||[])[1])||5;
+ // Theater-of-the-mind combat stores separation on the monster, not on a tactical grid.
+ // Apply the same forced-movement outcome to that distance model and then reconcile grapples.
+ if(!b.mp){
+  if(player?.id!=='solo'||!Number.isFinite(Number(source?.distance)))return false;
+  const before=Math.max(0,Number(source.distance));
+  const after=mode==='push'?before+feet:Math.max(0,before-feet);
+  if(after===before)return false;
+  source.distance=after;
+  if(typeof sr29ReconcileAbstractGrapples==='function')sr29ReconcileAbstractGrapples();
+  if(typeof sr29ReconcileCombatGrapples==='function')sr29ReconcileCombatGrapples();
+  log((player.name||'The target')+' is '+(mode==='push'?'pushed':'pulled')+' '+Math.abs(after-before)+' feet.','rolllog');
+  return true;
+ }
+ if(typeof sr9Cell!=='function')return false;
  const from=player?.id==='solo'?b.heroPos:(player?.id?b.mp.heroPositions?.[player.id]:(enemyTarget?.pos||enemyTarget?.position));
  const sourcePos=source?.pos||source?.position;
  if(!from||!sourcePos)return false;
- const feet=Number((d.match(/(?:up to\s+)?(\d+)\s*feet?/i)||[])[1])||5;
  const isOpen=pos=>{
   const cell=sr9Cell(pos.x,pos.y);
   if(!cell||cell.blocked===true||cell.walkable===false||/^(?:wall|void|blocked)$/i.test(String(cell.kind||cell.type||'')))return false;
