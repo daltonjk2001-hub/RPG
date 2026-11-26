@@ -18,7 +18,7 @@ const SR29_CONDITIONS = Object.freeze({
   poisoned: Object.freeze({name:'Poisoned', attacksAndChecksDisadvantage:true}),
   prone: Object.freeze({name:'Prone', attacksDisadvantage:true, meleeAttacksAgainstAdvantageWithin5:true, rangedAttacksAgainstDisadvantage:true, crawlOrStand:true}),
   restrained: Object.freeze({name:'Restrained', speedZero:true, attacksAgainstAdvantage:true, attacksDisadvantage:true, dexSavesDisadvantage:true}),
-  stunned: Object.freeze({name:'Stunned', incapacitated:true, speedZero:true, autoFail:['STR','DEX'], attacksAgainstAdvantage:true}),
+  stunned: Object.freeze({name:'Stunned', incapacitated:true, autoFail:['STR','DEX'], attacksAgainstAdvantage:true}),
   unconscious: Object.freeze({name:'Unconscious', incapacitated:true, prone:true, speedZero:true, autoFail:['STR','DEX'], attacksAgainstAdvantage:true, meleeCriticalWithin5:true})
 });
 const SR29_CONDITION_NAMES = Object.freeze(Object.keys(SR29_CONDITIONS));
@@ -162,7 +162,7 @@ function sr29Names(target) {
 }
 function sr29Status(target) {
   const exhaustion=Math.max(0,Math.min(6,Math.floor(Number(target?.exhaustion)||0)));
-  const speedZero=['grappled','paralyzed','petrified','restrained','stunned','unconscious'].some(n=>sr29Has(target,n));
+  const speedZero=['grappled','paralyzed','petrified','restrained','unconscious'].some(n=>sr29Has(target,n));
   const incap=sr29Has(target,'incapacitated');
   return {conditions:sr29Names(target),exhaustion,d20Penalty:2*exhaustion,speedPenalty:5*exhaustion,
     speedOverride:speedZero?0:null,incapacitated:incap,canAct:!incap,canBonusAction:!incap,canReact:!incap,
@@ -198,7 +198,7 @@ function sr29AttackState(attacker,target,options={}) {
   add(false,sr29Has(target,'invisible')&&!options.canSeeInvisible);
   add(sr29Has(target,'blinded')||sr29Has(target,'restrained')||sr29Has(target,'paralyzed')||
       sr29Has(target,'petrified')||sr29Has(target,'stunned')||sr29Has(target,'unconscious'),false);
-  if(sr29Has(target,'prone')){if(melee&&distance<=5)add(true,false);else add(false,true);}
+  if(sr29Has(target,'prone')){if(distance<=5)add(true,false);else add(false,true);}
   if(advantage&&disadvantage)return {mode:'normal',advantage:false,disadvantage:false,cancelled:true};
   return {mode:advantage?'advantage':disadvantage?'disadvantage':'normal',advantage,disadvantage,cancelled:false};
 }
@@ -212,7 +212,7 @@ function sr29SkillMode(actor,skill,options={}) {
   return disadvantage?'disadvantage':'normal';
 }
 function sr29CriticalOnHit(target,options={}) {
-  return !!options.hit&&!!options.melee&&Number(options.distance??5)<=5&&
+  return !!options.hit&&Number(options.distance??5)<=5&&
     (sr29Has(target,'paralyzed')||sr29Has(target,'unconscious'));
 }
 function sr29CanMoveToward(actor,target) {
@@ -331,7 +331,23 @@ if(typeof sr25ResolveCreatureSavingThrow==='function'){
   sr25ResolveCreatureSavingThrow=function(target,ability,rolls,modifier,dc,options={}){
     const forced=sr29AutoFailSave(target,ability);
     const exhaustion=Math.max(0,Math.min(6,Math.floor(Number(target?.exhaustion)||0)));
-    return sr29PriorCreatureSave(target,ability,rolls,Number(modifier||0)-2*exhaustion,dc,{...options,autoFail:!!options.autoFail||forced});
+    const effectiveOptions={...options};
+    let effectiveRolls=Array.isArray(rolls)?rolls.slice():(rolls==null?[]:[Number(rolls)]);
+    if(String(ability||'').toUpperCase()==='DEX'&&sr29Has(target,'restrained')){
+      const hasAdvantage=effectiveOptions.advantage===true;
+      const hasDisadvantage=effectiveOptions.disadvantage===true;
+      if(hasAdvantage){
+        // Restrained imposes Disadvantage: it cancels any existing Advantage.
+        effectiveOptions.advantage=false;
+        effectiveOptions.disadvantage=false;
+        if(effectiveRolls.length>1)effectiveRolls=[effectiveRolls[0]];
+      }else{
+        effectiveOptions.advantage=false;
+        effectiveOptions.disadvantage=true;
+        if(effectiveRolls.length===1)effectiveRolls.push(Math.floor(Math.random()*20)+1);
+      }
+    }
+    return sr29PriorCreatureSave(target,ability,effectiveRolls,Number(modifier||0)-2*exhaustion,dc,{...effectiveOptions,autoFail:!!options.autoFail||forced});
   };
   if(globalThis.__SR25_TEST)globalThis.__SR25_TEST.resolveCreatureSavingThrow=sr25ResolveCreatureSavingThrow;
 }
