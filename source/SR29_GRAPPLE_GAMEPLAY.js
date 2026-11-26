@@ -728,11 +728,12 @@ function sr29PlayerTeleportPlan(player,feet){
   const width=Math.max(1,Math.floor(Number(combat.map?.width)||8)),height=Math.max(1,Math.floor(Number(combat.map?.height)||6));
   const enemies=(combat.enemies||[]).filter(enemy=>enemy&&enemy.hp>0);
   const occupied=(x,y)=>{
-    if(typeof sr9Cell==='function'){
-      const cell=sr9Cell(x,y);
-      if(!cell||cell.blocked===true||cell.walkable===false||/^(?:wall|void|blocked)$/i.test(String(cell.kind||cell.type||'')))return true;
+    // Sparse terrain maps treat an absent cell as ordinary open floor.
+    if(Array.isArray(combat.map?.terrain)){
+      const cell=combat.map.terrain.find(item=>Number(item.x)===x&&Number(item.y)===y)||null;
+      if(cell&&(cell.blocked===true||cell.walkable===false||/^(?:wall|void|blocked)$/i.test(String(cell.kind||cell.type||''))))return true;
+      if(typeof sr11Blocked==='function'&&sr11Blocked(x,y))return true;
     }
-    if(typeof sr11Blocked==='function'&&sr11Blocked(x,y))return true;
     if(enemies.some(enemy=>{const p=enemy.pos||enemy.position;return p&&Number(p.x)===x&&Number(p.y)===y;}))return true;
     if(combat.mp){
       for(const [otherId,p] of Object.entries(combat.mp.heroPositions||{})){
