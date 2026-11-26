@@ -556,6 +556,8 @@ if(typeof sr131Maneuver==='function'){
   const sr29PriorManeuver=sr131Maneuver;
   sr131Maneuver=function(...args){
     const result=sr29PriorManeuver.apply(this,args);
+    // Maneuvers include solo-theater Shove; reconcile abstract reach as well as grid grapples.
+    sr29ReconcileAbstractGrapples();
     sr29ReconcileCombatGrapples();
     return result;
   };
