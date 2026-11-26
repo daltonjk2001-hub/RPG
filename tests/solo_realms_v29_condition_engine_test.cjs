@@ -758,7 +758,7 @@ try{
  const dispatchedSurgePlayer={id:'dispatched-surge-fighter',name:'Dispatched Surge Fighter',character:dispatchedSurgeFighter};
  T.gameplay.setConnection(dispatchedSurgePlayer.id,{peer:dispatchedSurgePlayer.id});
  T18.state={character:dispatchedSurgeFighter,campaign:{day:1,region:'Action Surge Test',location:'Action Surge Test',visited:['Action Surge Test'],companions:[],npcs:[],sideQuests:[],story:{},flags:{},mainQuest:{kind:'test',title:'Action Surge Test',goal:'Validate class-power dispatch'},multiplayer:{players:[dispatchedSurgePlayer]}},combat:{mp:{heroPositions:{'dispatched-surge-fighter':{x:1,y:1}},turnOrder:[{kind:'hero',id:'dispatched-surge-fighter',faction:'hero'}],index:0},enemies:[],map:{width:8,height:6,terrain:[]}},log:[]};
- const dispatchedSurge=T.gameplay.heroAction(dispatchedSurgePlayer,'power-class');
+ const dispatchedSurge=T.gameplay.heroAction(dispatchedSurgePlayer,'power-class',null,null,{classId:'Fighter'});
  assert('The legacy player-action dispatcher routes Fighter Action Surge through its free class-specific timing',dispatchedSurge===true&&dispatchedSurgeFighter.actionSurgeUsed===true&&dispatchedSurgeFighter.actionSpent===false&&dispatchedSurgeFighter.bonusActionSpent===true);
  const oldPowerFighter=actor({id:'old-power-fighter',name:'Old Power Fighter',classId:'Fighter',level:2,classLevels:{Fighter:2},actionSpent:true,bonusActionSpent:true});
  const oldPowerPlayer={id:'old-power-fighter',name:'Old Power Fighter',character:oldPowerFighter};
