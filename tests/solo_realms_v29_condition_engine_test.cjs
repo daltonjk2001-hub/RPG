@@ -113,9 +113,9 @@ try{
  const started=T.startGrapple(grappleHolder,grappleVictim,{attackHit:true,grapplerSize:'medium',targetSize:'large',freeHands:1,activeGrapples:[],distance:5,reach:5,proficiencyBonus:3});
  assert('A successful legal grapple records its source, reach, and escape DC',started.started&&T.has(grappleVictim,'grappled')&&started.escapeDC===14&&started.instance.grapplerId==='grapple-starter'&&started.instance.grappleRange===5);
  const failedEscape=T.escapeGrapple(grappleVictim,{instanceId:started.instance.id,ability:'Athletics',roll:10,bonus:3});
- assert('An unsuccessful Athletics escape check leaves the grapple active',!failedEscape.escaped&&T.has(grappleVictim,'grappled')&&failedEscape.total===13&&failedEscape.dc===14);
+ assert('An unsuccessful Athletics escape check leaves the grapple active',!failedEscape.escaped&&T.has(grappleVictim,'grappled')&&failedEscape.total===13&&failedEscape.dc===14,JSON.stringify({failedEscape,conditions:T.entries(grappleVictim)}));
  const escaped=T.escapeGrapple(grappleVictim,{instanceId:started.instance.id,ability:'Acrobatics',roll:12,bonus:2});
- assert('A successful Acrobatics escape check removes only the selected grapple instance',escaped.escaped&&!T.has(grappleVictim,'grappled'));
+ assert('A successful Acrobatics escape check removes only the selected grapple instance',escaped.escaped&&!T.has(grappleVictim,'grappled'),JSON.stringify({escaped,conditions:T.entries(grappleVictim)}));
  const invalidEscapeTarget=actor({id:'invalid-escape-target'});T.apply(invalidEscapeTarget,'grappled','permanent','test',{grapplerId:'grapple-starter',escapeDC:10});
  const invalidEscape=T.escapeGrapple(invalidEscapeTarget,{ability:'Perception',roll:20,bonus:20,dc:1});
  assert('Grapple escape rejects skills other than Athletics or Acrobatics',!invalidEscape.escaped&&invalidEscape.reason==='invalid-escape-check'&&T.has(invalidEscapeTarget,'grappled'));
