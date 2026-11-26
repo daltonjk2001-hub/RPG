@@ -1057,10 +1057,41 @@ if(typeof sr12ApplyDamage==='function'){
     const hpBefore=Number(target?.hp)||0;
     const result=sr29PriorCreatureDamage.call(this,target,amount,...args);
     const damageTaken=Math.max(0,hpBefore-(Number(target?.hp)||0));
-    if(target&&hpBefore>0&&damageTaken>0)sr29RepeatSaveAfterDamage(target,damageTaken);
+    if(target&&hpBefore>0&&damageTaken>0){
+      if(SR29_DAMAGE_TRACK)SR29_DAMAGE_TRACK.processed.add(target);
+      sr29RepeatSaveAfterDamage(target,damageTaken);
+    }
     return result;
   };
 }
+// Legacy SRD feature/spell handlers still contain a few direct creature HP writes.
+// Snapshot combatants around those action boundaries and route any unhandled HP loss
+// into the same repeat-save service. Typed damage calls mark their target so they
+// are not counted twice by this compatibility bridge.
+let SR29_DAMAGE_TRACK=null;
+function sr29TrackDirectCreatureDamage(fn){
+  if(typeof fn!=='function')return fn;
+  return function(...args){
+    if(SR29_DAMAGE_TRACK)return fn.apply(this,args);
+    const enemies=(state?.combat?.enemies||[]).slice();
+    const before=new Map(enemies.map(enemy=>[enemy,Math.max(0,Number(enemy?.hp)||0)]));
+    const context={processed:new Set()};
+    SR29_DAMAGE_TRACK=context;
+    try{return fn.apply(this,args);}
+    finally{
+      SR29_DAMAGE_TRACK=null;
+      for(const enemy of enemies){
+        const lost=Math.max(0,(before.get(enemy)||0)-(Number(enemy?.hp)||0));
+        if(lost>0&&!context.processed.has(enemy))sr29RepeatSaveAfterDamage(enemy,lost);
+      }
+    }
+  };
+}
+if(typeof sr14RunFeature==='function')sr14RunFeature=sr29TrackDirectCreatureDamage(sr14RunFeature);
+if(typeof sr14CastSpellComplete==='function')sr14CastSpellComplete=sr29TrackDirectCreatureDamage(sr14CastSpellComplete);
+if(typeof sr12HeroAttack==='function')sr12HeroAttack=sr29TrackDirectCreatureDamage(sr12HeroAttack);
+if(typeof sr9Attack==='function')sr9Attack=sr29TrackDirectCreatureDamage(sr9Attack);
+if(typeof playerAttack==='function')playerAttack=sr29TrackDirectCreatureDamage(playerAttack);
 function sr29RepeatSaveTurnKey(kind,target){
   return `${sr29CurrentCycle()}:${kind}:${target?.id||target?.name||'actor'}`;
 }
