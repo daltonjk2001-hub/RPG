@@ -416,7 +416,7 @@ function sr29EscapeGrapple(target,options={}) {
   const roll=Number(options.roll),bonus=Number(options.bonus)||0;
   if(!Number.isFinite(dc)||dc<1)return {escaped:false,reason:'missing-escape-dc'};
   if(!Number.isInteger(roll)||roll<1||roll>20)return {escaped:false,reason:'invalid-roll',dc,ability};
-  const total=roll+bonus,success=total>=dc;
+  const total=roll+bonus,success=typeof options.success==='boolean'?options.success:total>=dc;
   if(success)sr29ReleaseGrapple(target,{instanceId:item.id});
   return {escaped:success,success,total,dc,ability,roll,instanceId:item.id};
 }
