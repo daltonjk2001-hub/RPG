@@ -85,6 +85,8 @@ try{
  const prone=actor();T.apply(prone,'prone',2,'trip');
  assert('Prone targets grant Advantage to nearby melee attacks',T.attackState(attacker,prone,{melee:true,distance:5}).mode==='advantage');
  assert('Prone targets impose Disadvantage on ranged attacks',T.attackState(attacker,prone,{melee:false,distance:30}).mode==='disadvantage');
+ const poisonedAttacker=actor();T.apply(poisonedAttacker,'poisoned',2,'poison');
+ assert('Poisoned attackers have Disadvantage',T.attackState(poisonedAttacker,actor(),{melee:true,distance:5}).mode==='disadvantage');
  const cancellation=actor();T.apply(cancellation,'poisoned',2,'poison');
  assert('Advantage and Disadvantage cancel rather than stack',T.attackState(cancellation,target,{melee:true,distance:5}).mode==='normal'&&T.attackState(cancellation,target,{melee:true,distance:5}).cancelled);
  const sight=actor();T.apply(sight,'blinded',2,'blindness');
