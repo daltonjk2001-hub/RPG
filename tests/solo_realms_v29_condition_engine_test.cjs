@@ -116,8 +116,9 @@ try{
  assert('An unsuccessful Athletics escape check leaves the grapple active',!failedEscape.escaped&&T.has(grappleVictim,'grappled')&&failedEscape.total===13&&failedEscape.dc===14);
  const escaped=T.escapeGrapple(grappleVictim,{instanceId:started.instance.id,ability:'Acrobatics',roll:12,bonus:2});
  assert('A successful Acrobatics escape check removes only the selected grapple instance',escaped.escaped&&!T.has(grappleVictim,'grappled'));
- const invalidEscape=T.escapeGrapple(grappleVictim,{ability:'Perception',roll:20,bonus:20,dc:1});
- assert('Grapple escape rejects skills other than Athletics or Acrobatics',!invalidEscape.escaped&&invalidEscape.reason==='not-grappled');
+ const invalidEscapeTarget=actor({id:'invalid-escape-target'});T.apply(invalidEscapeTarget,'grappled','permanent','test',{grapplerId:'grapple-starter',escapeDC:10});
+ const invalidEscape=T.escapeGrapple(invalidEscapeTarget,{ability:'Perception',roll:20,bonus:20,dc:1});
+ assert('Grapple escape rejects skills other than Athletics or Acrobatics',!invalidEscape.escaped&&invalidEscape.reason==='invalid-escape-check'&&T.has(invalidEscapeTarget,'grappled'));
  const dragged=T.grappleMovementCost(grappleHolder,grappleVictim,20,{grapplerSize:'medium',targetSize:'large'});
  assert('Dragging a non-exempt grappled creature doubles movement cost',dragged.valid&&dragged.speedHalved&&dragged.movementCost===40);
  const tinyDrag=T.grappleMovementCost(grappleHolder,actor({size:'tiny'}),20,{grapplerSize:'medium',targetSize:'tiny'});
