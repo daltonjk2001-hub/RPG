@@ -706,7 +706,7 @@ function sr29ApplyMasteryPush(target,player,origin,weapon){
   if(!target||!state?.combat?.mp||typeof sr18DisplaceCombatant!=='function'||!sr29CanPushTarget(target)||sr29WeaponMasteryFor(player?.character,weapon)!=='Push')return false;
   const sourcePos=origin||sr12PlayerPos(player?.id);
   if(!sourcePos)return false;
-  const moved=sr18DisplaceCombatant({enemy:target},{pos:sourcePos},'Push 10 feet away from the caster.');
+  const moved=sr18DisplaceCombatant({enemy:target},{pos:sourcePos},'The target is pushed 10 feet away from the caster.');
   if(moved){sr29ReconcileCombatGrapples();sr29ReconcileAbstractGrapples();}
   return moved;
 }
