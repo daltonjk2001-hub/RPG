@@ -1020,7 +1020,12 @@ if(typeof sr12CastSpell==='function'){
 }
 
 function sr29RepeatSaveAfterDamage(target,amount,rolls=null){
-  if(Number(amount)>0&&target)sr29ProcessRepeatSaves(target,'damage',sr29NextDamageEventKey(),rolls);
+  if(Number(amount)<=0||!target)return {attempted:0,ended:0,failed:0,skipped:0};
+  const result=sr29ProcessRepeatSaves(target,'damage',sr29NextDamageEventKey(),rolls);
+  // Persist both successful removals and failed-save event keys so a reload
+  // cannot silently reroll the same damage event.
+  if(result.attempted>0&&typeof save==='function')save();
+  return result;
 }
 // Connect actual resolved damage transactions to the condition engine. Hook the
 // three canonical endpoints separately: solo-player HP, multiplayer-player HP,
