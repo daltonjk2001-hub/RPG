@@ -602,6 +602,17 @@ try{
  const spentActionActor=actor({id:'spent-action',name:'Spent Action',actionSpent:true});
  const spentBonusActor=actor({id:'spent-bonus',name:'Spent Bonus',bonusActionSpent:true});
  assert('The canonical action-economy gate rejects already-spent Actions and Bonus Actions',!T.gameplay.actionEconomyGate(spentActionActor,'action',true)&&!T.gameplay.actionEconomyGate(spentBonusActor,'bonus-action',true));
+ const reactionAttackHero=actor({id:'reaction-attack-hero',name:'Reaction Attack Hero',classId:'Fighter',level:1,weapon:'Dagger',actionSpent:false,bonusActionSpent:false,reactionAvailable:true});
+ const reactionAttackPlayer={id:'reaction-attack-hero',name:'Reaction Attack Hero',connected:true,character:reactionAttackHero};
+ const reactionAttackTarget=actor({id:'reaction-attack-target',name:'Reaction Attack Target',hp:100,maxHp:100,ac:1,size:'Medium',pos:{x:2,y:1}});
+ const reactionAttackTerrain=[];for(let x=0;x<8;x++)for(let y=0;y<6;y++)reactionAttackTerrain.push({x,y,kind:'floor'});
+ T18.state={character:reactionAttackHero,campaign:{multiplayer:{players:[reactionAttackPlayer]},companions:[]},combat:{mp:{heroPositions:{'reaction-attack-hero':{x:1,y:1}},turnOrder:[{kind:'hero',id:'reaction-attack-hero',faction:'hero'}],index:0},enemies:[reactionAttackTarget],map:{width:8,height:6,terrain:reactionAttackTerrain}},log:[]};
+ const priorReactionRandom=math.random;math.random=()=>0.99;
+ let reactionAttackResult=false;
+ try{reactionAttackResult=T.gameplay.heroAttack(reactionAttackPlayer,reactionAttackTarget,true);}finally{math.random=priorReactionRandom;}
+ const reactionConsumed=reactionAttackHero.reactionAvailable===false,actionPreserved=reactionAttackHero.actionSpent===false&&reactionAttackHero.bonusActionSpent===false;
+ const secondReactionAttack=T.gameplay.heroAttack(reactionAttackPlayer,reactionAttackTarget,true);
+ assert('A Reaction attack consumes only the Reaction and cannot be used twice before refresh',reactionAttackResult===true&&reactionConsumed&&actionPreserved&&secondReactionAttack===false);
  const spentReactionActor=actor({id:'spent-reaction',name:'Spent Reaction',reactionAvailable:false});
  assert('Spent Reaction blocks only reaction use while leaving Action and Bonus Action eligibility intact',!T.gameplay.actionEconomyGate(spentReactionActor,'reaction',true)&&T.gameplay.actionEconomyGate(spentReactionActor,'action',true)&&T.gameplay.actionEconomyGate(spentReactionActor,'bonus-action',true));
  const spentBard=actor({id:'spent-bard',name:'Spent Bard',classId:'Bard',level:3,classLevels:{Bard:3},stats:{STR:10,DEX:12,CON:12,INT:10,WIS:12,CHA:16},reactionAvailable:false,resourcesByClass:{Bard:{inspiration:3}}});
