@@ -433,6 +433,8 @@ try{
  const explicitSkillCheck=T.canonicalAbilityCheck(actor({stats:{STR:10,DEX:10,CON:10,INT:10,WIS:10,CHA:10}}),'Athletics',14,{roll:10,bonusOverride:5});
  assert('Canonical ability checks preserve explicit monster skill bonuses',explicitSkillCheck.total===15&&explicitSkillCheck.success===true);
 
+ const priorSoloActionHooks={afterPlayerAction:context.afterPlayerAction,render:context.render,save:context.save};
+ context.afterPlayerAction=()=>{};context.render=()=>{};context.save=()=>{};
  const priorShoveState=T18.state;
  const shoveHero=actor({id:'solo-shover',name:'Solo Shover',level:1,stats:{STR:16,DEX:10,CON:10,INT:10,WIS:10,CHA:10}});
  const shoveTarget=actor({id:'solo-shove-target',name:'Shove Target',distance:5,size:'medium',saves:{STR:0,DEX:0}});
@@ -453,6 +455,7 @@ try{
  const resistedShove=T.gameplay.soloShove('push');
  assert('Solo player Shove leaves a target in place when its chosen save succeeds',resistedShove&&resistantTarget.distance===5&&!T.has(resistantTarget,'prone'));
  T18.state=priorShoveState;
+ context.afterPlayerAction=priorSoloActionHooks.afterPlayerAction;context.render=priorSoloActionHooks.render;context.save=priorSoloActionHooks.save;
  assert('Solo grapple panel exposes both 2024 Shove outcomes',html.includes('data-action="sr29-shove-push"')&&html.includes('data-action="sr29-shove-prone"')&&html.includes('function sr29SoloShove(mode='));
 
  const abstractGrappler=actor({id:'abstract-hero',name:'Abstract Hero'}),abstractTarget=actor({id:'abstract-foe',name:'Abstract Foe',distance:10});
