@@ -350,6 +350,23 @@ try{
  assert('Multiplayer heroes can choose Athletics or Acrobatics for Escape',typeof T.gameplay.multiplayerEscapeGrapple==='function'&&html.includes('Escape · Athletics')&&html.includes('Escape · Acrobatics'));
  assert('Multiplayer grapple initiation accepts a selected remote hero target and records a pending saving-throw challenge',html.includes('function sr29MpStartGrapple(player,targetId=null)')&&html.includes('mp.grappleChallenges.push')&&html.includes("action:'grapple',targetId"));
  assert('Remote grapple saving throws are delivered only by the targeted hero and resolved through the canonical save resolver',typeof T.gameplay.multiplayerResolveGrappleSave==='function'&&html.includes("item.targetId===player.id")&&html.includes('sr25ResolveCreatureSavingThrow(target,ability,[roll],bonus,challenge.escapeDC'));
+ assert('Multiplayer grapple challenges recover from disconnects, defeated participants, and stale combat rounds',(()=>{
+   const players=[
+     {id:'attacker',connected:true,character:actor({hp:20})},
+     {id:'live',connected:true,character:actor({hp:20})},
+     {id:'gone',connected:false,character:actor({hp:20})},
+     {id:'dead',connected:true,character:actor({hp:0})}
+   ];
+   const snapshot={combat:{round:4,mp:{grappleChallenges:[
+     {id:'live-challenge',attackerId:'attacker',targetId:'live',createdRound:4},
+     {id:'disconnect-challenge',attackerId:'attacker',targetId:'gone',createdRound:4},
+     {id:'defeat-challenge',attackerId:'attacker',targetId:'dead',createdRound:4},
+     {id:'stale-challenge',attackerId:'attacker',targetId:'live',createdRound:3}
+   ]}},campaign:{multiplayer:{players}}};
+   const result=T.gameplay.multiplayerPruneGrappleChallenges(snapshot);
+   return result.removed===3&&result.remaining===1&&snapshot.combat.mp.grappleChallenges[0].id==='live-challenge'&&
+     result.reasons.some(x=>x.reason==='participant-disconnected')&&result.reasons.some(x=>x.reason==='participant-defeated')&&result.reasons.some(x=>x.reason==='challenge-expired');
+ })());
  assert('Multiplayer combat exposes Strength and Dexterity save choices to the targeted hero',html.includes('data-action="sr29-mp-grapple-save"')&&html.includes('data-ability="STR"')&&html.includes('data-ability="DEX"'));
  assert('Multiplayer combat exposes connected party-member grapple targets within 5 feet',html.includes('data-action="sr29-mp-grapple"')&&html.includes('sr12Distance(sr12PlayerPos(me),sr12PlayerPos(p.id))>5'));
  assert('Grapple initiators cannot take another action until the remote target resolves the pending save',html.includes('Wait for the target to resolve the grapple saving throw.')&&html.includes("msg?.action==='grapple-save'"));
