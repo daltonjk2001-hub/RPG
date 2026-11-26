@@ -621,6 +621,14 @@ try{
  const cuttingWordsBlocked=T.gameplay.runFeature(spentBardPlayer,'cuttingWords');
  const readiedAttackBlocked=T.gameplay.heroAttack(spentBardPlayer,gateEnemy,true);
  assert('A spent Reaction blocks Cutting Words and readied attacks without spending another resource',!cuttingWordsBlocked&&!readiedAttackBlocked&&spentBard.reactionAvailable===false&&spentBard.resourcesByClass.Bard.inspiration===3);
+ const reactionCaster=actor({id:'reaction-caster',name:'Reaction Caster',actionSpent:true,bonusActionSpent:true,reactionAvailable:true});
+ T18.state={character:reactionCaster,combat:{round:1},campaign:{},log:[]};
+ const reactionCastFinalized=T.gameplay.finalizeCastResources(reactionCaster,'reaction',true,{actionSpent:true,bonusActionSpent:true});
+ assert('A successful Reaction spell spends the Reaction without overwriting the existing Action or Bonus Action state',reactionCastFinalized&&reactionCaster.reactionAvailable===false&&reactionCaster.actionSpent===true&&reactionCaster.bonusActionSpent===true);
+ const failedReactionCaster=actor({id:'failed-reaction-caster',name:'Failed Reaction Caster',actionSpent:false,bonusActionSpent:false,reactionAvailable:true});
+ const failedReactionFinalized=T.gameplay.finalizeCastResources(failedReactionCaster,'reaction',false,{actionSpent:false,bonusActionSpent:false});
+ assert('A failed or cancelled Reaction spell does not consume the Reaction',!failedReactionFinalized&&failedReactionCaster.reactionAvailable===true&&failedReactionCaster.actionSpent===false&&failedReactionCaster.bonusActionSpent===false);
+ assert('A Reaction consumed by spellcasting cannot be reused later in the same turn',!T.gameplay.actionEconomyGate(reactionCaster,'reaction',true));
  const surgeFighter=actor({id:'surge-fighter',name:'Surge Fighter',classId:'Fighter',level:2,classLevels:{Fighter:2},actionSpent:true,bonusActionSpent:true});
  const surgePlayer={id:'surge-fighter',name:'Surge Fighter',character:surgeFighter};
  T18.state={character:surgeFighter,campaign:{multiplayer:{players:[surgePlayer]}},combat:{mp:{heroPositions:{'surge-fighter':{x:1,y:1}},turnOrder:[{kind:'hero',id:'surge-fighter',faction:'hero'}],index:0},enemies:[],map:{width:8,height:6,terrain:[]}},log:[]};
