@@ -120,6 +120,18 @@ try{
  const monsterRepeatAttached=monsterRepeatInstance?.repeatSave?.trigger==='end-turn'&&monsterRepeatInstance.repeatSave.ability==='WIS'&&monsterRepeatInstance.repeatSave.dc===13&&monsterRepeatInstance.repeatSave.sourceId==='repeat-monster-id';
  const monsterRepeatSuccess=T.processRepeatSaves(monsterRepeatTarget,'end-turn','monster-repeat-target-turn',[20]);
  assert('Monster save-based conditions attach a source-linked end-of-turn repeat save and end on a later success',monsterRepeatActionResult===true&&monsterRepeatAttached&&monsterRepeatSuccess.ended===1&&!T.has(monsterRepeatTarget,'frightened'),JSON.stringify({monsterRepeatActionResult,monsterRepeatInstance,monsterRepeatSuccess,conditions:monsterRepeatTarget.conditions,log:T18.state.log}));
+ const persistedHero=actor({id:'persisted-hero',name:'Persisted Hero',classId:'Fighter',ancestry:'Human',level:1,inventory:[],proficiencies:[]});
+ const persistedGrapple=T.apply(persistedHero,'grappled','permanent','Persistence Monster',{sourceId:'persistence-monster',grapplerId:'persistence-monster',grappleRange:10});
+ persistedGrapple.instance.escapeDC=15;persistedGrapple.instance.handSlot='monster-appendage-2';
+ persistedGrapple.instance.repeatSave={trigger:'end-turn',endsOnSuccess:true,ability:'WIS',dc:14,sourceSpell:'Dreadful Glare',sourceId:'persistence-monster',sourceName:'Persistence Monster'};
+ const priorPersistenceState=T18.state;
+ T18.state={character:persistedHero,campaign:{day:1,region:'Persistence Test',location:'Persistence Test',companions:[],npcs:[],sideQuests:[],story:{},sr14:{factions:{}}},log:[],combat:null,view:'journal'};
+ const persistenceSnapshot=T18.snapshot('V29 grapple metadata round-trip');
+ const normalizedPersistence=T18.normalizeImport(persistenceSnapshot);
+ const validatedPersistence=T18.validateSave(normalizedPersistence);
+ const restoredGrapple=validatedPersistence.state?.character?.conditions?.find(item=>item.name==='grappled');
+ assert('Grapple source, reach, escape DC, appendage slot, and repeat-save metadata survive save/import normalization and validation',validatedPersistence.ok&&restoredGrapple?.grapplerId==='persistence-monster'&&restoredGrapple.grappleRange===10&&restoredGrapple.escapeDC===15&&restoredGrapple.handSlot==='monster-appendage-2'&&restoredGrapple.repeatSave?.dc===14&&restoredGrapple.repeatSave?.sourceId==='persistence-monster',JSON.stringify({valid:validatedPersistence.ok,reason:validatedPersistence.reason,restoredGrapple}));
+ T18.state=priorPersistenceState;
  const damageHookTarget=actor({id:'damage-hook-target',name:'Damage Hook Target',classId:'Wizard',level:1});
  T18.state={character:damageHookTarget,combat:{round:1},campaign:{},log:[]};
  T.apply(damageHookTarget,'charmed',10,'Dominate Person');
