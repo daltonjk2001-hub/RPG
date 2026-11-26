@@ -361,6 +361,8 @@ try{
  const abstractVictimRelease=T.gameplay.reconcileAbstractGrapples({character:abstractVictim,combat:{enemies:[abstractHolder]}});
  assert('Abstract-distance reconciliation also releases a player held by a displaced enemy',abstractVictimRelease.count===1&&!T.has(abstractVictim,'grappled'));
  assert('V29 reconciliation runs after multiplayer hero movement, shove, weapon mastery push and spell resolution',html.includes('sr12MoveHero=function(...args)')&&html.includes('sr131Maneuver=function(...args)')&&html.includes('sr7ApplyMastery=function(...args)')&&html.includes('sr14CastSpellComplete=function(...args)'));
+ assert('Solo grappled monsters spend their action on a source-specific canonical escape check',html.includes('sr7EnemySpecial=function(enemy)')&&html.includes('sr29EscapeGrapple(enemy,{instanceId:grapple.id')&&html.includes('bonusOverride:skillBonus'));
+
 
 
 }catch(error){assert('V29 condition suite completes without uncaught runtime errors',false,error?.stack||String(error));}
