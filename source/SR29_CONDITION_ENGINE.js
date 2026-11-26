@@ -265,7 +265,7 @@ function sr29UiTargets(snapshot=state) {
 }
 function sr29UiTarget(snapshot,key) {
   if(key==='player')return snapshot?.character||null;
-  const match=String(key||'').match(/^enemy:(\\d+)$/);
+  const match=String(key||'').match(/^enemy:(\d+)$/);
   if(!match)return null;
   return snapshot?.combat?.enemies?.[Number(match[1])]||null;
 }
