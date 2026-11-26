@@ -626,6 +626,22 @@ function sr29ParseRepeatSave(description){
   const ability=match?({strength:'STR',dexterity:'DEX',constitution:'CON',intelligence:'INT',wisdom:'WIS',charisma:'CHA'}[match[1].toLowerCase()]):null;
   return {trigger,endsOnSuccess:true,ability};
 }
+function sr29RepeatSaveSpecForSpell(spellName,spell){
+  const parsed=sr29ParseRepeatSave(spell?.description||spell?.desc||'');
+  if(parsed)return parsed;
+  if(String(spellName||'').toLowerCase()==='hold person')return {trigger:'end-turn',endsOnSuccess:true,ability:'WIS'};
+  return null;
+}
+if(typeof sr14SpellEffectComplete==='function'){
+  const sr29PriorSpellEffectComplete=sr14SpellEffectComplete;
+  sr14SpellEffectComplete=function(name,spell){
+    if(String(name||'').toLowerCase()==='hold person'&&spell){
+      spell.description=spell.description||'The target must succeed on a Wisdom saving throw or have the Paralyzed condition for the duration.';
+      spell.condition='paralyzed';spell.save='WIS';spell.saveAbility='WIS';spell.duration=spell.duration||'1 minute';spell.concentration=true;
+    }
+    return sr29PriorSpellEffectComplete.call(this,name,spell);
+  };
+}
 function sr29SpellSaveDetails(target,entries){
   const name=String(target?.name||'');
   const message=(entries||[]).map(entry=>String(entry?.msg??entry??'')).find(text=>text.startsWith(name+' ')&&/(?:makes\s+a?\s+|rolls\s+)(?:STR|DEX|CON|INT|WIS|CHA)\s+save\b/i.test(text));
@@ -686,7 +702,7 @@ if(typeof sr14CastSpellComplete==='function'){
     const effect=spell&&typeof sr14SpellEffectComplete==='function'?sr14SpellEffectComplete(spellName,spell):null;
     const castTime=String(spell?.castingTime||'Action'),castKind=/bonus action/i.test(castTime)?'bonus-action':/reaction/i.test(castTime)?'reaction':'action';
     if(!sr29ActionEconomyGate(caster,castKind,!!state?.combat))return false;
-    const displacement=spell?sr29ParseForcedDisplacement(spell.description):null,repeatSave=spell?sr29ParseRepeatSave(spell.description):null;
+    const displacement=spell?sr29ParseForcedDisplacement(spell.description):null,repeatSave=spell?sr29RepeatSaveSpecForSpell(spellName,spell):null;
     const combat=state?.combat,target=combat?.mp?(typeof sr4Target==='function'?sr4Target():null):(typeof targetEnemy==='function'?targetEnemy():null);
     const origin=combat?.mp&&typeof sr12PlayerPos==='function'?sr12PlayerPos(player.id):combat?.heroPos;
     let targets=[];
@@ -897,5 +913,5 @@ if(typeof sr10Dodge==='function'){
 }
 
 if(globalThis.__SR29_TEST){
-  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,actionEconomyGate:sr29ActionEconomyGate,runFeature:typeof sr14RunFeature==='function'?sr14RunFeature:null,classPower:typeof sr12ClassPower==='function'?sr12ClassPower:null,cunningAction:typeof sr137CunningAction==='function'?sr137CunningAction:null,heroAction:typeof sr12HeroAction==='function'?sr12HeroAction:null,heroAttack:typeof sr12HeroAttack==='function'?sr12HeroAttack:null,castSpell:typeof sr14CastSpellComplete==='function'?sr14CastSpellComplete:null,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,soloShove:sr29SoloShove,parseForcedDisplacement:sr29ParseForcedDisplacement,parseRepeatSave:sr29ParseRepeatSave,attachRepeatSave:sr29AttachRepeatSave,spellTargetFailedSave:sr29SpellTargetFailedSave,playerSpellDisplace:sr29ApplyPlayerSpellDisplacement,repeatSaveAfterDamage:sr29RepeatSaveAfterDamage,advanceIndex:typeof sr12AdvanceIndex==='function'?sr12AdvanceIndex:null,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerResolveGrappleSave:sr29MpResolveGrappleSave,multiplayerPruneGrappleChallenges:sr29MpPruneGrappleChallenges,multiplayerGrappleMovePlan:sr29MpGrappleMovePlan,multiplayerVoluntaryMovementEligibility:sr29MpVoluntaryMovementEligibility,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
+  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,actionEconomyGate:sr29ActionEconomyGate,runFeature:typeof sr14RunFeature==='function'?sr14RunFeature:null,classPower:typeof sr12ClassPower==='function'?sr12ClassPower:null,cunningAction:typeof sr137CunningAction==='function'?sr137CunningAction:null,heroAction:typeof sr12HeroAction==='function'?sr12HeroAction:null,heroAttack:typeof sr12HeroAttack==='function'?sr12HeroAttack:null,castSpell:typeof sr14CastSpellComplete==='function'?sr14CastSpellComplete:null,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,soloShove:sr29SoloShove,parseForcedDisplacement:sr29ParseForcedDisplacement,parseRepeatSave:sr29ParseRepeatSave,repeatSaveSpecForSpell:sr29RepeatSaveSpecForSpell,spellEffectComplete:typeof sr14SpellEffectComplete==='function'?sr14SpellEffectComplete:null,attachRepeatSave:sr29AttachRepeatSave,spellTargetFailedSave:sr29SpellTargetFailedSave,playerSpellDisplace:sr29ApplyPlayerSpellDisplacement,repeatSaveAfterDamage:sr29RepeatSaveAfterDamage,advanceIndex:typeof sr12AdvanceIndex==='function'?sr12AdvanceIndex:null,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerResolveGrappleSave:sr29MpResolveGrappleSave,multiplayerPruneGrappleChallenges:sr29MpPruneGrappleChallenges,multiplayerGrappleMovePlan:sr29MpGrappleMovePlan,multiplayerVoluntaryMovementEligibility:sr29MpVoluntaryMovementEligibility,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
 }
