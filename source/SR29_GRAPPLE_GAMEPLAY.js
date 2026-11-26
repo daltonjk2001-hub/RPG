@@ -803,6 +803,10 @@ if(typeof sr14CastSpellComplete==='function'){
     if(!sr29ActionEconomyGate(caster,castKind,!!state?.combat))return false;
     const displacement=spell?sr29SpellDisplacementSpec(spell):null,repeatSave=spell?sr29RepeatSaveSpecForSpell(spellName,spell):null;
     const resourcesBefore={actionSpent:caster?.actionSpent,bonusActionSpent:caster?.bonusActionSpent};
+    const castMode=args[4]||{},reservedSlot=spell&&Number(spell.level)>0&&!castMode.ritual?sr14GetCastSlot(caster,Number(spell.level)):null;
+    const slotLevel=Number(reservedSlot?.level??reservedSlot),slotKind=String(reservedSlot?.kind||'regular');
+    const slotMapBefore=slotKind==='pact'?caster?.pactSlotsByLevel:caster?.spellSlotsByLevel;
+    const slotCountBefore=Number(slotMapBefore?.[slotLevel])||0;
     const combat=state?.combat,target=combat?.mp?(typeof sr4Target==='function'?sr4Target():null):(typeof targetEnemy==='function'?targetEnemy():null);
     const origin=combat?.mp&&typeof sr12PlayerPos==='function'?sr12PlayerPos(player.id):combat?.heroPos;
     const hadCharacterPosition=!!caster&&Object.prototype.hasOwnProperty.call(caster,'position');
@@ -822,6 +826,17 @@ if(typeof sr14CastSpellComplete==='function'){
     const beforeLog=Array.isArray(state?.log)?state.log.length:0;
     const result=sr29PriorCastSpell.apply(this,args);
     sr29FinalizeCastResources(caster,castKind,result,resourcesBefore);
+    // The legacy V18 cast path compares a structured slot object to a number, so
+    // successful leveled casts can skip consumption. Ensure one slot is spent,
+    // but do not double-spend if a future base resolver already consumed it.
+    if(result&&reservedSlot&&Number.isFinite(slotLevel)&&slotLevel>0&&slotCountBefore>0){
+      const slotMap=slotKind==='pact'?caster?.pactSlotsByLevel:caster?.spellSlotsByLevel;
+      const currentCount=Number(slotMap?.[slotLevel])||0;
+      if(currentCount>=slotCountBefore){
+        if(typeof reservedSlot==='object'&&typeof sr7ConsumeCastSlot==='function')sr7ConsumeCastSlot(caster,reservedSlot);
+        else if(slotMap){slotMap[slotLevel]=Math.max(0,currentCount-1);if(typeof sr7UpdateSlotTotals==='function')sr7UpdateSlotTotals(caster);}
+      }
+    }
     if(result&&teleportPlan){
       // The legacy cast path still performs its own fallback relocation. Replace it with
       // the prevalidated V29 destination and restore the non-authoritative legacy field.
