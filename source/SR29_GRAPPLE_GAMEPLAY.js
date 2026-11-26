@@ -270,7 +270,7 @@ if(typeof sr18ResolveMonsterAction==='function'&&typeof sr29Apply==='function'){
     if(!resolved.success){log(`${enemy.name} uses ${action.name} against ${hero.name}: miss.`,'rolllog');return true;}
     let amount=rollDice(sr14MonsterActionDamage(action)||'1d4');if(resolved.critical)amount+=rollDice(sr14MonsterActionDamage(action)||'1d4');
     const actual=sr18MonsterApplyDamage(target,amount,sr18Text(action.damage?.[0]?.type||'physical').toLowerCase(),enemy);
-    const eligibility=sr29GrappleEligibility(enemy,c,{grapplerSize:sr29MpSize(enemy),targetSize:sr29MpSize(c),freeHands:capacity-active.length,activeGrapples:active,distance:dist,reach:grappleRange});
+    const eligibility=sr29GrappleEligibility(enemy,c,{grapplerSize:sr29MpSize(enemy),targetSize:sr29MpSize(c),freeHands:capacity,activeGrapples:active,distance:dist,reach:grappleRange});
     if(eligibility.legal){
       sr29Apply(c,'grappled','permanent',enemy.name,{sourceId:grapplerId,grapplerId,grappleRange,escapeDC,grapplerSize:sr29MpSize(enemy),targetSize:sr29MpSize(c),handSlot});
       log(`${enemy.name} hits ${hero.name} for ${actual} damage and grapples them (escape DC ${escapeDC}).`,'badlog');
