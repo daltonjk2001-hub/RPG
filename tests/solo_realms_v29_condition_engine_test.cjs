@@ -85,6 +85,17 @@ try{
  const legacyTeleportCast=T.gameplay.castLegacySpell(legacyTeleportPlayer,'Misty Step');
  const legacyTeleportDestination=T18.state.combat.mp.heroPositions['legacy-teleporter'];
  assert('Legacy multiplayer teleport fallback uses V29 range/LOS/occupancy checks, consumes one structured slot, preserves Bonus Action timing, and reconciles position',legacyTeleportCast&&Math.max(Math.abs(legacyTeleportDestination.x-1),Math.abs(legacyTeleportDestination.y-3))*5<=30&&(legacyTeleportDestination.x!==1||legacyTeleportDestination.y!==3)&&!(legacyTeleportDestination.x===2&&legacyTeleportDestination.y===3)&&Number(legacyTeleportCaster.spellSlotsByLevel[2])===1&&legacyTeleportCaster.actionSpent===false&&legacyTeleportCaster.bonusActionSpent===true&&legacyTeleportCaster.spellSlotSpentThisTurn===true,JSON.stringify({legacyTeleportCast,legacyTeleportDestination,slots:legacyTeleportCaster.spellSlotsByLevel,actionSpent:legacyTeleportCaster.actionSpent,bonusActionSpent:legacyTeleportCaster.bonusActionSpent,spellSlotSpentThisTurn:legacyTeleportCaster.spellSlotSpentThisTurn}));
+ const gridPriorState=T18.state;
+ const gridHero=actor({id:'grid-hero',name:'Grid Hero',size:'medium',movement:30,movementSpent:0});
+ const gridHeldEnemy=actor({id:'grid-held-enemy',name:'Grid Held Enemy',size:'medium',hp:20,pos:{x:2,y:3}});
+ T18.state={character:gridHero,campaign:{day:1,region:'Grid Test',location:'Grid Test',visited:['Grid Test'],companions:[],npcs:[],sideQuests:[],story:{},flags:{},mainQuest:{kind:'test',title:'Grid Test',goal:'Validate solo tactical grapple movement'}},combat:{mp:null,heroPos:{x:1,y:3},enemies:[gridHeldEnemy],map:{width:8,height:6,terrain:teleportTerrain.filter(cell=>cell.kind!=='wall')}},log:[]};
+ T.apply(gridHeldEnemy,'grappled','permanent','Grid Hero',{sourceId:'grid-hero',grapplerId:'grid-hero',grappleRange:5});
+ const soloGridDrag=T.gameplay.gridMove(-1,0);
+ assert('Solo tactical grid movement drags one held enemy into the vacated square and charges doubled movement',soloGridDrag&&T18.state.combat.heroPos.x===0&&T18.state.combat.heroPos.y===3&&gridHeldEnemy.pos.x===1&&gridHeldEnemy.pos.y===3&&gridHero.movementSpent===10&&T.has(gridHeldEnemy,'grappled'),JSON.stringify({soloGridDrag,heroPos:T18.state.combat.heroPos,enemyPos:gridHeldEnemy.pos,movementSpent:gridHero.movementSpent}));
+ T.apply(gridHero,'grappled','permanent','Grid Held Enemy',{sourceId:'grid-held-enemy',grapplerId:'grid-held-enemy',grappleRange:5});
+ const blockedGrappledGridMove=T.gameplay.gridMove(0,-1);
+ assert('Solo tactical grid movement rejects voluntary movement by a Grappled hero',blockedGrappledGridMove===false&&T18.state.combat.heroPos.x===0&&T18.state.combat.heroPos.y===3&&gridHero.movementSpent===10);
+ T18.state=gridPriorState;
  const priorState=T18.state;
  const soloMonster={id:'solo-displacer',name:'Solo Displacer',distance:10,hp:20};
  T18.state={character:actor(),log:[],combat:{mp:null,enemies:[soloMonster],heroPos:{x:1,y:3}}};
