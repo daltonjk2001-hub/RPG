@@ -555,6 +555,26 @@ try{
  const cuttingWordsBlocked=T.gameplay.runFeature(spentBardPlayer,'cuttingWords');
  const readiedAttackBlocked=T.gameplay.heroAttack(spentBardPlayer,gateEnemy,true);
  assert('A spent Reaction blocks Cutting Words and readied attacks without spending another resource',!cuttingWordsBlocked&&!readiedAttackBlocked&&spentBard.reactionAvailable===false&&spentBard.resourcesByClass.Bard.inspiration===3);
+ const surgeFighter=actor({id:'surge-fighter',name:'Surge Fighter',classId:'Fighter',level:2,classLevels:{Fighter:2},actionSpent:true,bonusActionSpent:true});
+ const surgePlayer={id:'surge-fighter',name:'Surge Fighter',character:surgeFighter};
+ T18.state={character:surgeFighter,campaign:{multiplayer:{players:[surgePlayer]}},combat:{mp:null,enemies:[]},log:[]};
+ const surgeResult=T.gameplay.classPower(surgePlayer);
+ assert('Action Surge remains usable after the Bonus Action and does not consume it',surgeResult===true&&surgeFighter.actionSurgeUsed===true&&surgeFighter.actionSpent===false&&surgeFighter.bonusActionSpent===true);
+ const actionCleric=actor({id:'action-cleric',name:'Action Cleric',classId:'Cleric',level:5,classLevels:{Cleric:5},hp:10,maxHp:30,actionSpent:false,bonusActionSpent:true});
+ const clericPlayer={id:'action-cleric',name:'Action Cleric',connected:true,character:actionCleric};
+ T18.state={character:actionCleric,campaign:{multiplayer:{players:[clericPlayer]}},combat:{mp:null,enemies:[]},log:[]};
+ const clericPower=T.gameplay.classPower(clericPlayer);
+ assert('The legacy Cleric healing power consumes an Action rather than a Bonus Action',clericPower===true&&actionCleric.actionSpent===true&&actionCleric.bonusActionSpent===true);
+ const blockedWizard=actor({id:'blocked-wizard',name:'Blocked Wizard',classId:'Wizard',level:5,spellSlots:0,maxSpellSlots:5});
+ const wizardPlayer={id:'blocked-wizard',name:'Blocked Wizard',character:blockedWizard};
+ T18.state={character:blockedWizard,campaign:{multiplayer:{players:[wizardPlayer]}},combat:{mp:null,enemies:[]},log:[]};
+ const wizardRecovery=T.gameplay.classPower(wizardPlayer);
+ assert('Arcane Recovery cannot be used as an in-combat Bonus Action',wizardRecovery===false&&blockedWizard.spellSlots===0&&!blockedWizard.bonusActionSpent);
+ const spentBarbarian=actor({id:'spent-barbarian',name:'Spent Barbarian',classId:'Barbarian',level:1,rageRounds:0,bonusActionSpent:true});
+ const barbarianPlayer={id:'spent-barbarian',name:'Spent Barbarian',character:spentBarbarian};
+ T18.state={character:spentBarbarian,campaign:{multiplayer:{players:[barbarianPlayer]}},combat:{mp:null,enemies:[]},log:[]};
+ const rageBlocked=T.gameplay.classPower(barbarianPlayer);
+ assert('Rage remains gated by an already-spent Bonus Action',rageBlocked===false&&spentBarbarian.rageRounds===0&&spentBarbarian.bonusActionSpent===true);
  T18.state=priorSpellState;
 
  assert('Solo grapple panel exposes both 2024 Shove outcomes',html.includes('data-action="sr29-shove-push"')&&html.includes('data-action="sr29-shove-prone"')&&html.includes('function sr29SoloShove(mode='));
