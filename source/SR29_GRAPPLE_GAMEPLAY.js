@@ -240,7 +240,7 @@ if(typeof sr18ResolveMonsterAction==='function'&&typeof sr29Apply==='function'){
     const grapplerId=String(enemy?.id||enemy?.name||'unknown-grappler');
     const active=sr29MpActiveGrapples({id:grapplerId}),capacity=sr29CreatureGrappleAppendageCapacity(enemy);
     if(active.length>=capacity){log(`${enemy.name} has no free appendage to grapple another creature.`,'muted');return false;}
-    const escapeDC=Number(desc.match(/escape\\s+DC\\s*(\\d+)/i)?.[1]||save.dc||12);
+    const escapeDC=Number(desc.match(/escape\s+DC\s*(\d+)/i)?.[1]||save.dc||12);
     const range=sr18ParseActionRange(action),grappleRange=Math.max(5,Number(range.ranged?range.normalRange:range.reach)||5);
     const priorApply=sr29Apply;
     sr29Apply=function(creature,name,duration,source,options={}){
