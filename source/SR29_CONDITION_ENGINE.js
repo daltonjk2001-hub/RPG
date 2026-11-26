@@ -187,11 +187,11 @@ function sr29ResolveRepeatSave(target,spec,rolls=null){
   const ability=String(spec?.ability||'').toUpperCase(),dc=Number(spec?.dc);
   if(!target||!['STR','DEX','CON','INT','WIS','CHA'].includes(ability)||!Number.isFinite(dc))return {success:false,invalid:true};
   const effects=typeof sr18ActiveEffect==='function'?sr18ActiveEffect(target):(target?.activeEffects||[]);
-  const advantage=effects.some(x=>x.saveAdvantage===true);
-  const dice=Array.isArray(rolls)?rolls:(advantage?[die(20),die(20)]:[die(20)]);
+  const advantage=effects.some(x=>x.saveAdvantage===true),disadvantage=spec?.disadvantage===true||(ability==='DEX'&&sr29Has(target,'restrained'));
+  const dice=Array.isArray(rolls)?rolls:((advantage||disadvantage)?[die(20),die(20)]:[die(20)]);
   const bonus=sr29RepeatSaveBonus(target,ability);
   if(typeof sr25ResolveCreatureSavingThrow==='function'){
-    return sr25ResolveCreatureSavingThrow(target,ability,dice,bonus,dc,{advantage,autoFail:sr29AutoFailSave(target,ability),useLegendaryResistance:true,chooseToFail:spec?.chooseToFail===true});
+    return sr25ResolveCreatureSavingThrow(target,ability,dice,bonus,dc,{advantage,disadvantage,autoFail:sr29AutoFailSave(target,ability),useLegendaryResistance:true,chooseToFail:spec?.chooseToFail===true});
   }
   const total=Number(dice[0])+bonus;
   return {success:total>=dc,total,dc,autoFail:false};
