@@ -266,6 +266,60 @@ document.addEventListener('click',function(event){
   }
 },true);
 
+function sr29ReconcileAbstractGrapples(snapshot=state){
+  const player=snapshot?.character,combat=snapshot?.combat;
+  if(!player||!combat||combat.mp)return {count:0,released:[]};
+  const playerId=String(player.id||player.name||''),released=[];
+  for(const enemy of combat.enemies||[]){
+    const distance=Number(enemy?.distance);
+    if(!Number.isFinite(distance))continue;
+    const enemyId=String(enemy?.id||enemy?.name||'');
+    for(const item of sr29Entries(enemy).filter(x=>x.name==='grappled'&&String(x.grapplerId||x.sourceId||'')===playerId)){
+      const reach=Number(item.grappleRange??item.grappleReach??5);
+      if(distance>reach){const result=sr29ReleaseGrapple(enemy,{instanceId:item.id});if(result.released)released.push({grapplerId:playerId,targetId:enemyId,instanceId:item.id,reason:'abstract-distance-exceeded-reach'});}
+    }
+    for(const item of sr29Entries(player).filter(x=>x.name==='grappled'&&String(x.grapplerId||x.sourceId||'')===enemyId)){
+      const reach=Number(item.grappleRange??item.grappleReach??5);
+      if(distance>reach){const result=sr29ReleaseGrapple(player,{instanceId:item.id});if(result.released)released.push({grapplerId:enemyId,targetId:playerId,instanceId:item.id,reason:'abstract-distance-exceeded-reach'});}
+    }
+  }
+  return {count:released.length,released};
+}
+if(typeof sr12MoveHero==='function'){
+  const sr29PriorMoveHero=sr12MoveHero;
+  sr12MoveHero=function(...args){
+    const result=sr29PriorMoveHero.apply(this,args);
+    sr29ReconcileCombatGrapples();
+    return result;
+  };
+}
+if(typeof sr131Maneuver==='function'){
+  const sr29PriorManeuver=sr131Maneuver;
+  sr131Maneuver=function(...args){
+    const result=sr29PriorManeuver.apply(this,args);
+    sr29ReconcileCombatGrapples();
+    return result;
+  };
+}
+if(typeof sr7ApplyMastery==='function'){
+  const sr29PriorApplyMastery=sr7ApplyMastery;
+  sr7ApplyMastery=function(...args){
+    const result=sr29PriorApplyMastery.apply(this,args);
+    sr29ReconcileAbstractGrapples();
+    sr29ReconcileCombatGrapples();
+    return result;
+  };
+}
+if(typeof sr14CastSpellComplete==='function'){
+  const sr29PriorCastSpell=sr14CastSpellComplete;
+  sr14CastSpellComplete=function(...args){
+    const result=sr29PriorCastSpell.apply(this,args);
+    sr29ReconcileAbstractGrapples();
+    sr29ReconcileCombatGrapples();
+    return result;
+  };
+}
+
 if(globalThis.__SR29_TEST){
-  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerEscapeGrapple:sr29MpEscapeGrapple};
+  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples};
 }
