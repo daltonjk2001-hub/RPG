@@ -45,7 +45,7 @@ function sr29SoloStartPlayerGrapple(){
   log(`Unarmed Strike (grapple): d20 ${attackRoll} + ${attackBonus} = ${attackTotal} vs AC ${e.ac||10}. ${hit?'Hit.':'Miss.'}`,hit?'goodlog':'badlog');
   if(!hit){afterPlayerAction();render();save();return true;}
   const chosen=typeof prompt==='function'?prompt('The target chooses a saving throw: enter STR or DEX.','STR'): 'STR';
-  const ability=String(chosen||'').trim().toUpperCase();
+  const ability=String(chosen===null?'STR':chosen||'').trim().toUpperCase();
   if(!['STR','DEX'].includes(ability)){toast('Choose STR or DEX; the grapple attempt is not completed.');return false;}
   const save=sr29SoloTargetSave(e,ability);
   const result=sr29StartGrapple(c,e,{attackHit:true,grapplerSize,targetSize,freeHands,activeGrapples,distance,reach,proficiencyBonus:profBonus(),strengthScore:c.stats.STR,targetSave:save,source:'Unarmed Strike',handSlot:'main'});
