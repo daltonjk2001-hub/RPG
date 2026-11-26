@@ -236,21 +236,46 @@ if(typeof sr18ResolveMonsterAction==='function'&&typeof sr29Apply==='function'){
   const sr29PriorMonsterAction=sr18ResolveMonsterAction;
   sr18ResolveMonsterAction=function(enemy,action,target){
     const desc=sr18Text(action?.description),save=sr14ParseMonsterSave(desc),condition=sr18ParseCondition(desc);
-    if(condition!=='grappled'||!save)return sr29PriorMonsterAction.apply(this,arguments);
+    if(condition!=='grappled')return sr29PriorMonsterAction.apply(this,arguments);
+    const hero=target?.player,p=hero,c=hero?.character;
+    if(!p||!c)return sr29PriorMonsterAction.apply(this,arguments);
     const grapplerId=String(enemy?.id||enemy?.name||'unknown-grappler');
     const active=sr29MpActiveGrapples({id:grapplerId}),capacity=sr29CreatureGrappleAppendageCapacity(enemy);
     if(active.length>=capacity){log(`${enemy.name} has no free appendage to grapple another creature.`,'muted');return false;}
-    const escapeDC=Number(desc.match(/escape\s+DC\s*(\d+)/i)?.[1]||save.dc||12);
-    const range=sr18ParseActionRange(action),grappleRange=Math.max(5,Number(range.ranged?range.normalRange:range.reach)||5);
-    const priorApply=sr29Apply;
-    sr29Apply=function(creature,name,duration,source,options={}){
-      if(String(name).toLowerCase()==='grappled'&&String(options.grapplerId||options.sourceId||'')===grapplerId){
-        options={...options,escapeDC,grapplerSize:sr29MpSize(enemy),targetSize:sr29MpSize(creature),handSlot:'monster-appendage-'+String(active.length+1)};
-      }
-      return priorApply.call(this,creature,name,duration,source,options);
-    };
-    try{return sr29PriorMonsterAction.apply(this,arguments);}
-    finally{sr29Apply=priorApply;}
+    const range=sr18ParseActionRange(action),dist=enemy.pos&&target.pos?sr12Distance(enemy.pos,target.pos):0;
+    if(!range.ranged&&dist>range.reach){
+      if(state.combat?.mp)sr12EnemyStep(enemy,target.pos);
+      else if(typeof sr10EnemyMove==='function')sr10EnemyMove(enemy);
+      return false;
+    }
+    if(enemy.pos&&target.pos&&!sr11HasLOS(enemy.pos,target.pos))return false;
+    const escapeDC=Number(desc.match(/escape\s+DC\s*(\d+)/i)?.[1]||enemy.grappleDC||save?.dc||8+mod(enemy.stats?.STR||10)+Number(enemy.proficiencyBonus||enemy.profBonus||2));
+    const grappleRange=Math.max(5,Number(range.ranged?range.normalRange:range.reach)||5);
+    const handSlot='monster-appendage-'+String(active.length+1);
+    if(save){
+      const priorApply=sr29Apply;
+      sr29Apply=function(creature,name,duration,source,options={}){
+        if(String(name).toLowerCase()==='grappled'&&String(options.grapplerId||options.sourceId||'')===grapplerId){
+          options={...options,escapeDC,grapplerSize:sr29MpSize(enemy),targetSize:sr29MpSize(creature),handSlot};
+        }
+        return priorApply.call(this,creature,name,duration,source,options);
+      };
+      try{return sr29PriorMonsterAction.apply(this,arguments);}
+      finally{sr29Apply=priorApply;}
+    }
+    if(!sr18CanUseAction(enemy))return false;
+    const bonus=Number(action.attack_bonus??enemy.attack)||0,attack=sr11RollAttack(bonus,enemy,c,!range.ranged);
+    const ac=sr12WithHero(hero,()=>computeAC())+(c.buffRounds>0?2:0)+(state.combat?.mp?sr11Cover(target.pos,enemy.pos):0);
+    const resolved=sr25ResolveAttackRecord(attack,ac);
+    if(!resolved.success){log(`${enemy.name} uses ${action.name} against ${hero.name}: miss.`,'rolllog');return true;}
+    let amount=rollDice(sr14MonsterActionDamage(action)||'1d4');if(resolved.critical)amount+=rollDice(sr14MonsterActionDamage(action)||'1d4');
+    const actual=sr18MonsterApplyDamage(target,amount,sr18Text(action.damage?.[0]?.type||'physical').toLowerCase(),enemy);
+    const eligibility=sr29GrappleEligibility(enemy,c,{grapplerSize:sr29MpSize(enemy),targetSize:sr29MpSize(c),freeHands:capacity-active.length,activeGrapples:active,distance:dist,reach:grappleRange});
+    if(eligibility.legal){
+      sr29Apply(c,'grappled','permanent',enemy.name,{sourceId:grapplerId,grapplerId,grappleRange,escapeDC,grapplerSize:sr29MpSize(enemy),targetSize:sr29MpSize(c),handSlot});
+      log(`${enemy.name} hits ${hero.name} for ${actual} damage and grapples them (escape DC ${escapeDC}).`,'badlog');
+    }else log(`${enemy.name} hits ${hero.name} for ${actual} damage, but cannot establish a grapple: ${eligibility.reason}.`,'badlog');
+    return true;
   };
 }
 if(typeof sr12HeroAction==='function'){
