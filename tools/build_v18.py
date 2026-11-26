@@ -121,6 +121,13 @@ def build_runtime() -> str:
         raise SystemExit("Expected two legacy Rogue Sneak Attack prone shortcuts.")
     base = base.replace(sneak_prone, "||roll.adv||c.hidden")
 
+    # The V13.7 Rogue regression now includes Sneak Attack because an Unconscious
+    # target grants Advantage; keep its expected damage aligned with the 2024 rule.
+    old_unconscious_rogue_assertion = "damageBefore===20&&sleeping.hp===12"
+    if base.count(old_unconscious_rogue_assertion) != 1:
+        raise SystemExit("Expected one legacy Unconscious Rogue attack assertion.")
+    base = base.replace(old_unconscious_rogue_assertion, "damageBefore===20&&sleeping.hp===2&&state.log.some(x=>/critical hit/.test(x.msg))&&state.log.some(x=>/Sneak Attack adds critical extra damage/.test(x.msg))")
+
     # V10 initiative must skip Petrified actors as well as other incapacitating conditions.
     enemy_skip = "['stunned','paralyzed','unconscious','incapacitated']"
     if base.count(enemy_skip) != 1:
