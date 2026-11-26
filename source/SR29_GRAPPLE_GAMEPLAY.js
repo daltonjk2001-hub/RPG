@@ -3,7 +3,6 @@
  * be tested and revised without changing condition storage semantics.
  */
 const SR29_GRAPPLE_GAMEPLAY_VERSION='29.1.0';
-let SR29_PLAYER_ATTACK_CONTEXT=null;
 
 function sr29SoloGrapplerId(actor){
   return String(actor?.id||actor?.name||'');
@@ -822,8 +821,6 @@ if(typeof sr12ApplyDamage==='function'){
   sr12ApplyDamage=function(enemy,amount,...args){
     const result=sr29PriorApplyDamage.call(this,enemy,amount,...args);
     sr29RepeatSaveAfterDamage(enemy,result);
-    const attackContext=SR29_PLAYER_ATTACK_CONTEXT;
-    if(attackContext&&attackContext.target===enemy&&attackContext.mastery==='Push')sr29ApplyMasteryPush(enemy,attackContext.player,attackContext.origin);
     return result;
   };
 }
@@ -911,12 +908,14 @@ if(typeof sr12HeroAttack==='function'){
   sr12HeroAttack=function(player,targetOverride=null,reaction=false,...args){
     const kind=reaction?'reaction':'action',character=player?.character;
     if(!sr29ActionEconomyGate(character,kind,true))return false;
-    const target=targetOverride||(typeof sr4Target==='function'?sr4Target():null),weapon=String(character?.weapon||''),mastery=SR6_MASTERY?.[weapon]||WEAPONS?.[weapon]?.mastery;
-    const previousContext=SR29_PLAYER_ATTACK_CONTEXT;
-    if(state?.combat?.mp&&mastery==='Push')SR29_PLAYER_ATTACK_CONTEXT={player,target,weapon,mastery,origin:sr12PlayerPos(player?.id)};
-    let result;
-    try{result=sr29PriorHeroAttack.call(this,player,targetOverride,reaction,...args);}
-    finally{SR29_PLAYER_ATTACK_CONTEXT=previousContext;}
+    const target=targetOverride||(typeof sr4Target==='function'?sr4Target():null),weapon=String(character?.weapon||''),mastery=typeof SR6_MASTERY!=='undefined'?SR6_MASTERY[weapon]:WEAPONS?.[weapon]?.mastery;
+    const beforeLog=(state?.log||[]).length,origin=state?.combat?.mp?sr12PlayerPos(player?.id):null;
+    const result=sr29PriorHeroAttack.call(this,player,targetOverride,reaction,...args);
+    if(result&&state?.combat?.mp&&mastery==='Push'&&target&&origin){
+      const prefix=`${player?.name||character?.name||''} attacks ${target.name}:`;
+      const hits=(state.log||[]).slice(beforeLog).filter(entry=>{const message=String(entry?.msg??entry??'');return message.startsWith(prefix)&&/\\bHit\\./.test(message);}).length;
+      for(let i=0;i<hits;i++)sr29ApplyMasteryPush(target,player,origin);
+    }
     return result;
   };
 }
