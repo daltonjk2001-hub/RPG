@@ -75,7 +75,13 @@ Regression coverage checks tactical Push distance, Pull direction, blocked/occup
 
 Monster teleport actions now have a destination-selection layer: the planner searches within the stated range, rejects the current square and illegal/occupied destinations, requires line of sight, and prefers a legal destination that closes distance to the target. Solo theater-of-the-mind teleport actions update abstract monster separation. Tactical multiplayer teleport commits a selected grid position and reconciles grapples. Regression tests cover legal destination choice, blocked-destination rejection, stated range, and solo abstract relocation.
 
-Still open: player-originated forced movement, teleport effects that relocate a player or a target rather than the acting monster, every monster feature wording, and a complete audit of direct position writes. The current teleport behavior covers monster self-teleport actions with a range expressed in feet; it is not evidence that all teleport effects are covered.
+## V29.9 player-originated solo Shove
+
+Solo theater-of-the-mind combat now exposes both 2024 Shove outcomes: push the target 5 feet away or knock it Prone. The target makes its stronger legal Strength or Dexterity save against the attacker's Shove DC (8 + Strength modifier + proficiency bonus); a successful save prevents the effect. The push updates abstract separation and immediately reconciles source-linked grapple reach. The tactical multiplayer Shove path remains in place, and Weapon Mastery Push continues to update solo abstract distance.
+
+Regression coverage now exercises solo Push displacement, grapple release after the push, the Prone outcome, successful-save resistance, and the player-facing controls.
+
+Still open: player-originated spell effects that force-move a target, player-target teleport and other teleport effects beyond monster self-teleport, every monster feature wording, and a complete audit of direct position writes. The current teleport behavior covers monster self-teleport actions with a range expressed in feet; it is not evidence that all teleport effects are covered.
 
 ## Duration semantics
 
@@ -96,7 +102,7 @@ The condition dashboard remains **Partial** until the remaining acceptance crite
 1. Add dedicated character/combat/enemy status views; the condition panel now includes remote multiplayer party members during multiplayer combat.
 2. Audit every player-facing bonus-action and reaction feature path and make every harmful spell/feature path honor the Charmed source restriction. The canonical eligibility service and V18 monster Parry/damage-reduction reaction gates are implemented; player-side feature-specific reaction dispatch remains to be traced and verified.
 3. Route every ability check, saving throw, initiative roll, and attack path—including Director-proposed and multiplayer actions—through Exhaustion and condition modifiers.
-4. Complete V29 grapple integration beyond the current solo-combat adapter: multiplayer target save-choice and turn routing, monster-specific grapple resolution, exact equipment/appendage tracking, teleport destinations, solo abstract-distance forced displacement, player-originated forced movement, direct-position-write audit, and live multiplayer timing. Solo Unarmed Strike initiation, action-based Escape, and abstract-distance drag-cost accounting are now connected. Automatic release for an Incapacitated grappler or a target moved beyond its stored reach remains implemented and covered.
+4. Complete V29 grapple integration beyond the current solo-combat adapter: multiplayer target save-choice and turn routing, monster-specific grapple resolution, exact equipment/appendage tracking, teleport destinations, solo abstract-distance forced displacement, player-originated spell displacement and player-target teleport, direct-position-write audit, and live multiplayer timing. Solo player Shove now supports 5-foot Push and Prone outcomes in theater-of-the-mind combat; weapon mastery Push remains connected. Solo Unarmed Strike initiation, action-based Escape, and abstract-distance drag-cost accounting are now connected. Automatic release for an Incapacitated grappler or a target moved beyond its stored reach remains implemented and covered.
 5. Complete Frightened source visibility and movement restrictions against exact line of sight and target identity.
 6. Add condition-specific repeat-save procedures and full spell/monster-feature effect transactions instead of relying on inferred text or generic durations.
 7. Perform full save/import compatibility verification and human playtests across standalone, PWA, Android touch, and two-device multiplayer.
