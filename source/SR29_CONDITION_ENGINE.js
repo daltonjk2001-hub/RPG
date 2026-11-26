@@ -248,6 +248,94 @@ function sr29LongRestExhaustion(actor) {
   return {changed:result.changed,before:result.before,after:result.after};
 }
 
+
+function sr29Html(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  })[ch]);
+}
+function sr29UiTargets(snapshot=state) {
+  const out=[];
+  if(snapshot?.character)out.push({key:'player',label:'You · '+String(snapshot.character.name||'Player character'),actor:snapshot.character});
+  for(const [index,enemy] of (snapshot?.combat?.enemies||[]).entries()) {
+    if(!enemy||typeof enemy!=='object')continue;
+    out.push({key:'enemy:'+index,label:'Enemy · '+String(enemy.name||('Enemy '+(index+1))),actor:enemy});
+  }
+  return out;
+}
+function sr29UiTarget(snapshot,key) {
+  if(key==='player')return snapshot?.character||null;
+  const match=String(key||'').match(/^enemy:(\\d+)$/);
+  if(!match)return null;
+  return snapshot?.combat?.enemies?.[Number(match[1])]||null;
+}
+function sr29ApplyUiCondition(snapshot,targetKey,name,rounds=1,permanent=false,source='',sourceId='',sourceVisible=false) {
+  const target=sr29UiTarget(snapshot,targetKey),key=sr29Name(name);
+  if(!target)return {applied:false,reason:'missing-target'};
+  const count=Math.max(1,Math.floor(Number(rounds)||1));
+  const origin=String(source||'').trim()||'Manual application';
+  const id=String(sourceId||'').trim();
+  const options={levels:Math.min(6,count)};
+  if(id){options.sourceId=id;if(key==='grappled')options.grapplerId=id;}
+  if(key==='frightened')options.sourceVisible=sourceVisible===true;
+  return sr29Apply(target,key,key==='exhaustion'?1:(permanent?'permanent':Math.min(99,count)),origin,options);
+}
+function sr29RemoveUiCondition(snapshot,targetKey,name,instanceId) {
+  const target=sr29UiTarget(snapshot,targetKey),key=sr29Name(name);
+  if(!target)return {removed:0,reason:'missing-target'};
+  if(key==='exhaustion')return sr29Remove(target,key,{levels:1});
+  return sr29Remove(target,key,{instanceId:String(instanceId||'')});
+}
+function sr29ConditionPanel(snapshot=state) {
+  if(!snapshot?.character)return '';
+  const targets=sr29UiTargets(snapshot);
+  const targetOptions=targets.map(x=>'<option value="'+sr29Html(x.key)+'">'+sr29Html(x.label)+'</option>').join('');
+  const conditionOptions=SR29_CONDITION_NAMES.map(name=>'<option value="'+sr29Html(name)+'">'+sr29Html(SR29_CONDITIONS[name].name)+'</option>').join('');
+  const sections=targets.map(({key,label,actor})=>{
+    const entries=sr29Entries(actor);
+    const rows=entries.map(item=>{
+      const title=SR29_CONDITIONS[item.name]?.name||item.name;
+      const duration=item.permanent?'Permanent':String(item.rounds)+' round'+(Number(item.rounds)===1?'':'s');
+      return '<div class="item-row"><div><strong>'+sr29Html(title)+'</strong><div class="tagline">'+sr29Html(item.source||'Unknown source')+' · '+duration+'</div></div><button class="btn small" type="button" data-sr29-action="remove" data-sr29-target="'+sr29Html(key)+'" data-sr29-condition="'+sr29Html(item.name)+'" data-sr29-instance="'+sr29Html(item.id)+'">Remove</button></div>';
+    }).join('');
+    const levels=Math.max(0,Math.min(6,Math.floor(Number(actor.exhaustion)||0)));
+    const exhaustion=levels?'<div class="item-row"><div><strong>Exhaustion · Level '+levels+'</strong><div class="tagline">Cumulative D20-test and Speed penalties</div></div><button class="btn small" type="button" data-sr29-action="remove" data-sr29-target="'+sr29Html(key)+'" data-sr29-condition="exhaustion">Reduce 1 level</button></div>':'';
+    return '<div class="shop-item"><strong>'+sr29Html(label)+'</strong>'+(rows||'')+exhaustion+(!rows&&!exhaustion?'<p class="muted smalltext">No active conditions.</p>':'')+'</div>';
+  }).join('');
+  return '<section class="card" id="sr29-condition-panel"><div class="eyebrow">V29 · Condition management</div><h3>Conditions &amp; effects</h3><p class="muted smalltext">Manage conditions for your character and active solo-combat enemies. Repeated applications retain separate sources and durations; their effects do not stack. Enter the source creature name or ID when a rule depends on a specific source.</p><div class="two-col"><div class="field"><label for="sr29-target">Target</label><select id="sr29-target">'+targetOptions+'</select></div><div class="field"><label for="sr29-condition">Condition</label><select id="sr29-condition">'+conditionOptions+'</select></div><div class="field"><label for="sr29-source">Source name</label><input id="sr29-source" maxlength="120" placeholder="Spell, creature, or effect"></div><div class="field"><label for="sr29-source-id">Source creature ID/name</label><input id="sr29-source-id" maxlength="120" placeholder="Needed for Charmed, Frightened, Grappled"></div><div class="field"><label for="sr29-rounds">Duration (rounds) / Exhaustion (levels)</label><input id="sr29-rounds" type="number" min="1" max="99" value="2"></div><div class="field"><label><input id="sr29-permanent" type="checkbox"> Permanent until removed</label><label><input id="sr29-source-visible" type="checkbox"> Frightened source is in line of sight</label></div></div><button class="btn" type="button" data-sr29-action="apply">Apply condition</button><div class="divider"></div>'+sections+'</section>';
+}
+if(typeof adventurePage==='function') {
+  const sr29AdventurePageBase=adventurePage;
+  adventurePage=function(){return sr29AdventurePageBase()+sr29ConditionPanel();};
+}
+if(typeof app!=='undefined'&&app?.addEventListener) {
+  app.addEventListener('click',function(event) {
+    const button=event.target?.closest?.('[data-sr29-action]');
+    if(!button)return;
+    const action=button.dataset.sr29Action;
+    if(action==='apply') {
+      const value=id=>document.getElementById(id)?.value;
+      const checked=id=>document.getElementById(id)?.checked===true;
+      const result=sr29ApplyUiCondition(state,value('sr29-target')||'player',value('sr29-condition'),
+        value('sr29-rounds'),checked('sr29-permanent'),value('sr29-source'),value('sr29-source-id'),checked('sr29-source-visible'));
+      if(!result.applied) {
+        if(typeof toast==='function')toast(result.immune?'That creature is immune to this condition.':'Could not apply the selected condition.');
+        return;
+      }
+      if(typeof save==='function')save();
+      if(typeof render==='function')render();
+      if(typeof toast==='function')toast('Condition applied.');
+      return;
+    }
+    if(action==='remove') {
+      sr29RemoveUiCondition(state,button.dataset.sr29Target,button.dataset.sr29Condition,button.dataset.sr29Instance);
+      if(typeof save==='function')save();
+      if(typeof render==='function')render();
+      if(typeof toast==='function')toast('Condition updated.');
+    }
+  },true);
+}
+
 // Compatibility adapters route legacy V5–V11 entry points through one engine.
 if(typeof sr7ConditionName==='function')sr7ConditionName=function(x){return sr29Name(x);};
 if(typeof sr7HasCondition==='function')sr7HasCondition=function(t,n){return sr29Has(t,n);};
@@ -428,5 +516,7 @@ globalThis.__SR29_TEST={
   longRestExhaustion:sr29LongRestExhaustion,autoFailSave:sr29AutoFailSave,attackState:sr29AttackState,
   skillMode:sr29SkillMode,criticalOnHit:sr29CriticalOnHit,canAct:sr29CanAct,canMove:sr29CanMove,
   canMoveToward:sr29CanMoveToward,cannotHarm:sr29CannotHarm,socialCheckAdvantage:sr29SocialCheckAdvantage,
+  conditionPanel:sr29ConditionPanel,uiTargets:sr29UiTargets,resolveUiTarget:sr29UiTarget,
+  applyUiCondition:sr29ApplyUiCondition,removeUiCondition:sr29RemoveUiCondition,
   currentPhase:()=>({phase:SR29_PHASE,cycle:SR29_COMBAT_CYCLE})
 };

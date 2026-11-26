@@ -125,6 +125,24 @@ try{
  const short=actor();T.apply(short,'poisoned',1,'first');T.apply(short,'poisoned',4,'second');
  T.remove(short,'poisoned',{source:'first'});
  assert('Removal can target one source instance without clearing the other',T.entries(short).length===1&&T.entries(short)[0].source==='second');
+
+ const uiHero=actor({id:'hero-ui',name:'Hero'}),uiGoblin=actor({id:'goblin-ui',name:'Goblin'});
+ T.apply(uiHero,'poisoned',2,'Spider venom');
+ T.apply(uiGoblin,'paralyzed',3,'Ghoul');
+ const uiWorld={character:uiHero,combat:{enemies:[uiGoblin]}};
+ const conditionPanel=T.conditionPanel(uiWorld);
+ assert('Condition dashboard renders for the player and solo combat enemies',conditionPanel.includes('sr29-condition-panel')&&conditionPanel.includes('You · Hero')&&conditionPanel.includes('Enemy · Goblin'));
+ assert('Condition dashboard displays existing source and duration instances',conditionPanel.includes('Spider venom')&&conditionPanel.includes('2 rounds')&&conditionPanel.includes('Ghoul'));
+ const uiApplied=T.applyUiCondition(uiWorld,'enemy:0','frightened',3,false,'Dragon fear','dragon-ui',true);
+ const uiFear=T.entries(uiGoblin).find(x=>x.name==='frightened');
+ assert('Condition dashboard application records source ID, line of sight and independent duration',uiApplied.applied&&uiFear?.sourceId==='dragon-ui'&&uiFear?.sourceVisible===true&&uiFear?.rounds===3);
+ const uiRemoved=T.removeUiCondition(uiWorld,'enemy:0','frightened',uiFear?.id);
+ assert('Condition dashboard removes only the selected condition instance',uiRemoved.removed===1&&!T.has(uiGoblin,'frightened')&&T.has(uiGoblin,'paralyzed'));
+ T.applyUiCondition(uiWorld,'player','exhaustion',2,false,'Forced march','',false);
+ assert('Condition dashboard applies cumulative Exhaustion levels',uiHero.exhaustion===2&&T.status(uiHero).d20Penalty===4);
+ const uiReduce=T.removeUiCondition(uiWorld,'player','exhaustion');
+ assert('Condition dashboard can reduce Exhaustion one level at a time',uiReduce.removed===0&&uiHero.exhaustion===1);
+
  const integrity=html.includes("sr29Tick(e,{phase:'round',cycle:b.round})")&&html.includes('sr29CriticalOnHit')&&sw.includes('solo-realms-systems-v29-');
  assert('Generated build includes V29 tick, critical-hit and service-worker cache integration',integrity);
 }catch(error){assert('V29 condition suite completes without uncaught runtime errors',false,error?.stack||String(error));}

@@ -31,6 +31,10 @@ The Exhaustion condition is handled separately as a cumulative level from 0 to 6
 - Charmed and Frightened source restrictions are applied when the source ID is recorded with the condition instance. This is intentionally not guessed when an imported/legacy condition has no identifiable source.
 - The V10 initiative round-end condition cleanup now calls the canonical expiry service instead of deleting legacy strings. The other retained condition helpers are compatibility adapters into the same engine.
 
+## Player-facing condition management
+
+The V29 adventure view now includes a Condition Management panel for the player character and active solo-combat enemies. It displays each active condition instance with its source and remaining round duration, supports applying timed or permanent conditions, records source creature IDs for source-specific effects, and removes one selected instance without erasing other applications. Exhaustion is displayed as a level and can be reduced one level at a time. The Frightened source line-of-sight flag is explicit; an unknown source is not assumed visible. The panel does not yet manage remote multiplayer participants or automatically infer every spell, feature, or monster-effect duration.
+
 ## Duration semantics
 
 A timed condition instance has its own round count. Reapplying a condition creates a new instance unless the caller explicitly supplies the same instance ID to refresh it. Permanent legacy conditions remain permanent. The turn-phase metadata prevents a condition applied during the current enemy phase from immediately losing a round in that same phase.
@@ -47,7 +51,7 @@ Run the complete repository suite with: bash tests/run_v18.sh
 
 The condition dashboard remains **Partial** until the remaining acceptance criteria are met:
 
-1. Add visible, player-facing condition and source/duration controls to character, combat, and enemy status panels.
+1. Extend the current player/solo-enemy condition panel to remote multiplayer participants and dedicated character/combat/enemy status views.
 2. Complete every bonus-action and reaction gate, and make every harmful spell/feature path honor the Charmed source restriction.
 3. Route every ability check, saving throw, initiative roll, and attack path—including Director-proposed and multiplayer actions—through Exhaustion and condition modifiers.
 4. Complete grapple-source lifecycle handling, including automatic release when the grappler becomes Incapacitated or is moved out of reach.
