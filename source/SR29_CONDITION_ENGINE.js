@@ -159,10 +159,10 @@ function sr29Tick(target,options={}) {
   for(const item of sr29Entries(target)){
     if(item.permanent||!Number.isFinite(Number(item.rounds))){kept.push(item);continue;}
     if(inCombat){
-      const liveRound=Number(state?.combat?.round),appliedRound=Number(item.appliedRound??item.appliedCycle);
-      if(Number.isFinite(appliedRound)&&Number.isFinite(liveRound)&&liveRound<=appliedRound){skipped++;kept.push(item);continue;}
-      if(Number.isFinite(appliedRound)&&Number.isFinite(liveRound)&&item.appliedPhase==='enemy'&&liveRound===appliedRound+1){skipped++;kept.push(item);continue;}
-      if(Number.isFinite(liveRound)&&item.lastTickRound===cycle){skipped++;kept.push(item);continue;}
+      const liveRound=Number(state?.combat?.round),appliedRound=Number(item.appliedRound??item.appliedCycle),hasRound=Number.isFinite(liveRound)&&liveRound>0;
+      if(hasRound&&Number.isFinite(appliedRound)&&liveRound<=appliedRound){skipped++;kept.push(item);continue;}
+      if(hasRound&&Number.isFinite(appliedRound)&&item.appliedPhase==='enemy'&&liveRound===appliedRound+1){skipped++;kept.push(item);continue;}
+      if(hasRound&&item.lastTickRound===cycle){skipped++;kept.push(item);continue;}
     }
     const next=Math.max(0,Number(item.rounds)-1);
     if(next<=0)expired++;else kept.push(inCombat?{...item,rounds:next,duration:next,lastTickRound:cycle}:{...item,rounds:next,duration:next});
