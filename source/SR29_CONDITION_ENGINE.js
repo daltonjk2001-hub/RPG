@@ -188,7 +188,13 @@ function sr29AttackState(attacker,target,options={}) {
   const add=(a,d)=>{advantage=advantage||a;disadvantage=disadvantage||d;};
   add(false,sr29Has(attacker,'blinded')||sr29Has(attacker,'poisoned')||sr29Has(attacker,'prone')||sr29Has(attacker,'restrained'));
   if(sr29Has(attacker,'frightened')&&sr29FrightSourceVisible(attacker,options))add(false,true);
-  add(sr29Has(attacker,'invisible'),false);
+  add(sr29Has(attacker,'invisible')&&!options.targetCanSeeInvisible,false);
+  const grappleEffect=sr29Entries(attacker).find(x=>x.name==='grappled');
+  if(grappleEffect){
+    const grapplerId=String(grappleEffect.grapplerId||grappleEffect.sourceId||'');
+    const targetId=String(target?.id||target?.name||'');
+    if(!grapplerId||grapplerId!==targetId)add(false,true);
+  }
   add(false,sr29Has(target,'invisible')&&!options.canSeeInvisible);
   add(sr29Has(target,'blinded')||sr29Has(target,'restrained')||sr29Has(target,'paralyzed')||
       sr29Has(target,'petrified')||sr29Has(target,'stunned')||sr29Has(target,'unconscious'),false);
