@@ -332,7 +332,8 @@ try{
   assert('Live grapple flow performs a target STR/DEX saving throw after a hit',html.includes('The target chooses a saving throw')&&html.includes('targetSave:save'));
   assert('Live grapple flow uses canonical escape checks and source-linked conditions',html.includes('sr29EscapeGrapple(c,{instanceId:grapple.id')&&html.includes('sr29StartGrapple(c,e'));
   assert('Solo grapple movement charges doubled drag cost and keeps the held target adjacent',html.includes('cost.movementCost')&&html.includes('enemy.distance=5'));
-  assert('Free-hand calculation accounts for weapon hand use and an equipped shield',T.gameplay?.freeHands?.({weapon:'Dagger'})===1&&T.gameplay.freeHands({weapon:'Dagger',shieldEquipped:true})===0);
+  assert('Free-hand calculation accounts for one-handed weapons and equipped shields',T.gameplay?.freeHands?.({weapon:'Dagger'})===1&&T.gameplay.freeHands({weapon:'Dagger',shieldEquipped:true})===0);
+  assert('Free-hand calculation recognizes two-handed weapons',T.gameplay.freeHands({weapon:'Greatsword'})===0&&T.gameplay.freeHands({weapon:'Longbow'})===0);
 }catch(error){assert('V29 condition suite completes without uncaught runtime errors',false,error?.stack||String(error));}
 for(const check of checks)console.log((check.pass?'PASS ':'FAIL ')+check.name+(check.detail?' — '+check.detail:''));
 const passed=checks.filter(x=>x.pass).length;
