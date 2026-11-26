@@ -27,7 +27,7 @@ let SR29_COMBAT_CYCLE = 0;
 let SR29_PHASE = 'player';
 let SR29_DAMAGE_EVENT = 0;
 function sr29CurrentCycle(){const round=Number(state?.combat?.round);return Number.isFinite(round)&&round>0?round:SR29_COMBAT_CYCLE;}
-function sr29NextDamageEventKey(){return `${sr29CurrentCycle()}:damage:${++SR29_DAMAGE_EVENT}`;}
+function sr29NextDamageEventKey(){return `${sr29CurrentCycle()}:damage:${Date.now()}:${++SR29_DAMAGE_EVENT}`;}
 
 function sr29Name(value) {
   const raw = typeof value === 'string' ? value : value?.name || value?.condition || '';
