@@ -341,7 +341,7 @@ try{
   assert('Solo combat exposes the action-based grapple escape control',html.includes('data-action="sr29-escape-grapple"')&&html.includes('Escape Grapple · Action'));
   assert('Live grapple flow resolves the Director-controlled target’s stronger STR/DEX save after a hit',html.includes('sr29SoloChooseTargetSaveAbility(e)')&&html.includes('targetSave:save')&&html.includes('sr25ResolveCreatureSavingThrow(saveTarget,key,[roll],bonus,dc'));
   assert('Live grapple flow uses canonical escape checks and source-linked conditions',html.includes('sr29EscapeGrapple(c,{instanceId:grapple.id')&&html.includes('sr29StartGrapple(c,e'));
-  assert('Solo grapple movement charges doubled drag cost and keeps the held target adjacent',html.includes('cost.movementCost')&&html.includes('enemy.distance=5'));
+  assert('Solo grapple movement charges doubled drag cost and keeps the held target adjacent',html.includes('cost.movementCost')&&html.includes('held.forEach(target=>{target.distance=5;})'));
   assert('Free-hand calculation accounts for one-handed weapons and equipped shields',T.gameplay?.freeHands?.({weapon:'Dagger'})===1&&T.gameplay.freeHands({weapon:'Dagger',shieldEquipped:true})===0);
   assert('Free-hand calculation recognizes two-handed weapons',T.gameplay.freeHands({weapon:'Greatsword'})===0&&T.gameplay.freeHands({weapon:'Longbow'})===0);
  assert('Solo monster targets choose the stronger legal grapple save',T.gameplay.chooseTargetSave(actor({stats:{STR:10,DEX:16,CON:10,INT:10,WIS:10,CHA:10}}))==='DEX');
