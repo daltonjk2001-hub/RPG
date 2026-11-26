@@ -81,7 +81,8 @@ try{
  const repeatFailure=T.processRepeatSaves(repeatTarget,'end-turn','round-1:repeat-target',[1]);
  const duplicateRepeat=T.processRepeatSaves(repeatTarget,'end-turn','round-1:repeat-target',[20]);
  const repeatSuccess=T.processRepeatSaves(repeatTarget,'end-turn','round-2:repeat-target',[20]);
- assert('End-of-turn repeat saves retain a failed condition, prevent duplicate rolls in one turn, and end it on a later success',holdAttached&&repeatFailure.failed===1&&T.has(repeatTarget,'paralyzed')&&duplicateRepeat.skipped===1&&duplicateRepeat.attempted===0&&repeatSuccess.ended===1&&!T.has(repeatTarget,'paralyzed'));
+ const repeatSaveDetails={holdAttached,repeatFailure,duplicateRepeat,repeatSuccess,conditions:repeatTarget.conditions};
+ assert('End-of-turn repeat saves retain a failed condition, prevent duplicate rolls in one turn, and end it on a later success',holdAttached&&repeatFailure.failed===1&&T.has(repeatTarget,'paralyzed')&&duplicateRepeat.skipped===1&&duplicateRepeat.attempted===0&&repeatSuccess.ended===1&&!T.has(repeatTarget,'paralyzed'),JSON.stringify(repeatSaveDetails));
  const dominatedTarget=actor({id:'dominated-target',name:'Dominated Target',classId:'Wizard',level:1});
  T18.state={character:dominatedTarget,combat:{round:1},campaign:{},log:[]};
  T.apply(dominatedTarget,'charmed',10,'Dominate Person');
@@ -112,8 +113,10 @@ try{
  const firstRoundTick=T.tick(timedCondition,{phase:'round',cycle:2});
  const duplicateRoundTick=T.tick(timedCondition,{phase:'round',cycle:2});
  T18.state.combat.round=3;
+ const afterDuplicateRoundCount=T.entries(timedCondition)[0]?.rounds;
  const finalRoundTick=T.tick(timedCondition,{phase:'round',cycle:3});
- assert('Combat condition durations wait for a later round and decrement only once per round',sameRoundTick.skipped===1&&T.entries(timedCondition)[0]?.rounds===1&&firstRoundTick.expired===0&&duplicateRoundTick.skipped===1&&T.entries(timedCondition)[0]?.rounds===1&&finalRoundTick.expired===1&&!T.has(timedCondition,'poisoned'));
+ const durationDetails={sameRoundTick,firstRoundTick,duplicateRoundTick,afterDuplicateRoundCount,finalRoundTick,conditions:timedCondition.conditions};
+ assert('Combat condition durations wait for a later round and decrement only once per round',sameRoundTick.skipped===1&&firstRoundTick.expired===0&&duplicateRoundTick.skipped===1&&afterDuplicateRoundCount===1&&finalRoundTick.expired===1&&!T.has(timedCondition,'poisoned'),JSON.stringify(durationDetails));
  T18.state=priorRepeatState;
  const legacy=actor({conditions:['blinded']});
  T.tick(legacy);
