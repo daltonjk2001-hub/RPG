@@ -628,11 +628,11 @@ function sr29ParseRepeatSave(description){
 }
 function sr29SpellSaveDetails(target,entries){
   const name=String(target?.name||'');
-  const message=(entries||[]).map(entry=>String(entry?.msg??entry??'')).find(text=>text.startsWith(name+' ')&&/(?:makes\\s+a?\\s+|rolls\\s+)(?:STR|DEX|CON|INT|WIS|CHA)\\s+save\\b/i.test(text));
+  const message=(entries||[]).map(entry=>String(entry?.msg??entry??'')).find(text=>text.startsWith(name+' ')&&/(?:makes\s+a?\s+|rolls\s+)(?:STR|DEX|CON|INT|WIS|CHA)\s+save\b/i.test(text));
   if(!message)return {};
-  const match=message.match(/(?:makes\\s+a?\\s+|rolls\\s+)(STR|DEX|CON|INT|WIS|CHA)\\s+save\\s+(-?\\d+)\\s+vs DC\\s+(\\d+)/i);
+  const match=message.match(/(?:makes\s+a?\s+|rolls\s+)(STR|DEX|CON|INT|WIS|CHA)\s+save\s+(-?\d+)\s+vs DC\s+(\d+)/i);
   if(!match)return {message};
-  const total=Number(match[2]),dc=Number(match[3]),markedFailure=/:\\s*failure\\./i.test(message),markedSuccess=/:\\s*success\\./i.test(message);
+  const total=Number(match[2]),dc=Number(match[3]),markedFailure=/:\s*failure\./i.test(message),markedSuccess=/:\s*success\./i.test(message);
   return {ability:match[1].toUpperCase(),total,dc,success:markedSuccess||(!markedFailure&&total>=dc),failure:markedFailure||(!markedSuccess&&total<dc),message};
 }
 function sr29AttachRepeatSave(target,condition,spellName,caster,ability,dc,spec){
