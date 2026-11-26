@@ -104,7 +104,8 @@ try{
  assert('Grapple eligibility rejects a target more than one size larger',T.grappleEligibility(eligibleHolder,actor(),{grapplerSize:'medium',targetSize:'huge',freeHands:1,distance:5,reach:5}).reason==='target-too-large');
  assert('Each active grapple consumes one free hand',T.grappleEligibility(eligibleHolder,eligibleTarget,{grapplerSize:'medium',targetSize:'large',freeHands:1,activeGrapples:[{grapplerId:'legal-holder'}],distance:5,reach:5}).reason==='no-free-hand');
  assert('Grapple eligibility rejects targets beyond reach',T.grappleEligibility(eligibleHolder,eligibleTarget,{grapplerSize:'medium',targetSize:'large',freeHands:1,distance:10,reach:5}).reason==='out-of-reach');
- assert('Grapple eligibility fails closed when size or free-hand data is missing',T.grappleEligibility(eligibleHolder,eligibleTarget,{freeHands:1,distance:5,reach:5}).reason==='unknown-size'&&T.grappleEligibility(eligibleHolder,eligibleTarget,{grapplerSize:'medium',targetSize:'large',distance:5,reach:5}).reason==='free-hands-unknown');
+ assert('Grapple eligibility fails closed when size data is missing',T.grappleEligibility(eligibleHolder,actor(),{freeHands:1,distance:5,reach:5}).reason==='unknown-size');
+ assert('Grapple eligibility fails closed when free-hand data is missing',T.grappleEligibility(eligibleHolder,eligibleTarget,{grapplerSize:'medium',targetSize:'large',distance:5,reach:5}).reason==='free-hands-unknown');
  const heldAtReach=actor({id:'held-at-reach'}),holderAtReach=actor({id:'holder-at-reach'});
  const heldInstance=T.apply(heldAtReach,'grappled','permanent','claw',{grapplerId:'holder-at-reach',grappleRange:10});
  assert('Grappled instances preserve the source creature and its specific reach',heldInstance.instance.grapplerId==='holder-at-reach'&&heldInstance.instance.grappleRange===10);

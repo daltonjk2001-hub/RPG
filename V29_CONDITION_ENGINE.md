@@ -69,8 +69,3 @@ The condition dashboard remains **Partial** until the remaining acceptance crite
 7. Perform full save/import compatibility verification and human playtests across standalone, PWA, Android touch, and two-device multiplayer.
 
 No claim of complete 2024 D&D rules coverage should be made until those integration and live-verification gates pass.
-
- 
-## Grapple initiation prerequisites
-
-The engine exposes a fail-closed eligibility predicate for grapple initiation. Callers must provide actual creature sizes, free-hand count, measured distance, and reach; missing facts are rejected rather than inferred from incomplete creature records. A target can be at most one size larger than the grappler, and each active grapple consumes one free hand. This rules service is regression-tested but is not yet wired to every player/enemy attack and feature dispatcher; full runtime integration remains open.
