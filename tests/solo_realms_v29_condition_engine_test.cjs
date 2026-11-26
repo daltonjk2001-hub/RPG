@@ -101,7 +101,9 @@ try{
  const cancellation=actor();T.apply(cancellation,'poisoned',2,'poison');
  assert('Advantage and Disadvantage cancel rather than stack',T.attackState(cancellation,target,{melee:true,distance:5}).mode==='normal'&&T.attackState(cancellation,target,{melee:true,distance:5}).cancelled);
  const sight=actor();T.apply(sight,'blinded',2,'blindness');
- assert('Blinded automatically fails checks that require sight',T.skillMode(sight,'Perception')==='auto-fail'&&T.skillMode(sight,'Investigation',{requiresSight:true})==='auto-fail');
+ assert('Blinded automatically fails checks explicitly requiring sight',T.skillMode(sight,'Investigation',{requiresSight:true})==='auto-fail');
+ assert('Blinded does not automatically fail hearing-based Perception checks',T.skillMode(sight,'Perception',{requiresHearing:true})==='normal');
+ assert('Blinded does not assume every Perception check requires sight',T.skillMode(sight,'Perception')==='normal');
  const hearing=actor();T.apply(hearing,'deafened',2,'thunder');
  assert('Deafened automatically fails checks that require hearing',T.skillMode(hearing,'Listen')==='auto-fail');
  const fear=actor();T.apply(fear,'frightened',2,'dragon',{sourceVisible:true,sourceId:'dragon'});
@@ -109,6 +111,8 @@ try{
  assert('Frightened prevents voluntarily moving closer to its source',!T.canMoveToward(fear,{id:'dragon',name:'Dragon'}));
  const away=actor();T.apply(away,'frightened',2,'dragon',{sourceVisible:false,sourceId:'dragon'});
  assert('Frightened source out of sight does not impose its visible-source penalty',T.skillMode(away,'Perception')==='normal'&&T.canMoveToward(away,{id:'dragon'}));
+ const unknownFear=actor();T.apply(unknownFear,'frightened',2,'unknown source');
+ assert('Frightened does not assume an unidentified source is in line of sight',T.skillMode(unknownFear,'Perception')==='normal'&&T.canMoveToward(unknownFear,{id:'unknown'}));
  const charmed=actor();T.apply(charmed,'charmed',2,'charm',{sourceId:'archmage'});
  assert('Charmed actor cannot harm its identified charmer',T.cannotHarm(charmed,{id:'archmage'})&&!T.cannotHarm(charmed,{id:'guard'}));
  const socialTarget=actor();T.apply(socialTarget,'charmed',2,'charm',{sourceId:'bard'});
