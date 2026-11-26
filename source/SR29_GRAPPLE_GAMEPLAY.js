@@ -808,6 +808,8 @@ if(typeof sr14CastSpellComplete==='function'){
     const slotLevel=Number(reservedSlot?.level??reservedSlot),slotKind=String(reservedSlot?.kind||'regular');
     const slotMapBefore=slotKind==='pact'?caster?.pactSlotsByLevel:caster?.spellSlotsByLevel;
     const slotCountBefore=Number(slotMapBefore?.[slotLevel])||0;
+    // The scalar-slot compatibility path uses numeric zero as its valid-slot sentinel.
+    const scalarSlotsBefore=reservedSlot===0?(Number(caster?.spellSlots)||0):0;
     const combat=state?.combat,target=combat?.mp?(typeof sr4Target==='function'?sr4Target():null):(typeof targetEnemy==='function'?targetEnemy():null);
     const origin=combat?.mp&&typeof sr12PlayerPos==='function'?sr12PlayerPos(player.id):combat?.heroPos;
     const hadCharacterPosition=!!caster&&Object.prototype.hasOwnProperty.call(caster,'position');
@@ -837,6 +839,9 @@ if(typeof sr14CastSpellComplete==='function'){
         if(typeof reservedSlot==='object'&&typeof sr7ConsumeCastSlot==='function')sr7ConsumeCastSlot(caster,reservedSlot);
         else if(slotMap){slotMap[slotLevel]=Math.max(0,currentCount-1);if(typeof sr7UpdateSlotTotals==='function')sr7UpdateSlotTotals(caster);}
       }
+    }else if(result&&reservedSlot===0&&scalarSlotsBefore>0){
+      const currentScalarSlots=Number(caster?.spellSlots)||0;
+      if(currentScalarSlots>=scalarSlotsBefore)caster.spellSlots=Math.max(0,currentScalarSlots-1);
     }
     if(result&&teleportPlan){
       // The legacy cast path still performs its own fallback relocation. Replace it with
