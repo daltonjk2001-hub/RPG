@@ -379,21 +379,31 @@ function sr29StartGrapple(grappler,target,options={}) {
   if(!eligibility.legal)return {started:false,...eligibility};
   const grapplerId=String(grappler.id||grappler.name||'');
   if(!grapplerId)return {started:false,reason:'missing-grappler-id'};
+  const escapeDC=sr29GrappleEscapeDC(grappler,options);
+  const save=options.targetSave;
+  if(!save||!['STR','DEX'].includes(String(save.ability||'').toUpperCase()))
+    return {started:false,reason:'target-save-required',escapeDC,saveAbilities:['STR','DEX']};
+  const saveRoll=Number(save.roll),saveBonus=Number(save.bonus)||0;
+  if(!Number.isInteger(saveRoll)||saveRoll<1||saveRoll>20)
+    return {started:false,reason:'invalid-target-save-roll',escapeDC,ability:String(save.ability).toUpperCase()};
+  const saveTotal=saveRoll+saveBonus;
+  if(saveTotal>=escapeDC)
+    return {started:false,reason:'target-saved',escapeDC,save:{ability:String(save.ability).toUpperCase(),roll:saveRoll,bonus:saveBonus,total:saveTotal,success:true}};
   const reach=Number(options.reach);
   const result=sr29Apply(target,'grappled','permanent',options.source||grappler.name||'Unarmed Strike',{
     grapplerId,sourceId:grapplerId,grappleRange:reach
   });
   if(!result.applied)return {started:false,reason:result.reason||'condition-not-applied'};
-  // Applying Grappled can reconcile the live combat and normalize/replace the
-  // condition array. Reacquire the stored instance before attaching grapple metadata.
+  // Reconciliation may normalize/replace condition objects; reacquire the
+  // retained instance before writing metadata used by the later Escape action.
   const instanceId=result.instance.id;
   const instance=sr29Entries(target).find(item=>item.id===instanceId&&item.name==='grappled');
   if(!instance)return {started:false,reason:'grapple-instance-not-retained'};
-  instance.escapeDC=sr29GrappleEscapeDC(grappler,options);
+  instance.escapeDC=escapeDC;
   instance.grapplerSize=eligibility.grapplerSize;
   instance.targetSize=eligibility.targetSize;
   instance.handSlot=options.handSlot===undefined?null:String(options.handSlot);
-  return {started:true,instance,escapeDC:instance.escapeDC};
+  return {started:true,instance,escapeDC,save:{ability:String(save.ability).toUpperCase(),roll:saveRoll,bonus:saveBonus,total:saveTotal,success:false}};
 }
 function sr29EscapeGrapple(target,options={}) {
   const item=sr29Entries(target).find(x=>x.name==='grappled'&&
