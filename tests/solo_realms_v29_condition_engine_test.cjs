@@ -69,6 +69,10 @@ try{
  const dominateRepeat=T.gameplay.parseRepeatSave('Whenever the target takes damage, it repeats the saving throw, ending the spell on itself on a success. The target makes a Wisdom saving throw.');
  const nonEndingRepeat=T.gameplay.parseRepeatSave('At the start of each of its turns, the target must succeed on a Wisdom saving throw or take the Dodge action.');
  assert('Repeat-save parser distinguishes end-turn and damage triggers and ignores non-ending recurring saves',holdRepeat?.trigger==='end-turn'&&holdRepeat.endsOnSuccess&&holdRepeat.ability==='WIS'&&dominateRepeat?.trigger==='damage'&&nonEndingRepeat===null);
+ const holdSpellData={kind:'control',classes:['Wizard'],desc:'Paralyze a humanoid foe with binding magic.'};
+ const holdSpellEffect=T.gameplay.spellEffectComplete('Hold Person',holdSpellData);
+ const holdSpellRule=T.gameplay.repeatSaveSpecForSpell('Hold Person',holdSpellData);
+ assert('Hold Person is enriched with its 2024 Paralyzed condition, Wisdom save, one-minute duration, concentration, and end-turn repeat save',holdSpellEffect?.condition==='paralyzed'&&holdSpellEffect.save==='WIS'&&holdSpellEffect.durationRounds===10&&holdSpellData.concentration===true&&holdSpellRule?.trigger==='end-turn'&&holdSpellRule.ability==='WIS');
  const priorRepeatState=T18.state;
  const repeatTarget=actor({id:'repeat-target',name:'Repeat Target',classId:'Wizard',level:1});
  T18.state={character:repeatTarget,combat:{round:1},campaign:{},log:[]};
