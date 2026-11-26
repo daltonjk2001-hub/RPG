@@ -841,7 +841,14 @@ if(typeof sr14CastSpellComplete==='function'){
       }
     }else if(result&&reservedSlot===0&&scalarSlotsBefore>0){
       const currentScalarSlots=Number(caster?.spellSlots)||0;
-      if(currentScalarSlots>=scalarSlotsBefore){caster.spellSlots=Math.max(0,currentScalarSlots-1);if(castKind!=='reaction')caster.spellSlotSpentThisTurn=true;}
+      if(currentScalarSlots>=scalarSlotsBefore){
+        // A render/save may have migrated the scalar legacy total into a level map.
+        // If so, spend the actual slot tier now rather than leaving the new map untouched.
+        const migratedSlot=caster?.spellSlotsByLevel&&typeof sr7ChooseCastSlot==='function'?sr7ChooseCastSlot(caster,Number(spell?.level)||1):null;
+        if(migratedSlot&&typeof sr7ConsumeCastSlot==='function')sr7ConsumeCastSlot(caster,migratedSlot);
+        else caster.spellSlots=Math.max(0,currentScalarSlots-1);
+        if(castKind!=='reaction')caster.spellSlotSpentThisTurn=true;
+      }
     }
     if(result&&teleportPlan){
       // The legacy cast path still performs its own fallback relocation. Replace it with
