@@ -2,7 +2,7 @@
 
 ## Rules baseline
 
-V29 centralizes condition records and the condition interactions implemented by Solo Realms against the **2024 rules baseline (SRD 5.2.1)**. It does not change existing campaigns to a 2014 rules profile, and it does not claim full condition-rule parity or a completed in-game status interface.
+V29 centralizes condition records and the condition interactions implemented by Solo Realms against the **2024 rules baseline (SRD 5.2.1)**. It does not change existing campaigns to a 2014 rules profile, and it does not claim full condition-rule parity or a complete in-game status interface.
 
 Primary references:
 
@@ -30,10 +30,19 @@ The Exhaustion condition is handled separately as a cumulative level from 0 to 6
 - Petrified targets gain Poisoned condition immunity and resistance to all damage through the existing damage adapter; the condition status service reports these effects. Stunned does not set Speed to 0 under the 2024 rules.
 - Charmed and Frightened source restrictions are applied when the source ID is recorded with the condition instance. This is intentionally not guessed when an imported/legacy condition has no identifiable source.
 - The V10 initiative round-end condition cleanup now calls the canonical expiry service instead of deleting legacy strings. The other retained condition helpers are compatibility adapters into the same engine.
+- Grappled condition instances retain their grappler identity and grapple reach. Reconciliation releases only the affected instance when the grappler is Incapacitated or the target-to-grappler distance exceeds that instance's reach; other independent grapples on the same target remain intact.
 
 ## Player-facing condition management
 
-The V29 adventure view now includes a Condition Management panel for the player character and active solo-combat enemies. It displays each active condition instance with its source and remaining round duration, supports applying timed or permanent conditions, records source creature IDs for source-specific effects, and removes one selected instance without erasing other applications. Exhaustion is displayed as a level and can be reduced one level at a time. The Frightened source line-of-sight flag is explicit; an unknown source is not assumed visible. The panel does not yet manage remote multiplayer participants or automatically infer every spell, feature, or monster-effect duration.
+The V29 adventure view now includes a Condition Management panel for the player character and active solo-combat enemies. It displays each active condition instance with its source and remaining round duration, supports applying timed or permanent conditions, records source creature IDs for source-specific effects, and removes one selected instance without erasing other applications. Grappled entries display the grappler and stored reach; the panel accepts a custom reach (default 5 feet) and exposes a Release grapple control. Exhaustion is displayed as a level and can be reduced one level at a time. The Frightened source line-of-sight flag is explicit; an unknown source is not assumed visible. The panel does not yet manage remote multiplayer participants or automatically infer every spell, feature, or monster-effect duration.
+
+## Grapple lifecycle
+
+The 2024 Rules Glossary ends a Grappled condition if its grappler has the Incapacitated condition or if the distance between the target and grappler exceeds the grapple's range. A grappler can also release the target without an action. V29 stores the grappler creature ID and the applicable reach on each grapple instance. Monster action application records the source creature and parsed reach; manual condition application exposes a reach field with a 5-foot default for an ordinary close grapple.
+
+The reconciliation service operates on the current combat participant set. It checks for an Incapacitated grappler and compares known combat positions using the game distance helper; when a grapple ends, it removes only the matching instance. It is invoked after condition application, supported solo and multiplayer enemy movement adapters, monster actions, and before condition status/attack adjudication. If a legacy save has no identifiable grappler, or positions are unavailable, V29 preserves the instance rather than guessing that the grapple has ended. A grappler can release a specific instance through the condition panel or release service.
+
+This slice does not yet implement the extra movement cost for dragging/carrying a grappled creature, the one-grapple-per-hand/appendage limit, every player-side forced-movement/teleport caller, or a live multiplayer timing audit.
 
 ## Duration semantics
 
@@ -43,7 +52,7 @@ The current game has more than one combat adapter, and not every old feature pat
 
 ## Verification
 
-tests/solo_realms_v29_condition_engine_test.cjs covers registry presence, separate durations, legacy migration, immunity, derived conditions, Exhaustion, automatic save failure, attack Advantage/Disadvantage, critical-hit boundaries, sensory checks, source-specific Charmed/Frightened behavior, concentration loss, and source-specific removal.
+tests/solo_realms_v29_condition_engine_test.cjs covers registry presence, separate durations, legacy migration, immunity, derived conditions, Exhaustion, automatic save failure, attack Advantage/Disadvantage, critical-hit boundaries, sensory checks, source-specific Charmed/Frightened behavior, concentration loss, source-specific removal, grapple reach boundaries, incapacitated-grappler release, instance-specific release, and current-combat reconciliation.
 
 Run the complete repository suite with: bash tests/run_v18.sh
 
@@ -54,7 +63,7 @@ The condition dashboard remains **Partial** until the remaining acceptance crite
 1. Extend the current player/solo-enemy condition panel to remote multiplayer participants and dedicated character/combat/enemy status views.
 2. Complete every bonus-action and reaction gate, and make every harmful spell/feature path honor the Charmed source restriction.
 3. Route every ability check, saving throw, initiative roll, and attack path—including Director-proposed and multiplayer actions—through Exhaustion and condition modifiers.
-4. Complete grapple-source lifecycle handling, including automatic release when the grappler becomes Incapacitated or is moved out of reach.
+4. Complete grapple drag/carry movement and extra movement cost, one-grapple-per-hand/appendage enforcement, player-side forced-movement/teleport integration, and live multiplayer timing tests. Automatic release for an Incapacitated grappler or a target moved beyond its stored reach is implemented and covered by regression tests.
 5. Complete Frightened source visibility and movement restrictions against exact line of sight and target identity.
 6. Add condition-specific repeat-save procedures and full spell/monster-feature effect transactions instead of relying on inferred text or generic durations.
 7. Perform full save/import compatibility verification and human playtests across standalone, PWA, Android touch, and two-device multiplayer.

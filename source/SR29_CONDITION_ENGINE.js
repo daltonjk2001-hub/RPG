@@ -118,8 +118,16 @@ function sr29Apply(target,name,duration=1,source='effect',options={}) {
   if(options.sourceId!==undefined)item.sourceId=String(options.sourceId);
   if(options.sourceVisible!==undefined)item.sourceVisible=!!options.sourceVisible;
   if(options.grapplerId!==undefined)item.grapplerId=String(options.grapplerId);
+  if(key==='grappled'){
+    const grappleRange=Number(options.grappleRange??options.grappleReach??5);
+    if(!Number.isFinite(grappleRange)||grappleRange<=0)throw new Error('Grapple reach must be a positive number of feet.');
+    item.grappleRange=grappleRange;
+    const grapplerId=options.grapplerId??options.sourceId;
+    if(grapplerId!==undefined&&grapplerId!==null&&String(grapplerId).trim())item.grapplerId=String(grapplerId);
+  }
   if(existing)Object.assign(existing,item);else entries.push(item);
   target.conditions=entries;
+  if(key==='grappled'||key==='incapacitated'||['paralyzed','petrified','stunned','unconscious'].includes(key))sr29ReconcileCombatGrapples();
   const brokeConcentration=sr29BreakConcentration(target);
   return {applied:true,condition:key,instance:item,brokeConcentration,activeInstances:entries.filter(x=>x.name===key).length};
 }
@@ -161,6 +169,7 @@ function sr29Names(target) {
   return [...new Set(names)];
 }
 function sr29Status(target) {
+  if(typeof state!=='undefined'&&state?.combat)sr29ReconcileCombatGrapples();
   const exhaustion=Math.max(0,Math.min(6,Math.floor(Number(target?.exhaustion)||0)));
   const speedZero=['grappled','paralyzed','petrified','restrained','unconscious'].some(n=>sr29Has(target,n));
   const incap=sr29Has(target,'incapacitated');
@@ -183,6 +192,7 @@ function sr29FrightSourceVisible(actor,options={}) {
   return item?.sourceOutOfSight===true?false:false;
 }
 function sr29AttackState(attacker,target,options={}) {
+  if(typeof state!=='undefined'&&state?.combat)sr29ReconcileCombatGrapples();
   const melee=!!options.melee,distance=Number.isFinite(Number(options.distance))?Number(options.distance):(melee?5:Infinity);
   let advantage=false,disadvantage=false;
   const add=(a,d)=>{advantage=advantage||a;disadvantage=disadvantage||d;};
@@ -249,6 +259,91 @@ function sr29LongRestExhaustion(actor) {
 }
 
 
+
+function sr29Participant(actor,pos,aliases=[]) {
+  if(!actor||typeof actor!=='object')return null;
+  const ids=[...aliases,actor.id,actor.name].filter(x=>x!==undefined&&x!==null&&String(x).trim()).map(String);
+  return {actor,pos:pos&&typeof pos==='object'?pos:(actor.pos||actor.position||null),ids:[...new Set(ids)]};
+}
+function sr29CombatParticipants(snapshot=state) {
+  const participants=[];
+  const add=(actor,pos,aliases=[])=>{
+    const row=sr29Participant(actor,pos,aliases);
+    if(!row)return;
+    const existing=participants.find(x=>x.actor===actor);
+    if(existing){existing.ids=[...new Set([...existing.ids,...row.ids])];if(!existing.pos)existing.pos=row.pos;}
+    else participants.push(row);
+  };
+  const combat=snapshot?.combat||{};
+  if(combat.mp&&typeof sr12AllHeroPositions==='function'){
+    try{
+      for(const item of sr12AllHeroPositions()||[]){
+        const player=item?.player||{};
+        add(player.character||item?.character,item?.pos||player.pos,[player.id,player.name]);
+      }
+    }catch(error){}
+  }
+  if(snapshot?.character){
+    add(snapshot.character,combat.heroPos||snapshot.heroPos||snapshot.character.pos,
+      combat.mp?[]:['solo']);
+  }
+  for(const enemy of combat.enemies||[])add(enemy,enemy?.pos||enemy?.position);
+  return participants;
+}
+function sr29DistanceBetween(a,b,options={}) {
+  if(typeof options.distance==='function'){
+    const measured=Number(options.distance(a,b));
+    return Number.isFinite(measured)?measured:null;
+  }
+  if(typeof sr12Distance==='function'){
+    try{const measured=Number(sr12Distance(a,b));if(Number.isFinite(measured))return measured;}catch(error){}
+  }
+  const ax=Number(a?.x),ay=Number(a?.y),bx=Number(b?.x),by=Number(b?.y);
+  if([ax,ay,bx,by].every(Number.isFinite))return Math.max(Math.abs(ax-bx),Math.abs(ay-by))*5;
+  return null;
+}
+function sr29ReleaseGrapple(target,options={}) {
+  if(!target)return {released:false,removed:0};
+  const matches=sr29Entries(target).filter(item=>item.name==='grappled'&&
+    (options.instanceId===undefined||item.id===String(options.instanceId))&&
+    (options.grapplerId===undefined||String(item.grapplerId||item.sourceId||'')===String(options.grapplerId)));
+  let removed=0;
+  for(const item of matches)removed+=sr29Remove(target,'grappled',{instanceId:item.id}).removed;
+  return {released:removed>0,removed};
+}
+function sr29ReconcileGrapples(participants,options={}) {
+  const rows=(participants||[]).map(item=>{
+    if(item?.actor)return sr29Participant(item.actor,item.pos,item.ids||[]);
+    const actor=item?.player?.character||item?.character||item;
+    return sr29Participant(actor,item?.pos||actor?.pos||actor?.position,[item?.player?.id,item?.player?.name]);
+  }).filter(Boolean);
+  const released=[];
+  for(const holder of rows){
+    for(const grapple of sr29Entries(holder.actor).filter(item=>item.name==='grappled')){
+      const grapplerId=String(grapple.grapplerId||grapple.sourceId||'');
+      if(!grapplerId)continue;
+      const grappler=rows.find(item=>item.actor!==holder.actor&&item.ids.includes(grapplerId));
+      if(!grappler)continue;
+      let reason='';
+      if(sr29Has(grappler.actor,'incapacitated'))reason='grappler-incapacitated';
+      else if(holder.pos&&grappler.pos){
+        const distance=sr29DistanceBetween(holder.pos,grappler.pos,options);
+        const range=Number(grapple.grappleRange??grapple.grappleReach??5);
+        if(Number.isFinite(distance)&&Number.isFinite(range)&&distance>range)reason='target-outside-grapple-range';
+      }
+      if(reason){
+        const result=sr29ReleaseGrapple(holder.actor,{instanceId:grapple.id});
+        if(result.released)released.push({targetId:String(holder.actor.id||holder.actor.name||''),grapplerId,instanceId:grapple.id,reason});
+      }
+    }
+  }
+  return {count:released.length,released};
+}
+function sr29ReconcileCombatGrapples(snapshot=state) {
+  if(!snapshot?.combat)return {count:0,released:[]};
+  return sr29ReconcileGrapples(sr29CombatParticipants(snapshot));
+}
+
 function sr29Html(value) {
   return String(value ?? '').replace(/[&<>"']/g, ch => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
@@ -269,7 +364,7 @@ function sr29UiTarget(snapshot,key) {
   if(!match)return null;
   return snapshot?.combat?.enemies?.[Number(match[1])]||null;
 }
-function sr29ApplyUiCondition(snapshot,targetKey,name,rounds=1,permanent=false,source='',sourceId='',sourceVisible=false) {
+function sr29ApplyUiCondition(snapshot,targetKey,name,rounds=1,permanent=false,source='',sourceId='',sourceVisible=false,grappleRange=5) {
   const target=sr29UiTarget(snapshot,targetKey),key=sr29Name(name);
   if(!target)return {applied:false,reason:'missing-target'};
   const count=Math.max(1,Math.floor(Number(rounds)||1));
@@ -278,12 +373,14 @@ function sr29ApplyUiCondition(snapshot,targetKey,name,rounds=1,permanent=false,s
   const options={levels:Math.min(6,count)};
   if(id){options.sourceId=id;if(key==='grappled')options.grapplerId=id;}
   if(key==='frightened')options.sourceVisible=sourceVisible===true;
+  if(key==='grappled')options.grappleRange=Math.max(5,Number(grappleRange)||5);
   return sr29Apply(target,key,key==='exhaustion'?1:(permanent?'permanent':Math.min(99,count)),origin,options);
 }
 function sr29RemoveUiCondition(snapshot,targetKey,name,instanceId) {
   const target=sr29UiTarget(snapshot,targetKey),key=sr29Name(name);
   if(!target)return {removed:0,reason:'missing-target'};
   if(key==='exhaustion')return sr29Remove(target,key,{levels:1});
+  if(key==='grappled')return sr29ReleaseGrapple(target,{instanceId:String(instanceId||'')});
   return sr29Remove(target,key,{instanceId:String(instanceId||'')});
 }
 function sr29ConditionPanel(snapshot=state) {
@@ -296,13 +393,15 @@ function sr29ConditionPanel(snapshot=state) {
     const rows=entries.map(item=>{
       const title=SR29_CONDITIONS[item.name]?.name||item.name;
       const duration=item.permanent?'Permanent':String(item.rounds)+' round'+(Number(item.rounds)===1?'':'s');
-      return '<div class="item-row"><div><strong>'+sr29Html(title)+'</strong><div class="tagline">'+sr29Html(item.source||'Unknown source')+' · '+duration+'</div></div><button class="btn small" type="button" data-sr29-action="remove" data-sr29-target="'+sr29Html(key)+'" data-sr29-condition="'+sr29Html(item.name)+'" data-sr29-instance="'+sr29Html(item.id)+'">Remove</button></div>';
+      const grappleDetail=item.name==='grappled'?' · Grappler: '+sr29Html(item.grapplerId||item.sourceId||'unknown')+' · Reach: '+sr29Html(item.grappleRange||5)+' ft':'';
+      const actionLabel=item.name==='grappled'?'Release grapple':'Remove';
+      return '<div class="item-row"><div><strong>'+sr29Html(title)+'</strong><div class="tagline">'+sr29Html(item.source||'Unknown source')+' · '+duration+grappleDetail+'</div></div><button class="btn small" type="button" data-sr29-action="remove" data-sr29-target="'+sr29Html(key)+'" data-sr29-condition="'+sr29Html(item.name)+'" data-sr29-instance="'+sr29Html(item.id)+'">'+actionLabel+'</button></div>';
     }).join('');
     const levels=Math.max(0,Math.min(6,Math.floor(Number(actor.exhaustion)||0)));
     const exhaustion=levels?'<div class="item-row"><div><strong>Exhaustion · Level '+levels+'</strong><div class="tagline">Cumulative D20-test and Speed penalties</div></div><button class="btn small" type="button" data-sr29-action="remove" data-sr29-target="'+sr29Html(key)+'" data-sr29-condition="exhaustion">Reduce 1 level</button></div>':'';
     return '<div class="shop-item"><strong>'+sr29Html(label)+'</strong>'+(rows||'')+exhaustion+(!rows&&!exhaustion?'<p class="muted smalltext">No active conditions.</p>':'')+'</div>';
   }).join('');
-  return '<section class="card" id="sr29-condition-panel"><div class="eyebrow">V29 · Condition management</div><h3>Conditions &amp; effects</h3><p class="muted smalltext">Manage conditions for your character and active solo-combat enemies. Repeated applications retain separate sources and durations; their effects do not stack. Enter the source creature name or ID when a rule depends on a specific source.</p><div class="two-col"><div class="field"><label for="sr29-target">Target</label><select id="sr29-target">'+targetOptions+'</select></div><div class="field"><label for="sr29-condition">Condition</label><select id="sr29-condition">'+conditionOptions+'</select></div><div class="field"><label for="sr29-source">Source name</label><input id="sr29-source" maxlength="120" placeholder="Spell, creature, or effect"></div><div class="field"><label for="sr29-source-id">Source creature ID/name</label><input id="sr29-source-id" maxlength="120" placeholder="Needed for Charmed, Frightened, Grappled"></div><div class="field"><label for="sr29-rounds">Duration (rounds) / Exhaustion (levels)</label><input id="sr29-rounds" type="number" min="1" max="99" value="2"></div><div class="field"><label><input id="sr29-permanent" type="checkbox"> Permanent until removed</label><label><input id="sr29-source-visible" type="checkbox"> Frightened source is in line of sight</label></div></div><button class="btn" type="button" data-sr29-action="apply">Apply condition</button><div class="divider"></div>'+sections+'</section>';
+  return '<section class="card" id="sr29-condition-panel"><div class="eyebrow">V29 · Condition management</div><h3>Conditions &amp; effects</h3><p class="muted smalltext">Manage conditions for your character and active solo-combat enemies. Repeated applications retain separate sources and durations; their effects do not stack. Enter the source creature name or ID when a rule depends on a specific source.</p><div class="two-col"><div class="field"><label for="sr29-target">Target</label><select id="sr29-target">'+targetOptions+'</select></div><div class="field"><label for="sr29-condition">Condition</label><select id="sr29-condition">'+conditionOptions+'</select></div><div class="field"><label for="sr29-source">Source name</label><input id="sr29-source" maxlength="120" placeholder="Spell, creature, or effect"></div><div class="field"><label for="sr29-source-id">Source creature ID/name</label><input id="sr29-source-id" maxlength="120" placeholder="Needed for Charmed, Frightened, Grappled"></div><div class="field"><label for="sr29-rounds">Duration (rounds) / Exhaustion (levels)</label><input id="sr29-rounds" type="number" min="1" max="99" value="2"></div><div class="field"><label for="sr29-grapple-range">Grapple reach (feet; default 5)</label><input id="sr29-grapple-range" type="number" min="5" max="120" value="5"></div><div class="field"><label><input id="sr29-permanent" type="checkbox"> Permanent until removed</label><label><input id="sr29-source-visible" type="checkbox"> Frightened source is in line of sight</label></div></div><button class="btn" type="button" data-sr29-action="apply">Apply condition</button><div class="divider"></div>'+sections+'</section>';
 }
 if(typeof adventurePage==='function') {
   const sr29AdventurePageBase=adventurePage;
@@ -317,7 +416,7 @@ if(typeof app!=='undefined'&&app?.addEventListener) {
       const value=id=>document.getElementById(id)?.value;
       const checked=id=>document.getElementById(id)?.checked===true;
       const result=sr29ApplyUiCondition(state,value('sr29-target')||'player',value('sr29-condition'),
-        value('sr29-rounds'),checked('sr29-permanent'),value('sr29-source'),value('sr29-source-id'),checked('sr29-source-visible'));
+        value('sr29-rounds'),checked('sr29-permanent'),value('sr29-source'),value('sr29-source-id'),checked('sr29-source-visible'),value('sr29-grapple-range'));
       if(!result.applied) {
         if(typeof toast==='function')toast(result.immune?'That creature is immune to this condition.':'Could not apply the selected condition.');
         return;
@@ -493,7 +592,7 @@ if(typeof sr7EnemyTurn==='function'){
   sr7EnemyTurn=function(...args){
     SR29_COMBAT_CYCLE=Math.max(SR29_COMBAT_CYCLE,Number(state?.combat?.round)||0)+1;
     const previous=SR29_PHASE;SR29_PHASE='enemy';
-    try{return sr29PriorEnemyTurn.apply(this,args);}finally{SR29_PHASE=previous;}
+    try{return sr29PriorEnemyTurn.apply(this,args);}finally{SR29_PHASE=previous;sr29ReconcileCombatGrapples();}
   };
   if(globalThis.__SR7_TEST)globalThis.__SR7_TEST.enemyTurn=sr7EnemyTurn;
 }
@@ -538,6 +637,7 @@ if(typeof sr7Move==='function'){
     const before=Number(state?.character?.movementSpent)||0;
     const result=sr29PriorMove.apply(this,args);
     if((Number(state?.character?.movementSpent)||0)>before&&sr29Has(state?.character,'prone'))sr29Remove(state.character,'prone');
+    sr29ReconcileCombatGrapples();
     return result;
   };
 }
@@ -547,7 +647,25 @@ if(typeof sr10EnemyMove==='function'){
     if(!sr29CanMove(actor))return false;
     const base=Number(actor?.baseSpeed||actor?.speed||30),exhaustion=Math.max(0,Math.min(6,Math.floor(Number(actor?.exhaustion)||0)));
     actor.speed=Math.max(0,base-5*exhaustion);
-    return sr29PriorEnemyMove.call(this,actor,...args);
+    const result=sr29PriorEnemyMove.call(this,actor,...args);
+    sr29ReconcileCombatGrapples();
+    return result;
+  };
+}
+if(typeof sr12EnemyStep==='function'){
+  const sr29PriorEnemyStep=sr12EnemyStep;
+  sr12EnemyStep=function(...args){
+    const result=sr29PriorEnemyStep.apply(this,args);
+    sr29ReconcileCombatGrapples();
+    return result;
+  };
+}
+if(typeof sr18ResolveMonsterAction==='function'){
+  const sr29PriorResolveMonsterAction=sr18ResolveMonsterAction;
+  sr18ResolveMonsterAction=function(...args){
+    const result=sr29PriorResolveMonsterAction.apply(this,args);
+    sr29ReconcileCombatGrapples();
+    return result;
   };
 }
 if(typeof sr10EnemyAttack==='function'){
@@ -685,5 +803,7 @@ globalThis.__SR29_TEST={
   attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,
   canSeeInvisible:sr29CanSeeInvisible,
   applyUiCondition:sr29ApplyUiCondition,removeUiCondition:sr29RemoveUiCondition,
-  currentPhase:()=>({phase:SR29_PHASE,cycle:SR29_COMBAT_CYCLE})
+  currentPhase:()=>({phase:SR29_PHASE,cycle:SR29_COMBAT_CYCLE}),
+  releaseGrapple:sr29ReleaseGrapple,reconcileGrapples:sr29ReconcileGrapples,
+  combatParticipants:sr29CombatParticipants,reconcileCombatGrapples:sr29ReconcileCombatGrapples
 };
