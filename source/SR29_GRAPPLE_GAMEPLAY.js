@@ -179,6 +179,33 @@ function sr29MpPruneGrappleChallenges(snapshot=state){
   if(reasons.length)log(reasons.length+' pending grapple save challenge(s) cancelled: '+reasons.map(item=>item.reason).join(', ')+'.','muted');
   return {removed:reasons.length,remaining:retained.length,reasons};
 }
+function sr29MpGrappleMovePlan(player,from,to,stepCost=5,standCost=0,snapshot=state){
+  const id=String(player?.id||'');
+  if(!id||!snapshot?.combat?.mp)return {legal:true,drag:false,movementCost:Number(stepCost)+Number(standCost)};
+  const targets=[];
+  for(const other of snapshot.campaign?.multiplayer?.players||[]){
+    if(String(other?.id||'')===id||other?.connected===false||!other?.character||other.character.hp<=0)continue;
+    const grapple=sr29Entries(other.character).find(item=>item.name==='grappled'&&String(item.grapplerId||item.sourceId||'')===id);
+    if(grapple)targets.push({actor:other.character,player:other,grapple,pos:snapshot.combat.mp.heroPositions?.[other.id]||other.pos||other.character.pos});
+  }
+  for(const enemy of snapshot.combat?.enemies||[]){
+    if(!enemy||enemy.hp<=0)continue;
+    const grapple=sr29Entries(enemy).find(item=>item.name==='grappled'&&String(item.grapplerId||item.sourceId||'')===id);
+    if(grapple)targets.push({actor:enemy,enemy,grapple,pos:enemy.pos||enemy.position});
+  }
+  if(!targets.length)return {legal:true,drag:false,movementCost:Number(stepCost)+Number(standCost)};
+  if(targets.length!==1)return {legal:false,drag:true,reason:'multiple-targets',targets:targets.length};
+  const held=targets[0],reach=Number(held.grapple.grappleRange??held.grapple.grappleReach??5);
+  const distance=held.pos?sr12Distance(from,held.pos):null;
+  if(!Number.isFinite(distance)||distance>reach)return {legal:false,drag:true,reason:'out-of-reach'};
+  const movement=sr29GrappleMovementCost(player.character,held.actor,Number(stepCost)+Number(standCost),{
+    grapplerSize:sr29MpSize(player.character),targetSize:sr29MpSize(held.actor)
+  });
+  if(!movement.valid)return {legal:false,drag:true,reason:movement.reason};
+  return {legal:true,drag:true,target:held,multiplier:movement.multiplier,movementCost:movement.movementCost,
+    speedHalved:movement.speedHalved,from:{x:Number(from.x),y:Number(from.y)},to:{x:Number(to.x),y:Number(to.y)}};
+}
+
 function sr29MpStartGrapple(player,targetId=null){
   const b=state?.combat,c=player?.character;
   const targetPlayer=targetId?sr29MpPlayerById(targetId):null;
@@ -458,8 +485,34 @@ function sr29ReconcileAbstractGrapples(snapshot=state){
 }
 if(typeof sr12MoveHero==='function'){
   const sr29PriorMoveHero=sr12MoveHero;
-  sr12MoveHero=function(...args){
-    const result=sr29PriorMoveHero.apply(this,args);
+  sr12MoveHero=function(player,x,y){
+    const b=state?.combat,c=player?.character;
+    if(!b?.mp||!player||!c)return sr29PriorMoveHero.apply(this,arguments);
+    sr29MpPruneGrappleChallenges();
+    sr29ReconcileCombatGrapples();
+    const from=sr12PlayerPos(player.id),to={x:Number(x),y:Number(y)};
+    const stepCost=sr9Cell(to.x,to.y)?.kind==='difficult'?10:5;
+    const standCost=sr11Has(c,'prone')?Math.ceil((Number(c.movement)||30)/2):0;
+    const plan=sr29MpGrappleMovePlan(player,from,to,stepCost,standCost);
+    if(!plan.legal){
+      toast(plan.reason==='multiple-targets'?'You cannot drag multiple creatures through one occupied grid space. Release a grapple first.':
+        plan.reason==='out-of-reach'?'The grapple is already beyond reach.':'You cannot drag that creature with the available movement data.');
+      return false;
+    }
+    const before=Number(c.movementSpent)||0,allowance=Number(c.movement)||30;
+    if(plan.drag&&before+plan.movementCost>allowance){
+      toast('Dragging this creature requires '+plan.movementCost+' feet of movement; you do not have enough remaining.');
+      return false;
+    }
+    const result=sr29PriorMoveHero.apply(this,arguments);
+    if(result&&plan.drag){
+      c.movementSpent=before+plan.movementCost;
+      if(plan.target.player)b.mp.heroPositions[plan.target.player.id]={...from};
+      else if(plan.target.enemy)plan.target.enemy.pos={...from};
+      log('You drag '+String(plan.target.actor.name||'the grappled creature')+' with you; this move costs '+plan.movementCost+' feet'+(plan.speedHalved?' (your speed is halved while dragging)':'')+'.','rolllog');
+      sr29ReconcileCombatGrapples();
+      render();save();sr4Broadcast();
+    }
     sr29ReconcileCombatGrapples();
     return result;
   };
@@ -492,5 +545,5 @@ if(typeof sr14CastSpellComplete==='function'){
 }
 
 if(globalThis.__SR29_TEST){
-  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerResolveGrappleSave:sr29MpResolveGrappleSave,multiplayerPruneGrappleChallenges:sr29MpPruneGrappleChallenges,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
+  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerResolveGrappleSave:sr29MpResolveGrappleSave,multiplayerPruneGrappleChallenges:sr29MpPruneGrappleChallenges,multiplayerGrappleMovePlan:sr29MpGrappleMovePlan,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
 }
