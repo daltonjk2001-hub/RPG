@@ -367,6 +367,29 @@ try{
    return result.removed===3&&result.remaining===1&&snapshot.combat.mp.grappleChallenges[0].id==='live-challenge'&&
      result.reasons.some(x=>x.reason==='participant-disconnected')&&result.reasons.some(x=>x.reason==='participant-defeated')&&result.reasons.some(x=>x.reason==='challenge-expired');
  })());
+ assert('Multiplayer grapple dragging keeps a held hero adjacent and charges double movement for a same-size target',(()=>{
+   const grappler=actor({id:'mp-grappler',name:'Grappler',size:'medium',movement:30});
+   const held=actor({id:'mp-held',name:'Held Hero',size:'medium'});
+   T.apply(held,'grappled','permanent','Grappler',{grapplerId:'mp-grappler',grappleRange:5});
+   const snapshot={combat:{mp:{heroPositions:{'mp-grappler':{x:2,y:2},'mp-held':{x:3,y:2}}},enemies:[]},
+     campaign:{multiplayer:{players:[{id:'mp-grappler',connected:true,character:grappler},{id:'mp-held',connected:true,character:held}]}}};
+   const plan=T.gameplay.multiplayerGrappleMovePlan(snapshot.campaign.multiplayer.players[0],{x:2,y:2},{x:3,y:2},5,0,snapshot);
+   return plan.legal&&plan.drag&&plan.multiplier===2&&plan.movementCost===10&&plan.target.player.id==='mp-held';
+ })());
+ assert('Multiplayer grapple dragging preserves normal movement cost for a Tiny target and refuses to overlap multiple held creatures',(()=>{
+   const grappler=actor({id:'mp-grappler',name:'Grappler',size:'medium',movement:30});
+   const tiny=actor({id:'mp-tiny',name:'Tiny',size:'tiny'});
+   T.apply(tiny,'grappled','permanent','Grappler',{grapplerId:'mp-grappler',grappleRange:5});
+   const player={id:'mp-grappler',connected:true,character:grappler},held={id:'mp-tiny',connected:true,character:tiny};
+   const snapshot={combat:{mp:{heroPositions:{'mp-grappler':{x:2,y:2},'mp-tiny':{x:3,y:2}}},enemies:[]},campaign:{multiplayer:{players:[player,held]}}};
+   const tinyPlan=T.gameplay.multiplayerGrappleMovePlan(player,{x:2,y:2},{x:3,y:2},5,0,snapshot);
+   const second=actor({id:'mp-second',name:'Second',size:'medium'});
+   T.apply(second,'grappled','permanent','Grappler',{grapplerId:'mp-grappler',grappleRange:5});
+   snapshot.campaign.multiplayer.players.push({id:'mp-second',connected:true,character:second});
+   snapshot.combat.mp.heroPositions['mp-second']={x:2,y:3};
+   const multiPlan=T.gameplay.multiplayerGrappleMovePlan(player,{x:2,y:2},{x:3,y:2},5,0,snapshot);
+   return tinyPlan.legal&&tinyPlan.movementCost===5&&!tinyPlan.speedHalved&&!multiPlan.legal&&multiPlan.reason==='multiple-targets';
+ })());
  assert('Multiplayer combat exposes Strength and Dexterity save choices to the targeted hero',html.includes('data-action="sr29-mp-grapple-save"')&&html.includes('data-ability="STR"')&&html.includes('data-ability="DEX"'));
  assert('Multiplayer combat exposes connected party-member grapple targets within 5 feet',html.includes('data-action="sr29-mp-grapple"')&&html.includes('sr12Distance(sr12PlayerPos(me),sr12PlayerPos(p.id))>5'));
  assert('Grapple initiators cannot take another action until the remote target resolves the pending save',html.includes('Wait for the target to resolve the grapple saving throw.')&&html.includes("msg?.action==='grapple-save'"));
