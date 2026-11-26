@@ -179,6 +179,10 @@ function sr29MpPruneGrappleChallenges(snapshot=state){
   if(reasons.length)log(reasons.length+' pending grapple save challenge(s) cancelled: '+reasons.map(item=>item.reason).join(', ')+'.','muted');
   return {removed:reasons.length,remaining:retained.length,reasons};
 }
+function sr29MpVoluntaryMovementEligibility(player){
+  const grapple=sr29Entries(player?.character).find(item=>item.name==='grappled');
+  return grapple?{legal:false,reason:'grappled',grappleId:String(grapple.id||'')}:{legal:true,reason:null,grappleId:null};
+}
 function sr29MpGrappleMovePlan(player,from,to,stepCost=5,standCost=0,snapshot=state){
   const id=String(player?.id||'');
   if(!id||!snapshot?.combat?.mp)return {legal:true,drag:false,movementCost:Number(stepCost)+Number(standCost)};
@@ -488,6 +492,8 @@ if(typeof sr12MoveHero==='function'){
   sr12MoveHero=function(player,x,y){
     const b=state?.combat,c=player?.character;
     if(!b?.mp||!player||!c)return sr29PriorMoveHero.apply(this,arguments);
+    const voluntaryMovement=sr29MpVoluntaryMovementEligibility(player);
+    if(!voluntaryMovement.legal){toast('You cannot move while Grappled. Use your action to escape first.');return false;}
     sr29MpPruneGrappleChallenges();
     sr29ReconcileCombatGrapples();
     const from=sr12PlayerPos(player.id),to={x:Number(x),y:Number(y)};
@@ -545,5 +551,5 @@ if(typeof sr14CastSpellComplete==='function'){
 }
 
 if(globalThis.__SR29_TEST){
-  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerResolveGrappleSave:sr29MpResolveGrappleSave,multiplayerPruneGrappleChallenges:sr29MpPruneGrappleChallenges,multiplayerGrappleMovePlan:sr29MpGrappleMovePlan,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
+  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerResolveGrappleSave:sr29MpResolveGrappleSave,multiplayerPruneGrappleChallenges:sr29MpPruneGrappleChallenges,multiplayerGrappleMovePlan:sr29MpGrappleMovePlan,multiplayerVoluntaryMovementEligibility:sr29MpVoluntaryMovementEligibility,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
 }
