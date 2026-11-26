@@ -524,6 +524,34 @@ if(typeof sr12MoveHero==='function'){
     return result;
   };
 }
+// Enemy displacement must reconcile source-linked grapples too. This covers normal enemy
+// pathing and any effect-driven displacement that routes through these movement primitives.
+if(typeof sr10EnemyMove==='function'){
+  const sr29PriorSoloEnemyMove=sr10EnemyMove;
+  sr10EnemyMove=function(...args){
+    const result=sr29PriorSoloEnemyMove.apply(this,args);
+    sr29ReconcileAbstractGrapples();
+    sr29ReconcileCombatGrapples();
+    return result;
+  };
+}
+if(typeof sr12EnemyStep==='function'){
+  const sr29PriorMpEnemyStep=sr12EnemyStep;
+  sr12EnemyStep=function(...args){
+    const result=sr29PriorMpEnemyStep.apply(this,args);
+    sr29ReconcileCombatGrapples();
+    return result;
+  };
+}
+if(typeof sr18ResolveMonsterAction==='function'){
+  const sr29PriorMonsterAction=sr18ResolveMonsterAction;
+  sr18ResolveMonsterAction=function(...args){
+    const result=sr29PriorMonsterAction.apply(this,args);
+    sr29ReconcileAbstractGrapples();
+    sr29ReconcileCombatGrapples();
+    return result;
+  };
+}
 if(typeof sr131Maneuver==='function'){
   const sr29PriorManeuver=sr131Maneuver;
   sr131Maneuver=function(...args){
