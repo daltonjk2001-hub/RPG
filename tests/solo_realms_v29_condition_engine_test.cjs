@@ -79,10 +79,13 @@ try{
  T.apply(repeatTarget,'paralyzed',10,'Hold Person');
  const holdAttached=T.gameplay.attachRepeatSave(repeatTarget,'paralyzed','Hold Person',repeatTarget,'WIS',10,holdRepeat);
  const repeatFailure=T.processRepeatSaves(repeatTarget,'end-turn','round-1:repeat-target',[1]);
+ const retainedAfterFailure=T.has(repeatTarget,'paralyzed');
  const duplicateRepeat=T.processRepeatSaves(repeatTarget,'end-turn','round-1:repeat-target',[20]);
+ const retainedAfterDuplicate=T.has(repeatTarget,'paralyzed');
  const repeatSuccess=T.processRepeatSaves(repeatTarget,'end-turn','round-2:repeat-target',[20]);
- const repeatSaveDetails={holdAttached,repeatFailure,duplicateRepeat,repeatSuccess,conditions:repeatTarget.conditions};
- assert('End-of-turn repeat saves retain a failed condition, prevent duplicate rolls in one turn, and end it on a later success',holdAttached&&repeatFailure.failed===1&&T.has(repeatTarget,'paralyzed')&&duplicateRepeat.skipped===1&&duplicateRepeat.attempted===0&&repeatSuccess.ended===1&&!T.has(repeatTarget,'paralyzed'),JSON.stringify(repeatSaveDetails));
+ const removedAfterSuccess=!T.has(repeatTarget,'paralyzed');
+ const repeatSaveDetails={holdAttached,repeatFailure,retainedAfterFailure,duplicateRepeat,retainedAfterDuplicate,repeatSuccess,removedAfterSuccess,conditions:repeatTarget.conditions};
+ assert('End-of-turn repeat saves retain a failed condition, prevent duplicate rolls in one turn, and end it on a later success',holdAttached&&repeatFailure.failed===1&&retainedAfterFailure&&duplicateRepeat.skipped===1&&duplicateRepeat.attempted===0&&retainedAfterDuplicate&&repeatSuccess.ended===1&&removedAfterSuccess,JSON.stringify(repeatSaveDetails));
  const dominatedTarget=actor({id:'dominated-target',name:'Dominated Target',classId:'Wizard',level:1});
  T18.state={character:dominatedTarget,combat:{round:1},campaign:{},log:[]};
  T.apply(dominatedTarget,'charmed',10,'Dominate Person');
