@@ -112,8 +112,9 @@ try{
  const seeInvisibleAttack=T.attackRoll(5,visibleInvisible,invisibleEnemy,true);
  assert('Actual attacks against Invisible targets are normal when the attacker can see them',!seeInvisibleAttack.adv&&!seeInvisibleAttack.dis);
  const invisibleTargetCanSee=actor({canSeeInvisible:true}),hiddenInvisibleAttacker=actor({id:'hidden-invisible'});T.apply(hiddenInvisibleAttacker,'invisible',2,'spell');
+ assert('Visibility helper detects a defender that can see Invisible creatures',T.canSeeInvisible(invisibleTargetCanSee)===true);
  const suppressedInvisibleAttack=T.attackRoll(5,hiddenInvisibleAttacker,invisibleTargetCanSee,true);
- assert('Invisible attackers gain no Advantage against targets that can see them',!suppressedInvisibleAttack.adv&&!suppressedInvisibleAttack.dis);
+ assert('Invisible attackers gain no Advantage against targets that can see them',!suppressedInvisibleAttack.adv&&!suppressedInvisibleAttack.dis,JSON.stringify(suppressedInvisibleAttack)+'; canSee='+T.canSeeInvisible(invisibleTargetCanSee)+'; actorInvisible='+T.has(hiddenInvisibleAttacker,'invisible'));
  const hiddenAttacker=actor({hidden:true});
  const hiddenAttack=T.attackRoll(5,hiddenAttacker,actor(),true);
  assert('Hidden attackers gain Advantage in the actual attack-roll path',hiddenAttack.adv&&!hiddenAttack.dis);

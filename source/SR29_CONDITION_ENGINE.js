@@ -683,6 +683,7 @@ globalThis.__SR29_TEST={
   damageMultiplier:sr29DamageMultiplier,applyEnemyDamage:typeof sr12ApplyDamage==='function'?sr12ApplyDamage:null,
   applyMonsterDamage:typeof sr18MonsterApplyDamage==='function'?sr18MonsterApplyDamage:null,
   attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,
+  canSeeInvisible:sr29CanSeeInvisible,
   applyUiCondition:sr29ApplyUiCondition,removeUiCondition:sr29RemoveUiCondition,
   currentPhase:()=>({phase:SR29_PHASE,cycle:SR29_COMBAT_CYCLE})
 };
