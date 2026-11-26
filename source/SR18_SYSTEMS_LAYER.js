@@ -303,7 +303,7 @@ function sr18TeleportPlan(from,target,feet,isOpen,hasLOS){
  const limit=Math.max(5,Number(feet)||5),candidates=[];
  for(let x=Math.floor(from.x-limit/5);x<=Math.ceil(from.x+limit/5);x++)for(let y=Math.floor(from.y-limit/5);y<=Math.ceil(from.y+limit/5);y++){
   const p={x,y};if(x===Number(from.x)&&y===Number(from.y))continue;
-  const travel=sr12Distance(from,p)*5,remaining=sr12Distance(p,target)*5;
+  const travel=sr12Distance(from,p),remaining=sr12Distance(p,target);
   if(travel>limit||remaining<5||typeof isOpen==='function'&&!isOpen(p)||typeof hasLOS==='function'&&!hasLOS(p,target))continue;
   candidates.push({to:p,travelFeet:travel,remainingFeet:remaining});
  }
