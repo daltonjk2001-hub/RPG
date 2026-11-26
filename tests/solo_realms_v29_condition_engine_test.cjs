@@ -75,6 +75,8 @@ try{
  const attacker=actor(),target=actor({id:'target-2'});
  T.apply(target,'paralyzed',2,'ghoul');
  assert('Attacks against Paralyzed targets have Advantage',T.attackState(attacker,target,{melee:true,distance:5}).mode==='advantage');
+ const grappled=actor();T.apply(grappled,'grappled',2,'grab');
+ assert('Grappled sets Speed to zero without imposing attack Disadvantage',T.status(grappled).speedOverride===0&&T.attackState(grappled,attacker,{melee:true,distance:5}).mode==='normal');
  const invisible=actor();T.apply(invisible,'invisible',2,'spell');
  assert('Invisible attackers have Advantage',T.attackState(invisible,target,{melee:true,distance:5}).mode==='advantage');
  const invisibleTarget=actor();T.apply(invisibleTarget,'invisible',2,'spell');
@@ -95,6 +97,8 @@ try{
  assert('Frightened source out of sight does not impose its visible-source penalty',T.skillMode(away,'Perception')==='normal'&&T.canMoveToward(away,{id:'dragon'}));
  const charmed=actor();T.apply(charmed,'charmed',2,'charm',{sourceId:'archmage'});
  assert('Charmed actor cannot harm its identified charmer',T.cannotHarm(charmed,{id:'archmage'})&&!T.cannotHarm(charmed,{id:'guard'}));
+ const socialTarget=actor();T.apply(socialTarget,'charmed',2,'charm',{sourceId:'bard'});
+ assert('Charmer gains Advantage on social interaction checks',T.socialCheckAdvantage({id:'bard'},socialTarget));
  assert('Close melee hits against Paralyzed or Unconscious targets are critical hits',T.criticalOnHit(target,{hit:true,melee:true,distance:5}));
  assert('Ranged hits do not receive the close-melee automatic critical',!T.criticalOnHit(target,{hit:true,melee:false,distance:30}));
  const concentration=actor({concentration:{spell:'Hold Person'},activeEffects:[{name:'Hold Person',concentration:true}]});
