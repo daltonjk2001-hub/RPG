@@ -237,6 +237,52 @@ function sr18MonsterTargetsForAction(enemy,action,target,save){
  const area=sr18Area({},action?.description||'');if(!area.active||!state.combat?.mp)return [target];
  const center=target?.pos||state.combat.heroPos;return sr12AllHeroPositions().filter(h=>h.player.character?.hp>0&&sr14AreaHit({pos:h.pos},enemy.pos,center,area.shape,area.size)).map(h=>({player:h.player,pos:h.pos}));
 }
+// Apply monster Push/Pull effects through one collision-aware tactical displacement transaction.
+function sr18DisplacementPlan(from,source,direction,feet,isOpen){
+ if(!from||!source||!Number.isFinite(Number(from.x))||!Number.isFinite(Number(from.y))||!Number.isFinite(Number(source.x))||!Number.isFinite(Number(source.y)))return null;
+ const dx=Math.sign(Number(from.x)-Number(source.x))*(direction==='pull'?-1:1),dy=Math.sign(Number(from.y)-Number(source.y))*(direction==='pull'?-1:1);
+ if(!dx&&!dy)return null;
+ const steps=Math.max(1,Math.floor(Math.max(5,Number(feet)||5)/5)),path=[];
+ let at={x:Number(from.x),y:Number(from.y)};
+ for(let i=0;i<steps;i++){
+  const next={x:at.x+dx,y:at.y+dy};
+  if(typeof isOpen==='function'&&!isOpen(next))break;
+  path.push(next);at=next;
+ }
+ return path.length?{from:{x:Number(from.x),y:Number(from.y)},to:at,path,feet:path.length*5}:null;
+}
+function sr18DisplaceCombatant(target,source,description){
+ const d=sr18Text(description),mode=/\b(?:pulls?|pulled)\b/i.test(d)?'pull':/\b(?:pushes?|pushed)\b/i.test(d)?'push':null;
+ if(!mode||!state.combat?.mp||typeof sr9Cell!=='function')return false;
+ const b=state.combat,player=target?.player,enemyTarget=target?.enemy;
+ const from=player?.id==='solo'?b.heroPos:(player?.id?b.mp.heroPositions?.[player.id]:(enemyTarget?.pos||enemyTarget?.position));
+ const sourcePos=source?.pos||source?.position;
+ if(!from||!sourcePos)return false;
+ const feet=Number((d.match(/(?:up to\s+)?(\d+)\s*feet?/i)||[])[1])||5;
+ const isOpen=pos=>{
+  const cell=sr9Cell(pos.x,pos.y);
+  if(!cell||cell.blocked===true||cell.walkable===false||/^(?:wall|void|blocked)$/i.test(String(cell.kind||cell.type||'')))return false;
+  for(const [id,pos2] of Object.entries(b.mp.heroPositions||{})){
+   if(id!==String(player?.id||'')&&pos2&&Number(pos2.x)===pos.x&&Number(pos2.y)===pos.y)return false;
+  }
+  for(const other of b.enemies||[]){
+   if(other!==source&&other!==enemyTarget&&other.hp>0){
+    const p=other.pos||other.position;if(p&&Number(p.x)===pos.x&&Number(p.y)===pos.y)return false;
+   }
+  }
+  return true;
+ };
+ const plan=sr18DisplacementPlan(from,sourcePos,mode,feet,isOpen);
+ if(!plan)return false;
+ if(player?.id==='solo')b.heroPos={...plan.to};
+ else if(player?.id)b.mp.heroPositions[player.id]={...plan.to};
+ else if(enemyTarget)enemyTarget.pos={...plan.to};
+ else return false;
+ if(typeof sr29ReconcileAbstractGrapples==='function')sr29ReconcileAbstractGrapples();
+ if(typeof sr29ReconcileCombatGrapples==='function')sr29ReconcileCombatGrapples();
+ log((target?.player?.name||target?.enemy?.name||'The target')+' is '+(mode==='push'?'pushed':'pulled')+' '+plan.feet+' feet.','rolllog');
+ return true;
+}
 function sr18ResolveMonsterAction(enemy,action,target){
  if(!target?.player?.character||!action||!sr18CanUseAction(enemy))return false;
  const p=target.player,c=p.character,desc=sr18Text(action.description),save=sr14ParseMonsterSave(desc),dice=sr14MonsterActionDamage(action)||'1d4',type=sr18Text(action.damage?.[0]?.type||'physical').toLowerCase();
@@ -254,10 +300,10 @@ function sr18ResolveMonsterAction(enemy,action,target){
      sr29Apply(cc,condition,conditionDuration,enemy.name,{sourceId:grapplerId,grapplerId,grappleRange});
     }else sr11Add(cc,condition,conditionDuration,enemy.name);
    }
-   log(`${enemy.name} uses ${action.name}; ${hero.name} makes a ${save.ability} save (${result.total} vs DC ${save.dc}) and takes ${actual} ${type} damage${condition&&!result.success?` and gains ${condition}`:''}.`,'badlog');
+   if(!result.success)sr18DisplaceCombatant(t,enemy,desc);\n   log(`${enemy.name} uses ${action.name}; ${hero.name} makes a ${save.ability} save (${result.total} vs DC ${save.dc}) and takes ${actual} ${type} damage${condition&&!result.success?` and gains ${condition}`:''}.`,'badlog');
   }else{
    const bonus=Number(action.attack_bonus??enemy.attack)||0,r=sr11RollAttack(bonus,enemy,cc,!range.ranged),ac=sr12WithHero(hero,()=>computeAC())+(cc.buffRounds>0?2:0)+(state.combat?.mp?sr11Cover(t.pos,enemy.pos):0),d20=sr25ResolveAttackRecord(r,ac),hit=d20.success;
-   if(hit){let amount=rollDice(dice);if(d20.critical)amount+=rollDice(dice);const actual=sr18MonsterApplyDamage(t,amount,type,enemy);log(`${enemy.name} uses ${action.name} against ${hero.name}: hit for ${actual} ${type} damage.`,'badlog');}else log(`${enemy.name} uses ${action.name} against ${hero.name}: miss.`,'rolllog');
+   if(hit){let amount=rollDice(dice);if(d20.critical)amount+=rollDice(dice);const actual=sr18MonsterApplyDamage(t,amount,type,enemy);sr18DisplaceCombatant(t,enemy,desc);log(`${enemy.name} uses ${action.name} against ${hero.name}: hit for ${actual} ${type} damage.`,'badlog');}else log(`${enemy.name} uses ${action.name} against ${hero.name}: miss.`,'rolllog');
   }
  }
  did=true;return did;
@@ -523,6 +569,6 @@ function sr18RunTests(){
  }catch(e){ok('V18 rules, living world and save tests execute without runtime errors',false,String(e?.stack||e));}
  return out;
 }
-globalThis.__SR18_TEST={version:SR18_VERSION,canUseAction:sr18CanUseAction,canUseReaction:sr18CanUseReaction,attackRoll:sr11RollAttack,openDB:sr18OpenDB,inferSpell:sr18InferSpellEffect,area:sr18Area,condition:sr18DetectCondition,expandMultiattack:sr18ExpandMultiattack,availableMultiattack:sr18AvailableMultiattack,rechargeReady:sr18RechargeReady,recharge:sr18ParseRecharge,parseActionRange:sr18ParseActionRange,markRechargeUsed:sr18MarkRechargeUsed,prepareMonsterTurn:sr18PrepareMonsterTurn,chooseMonsterAction:sr18ChooseMonsterAction,resolveMonsterAction:sr18ResolveMonsterAction,monsterTurnSolo:sr18MonsterTurnSolo,monsterDamage:sr18MonsterApplyDamage,typedDamage:sr12ApplyDamage,applySpellUtility:sr18ApplySpellUtility,classifyImprovisation:sr18ClassifyImprovisation,improvisationDecision:sr18ImprovisationDecision,ensureWorld:sr18EnsureWorld,advanceWorld:sr18AdvanceWorld,addWorldEvent:sr18AddWorldEvent,validateSave:sr18ValidateSave,normalizeImport:sr18NormalizeImported,snapshot:sr18Snapshot,storeSlot:sr18StoreSlot,readSlot:sr18ReadSlot,deleteSlot:sr18DeleteSlot,writeRecovery:sr18WriteRecovery,restore:sr18RestoreState,latestRecovery:sr18LatestRecovery,exportSave:sr18SaveExport,importFile:sr18ImportFile,saveCenter:sr18SaveCenter,render:render,header:header,adventurePage:adventurePage,tests:sr18RunTests,get state(){return state;},set state(v){state=v;}};
+globalThis.__SR18_TEST={version:SR18_VERSION,canUseAction:sr18CanUseAction,canUseReaction:sr18CanUseReaction,attackRoll:sr11RollAttack,openDB:sr18OpenDB,inferSpell:sr18InferSpellEffect,area:sr18Area,condition:sr18DetectCondition,expandMultiattack:sr18ExpandMultiattack,availableMultiattack:sr18AvailableMultiattack,rechargeReady:sr18RechargeReady,recharge:sr18ParseRecharge,parseActionRange:sr18ParseActionRange,markRechargeUsed:sr18MarkRechargeUsed,prepareMonsterTurn:sr18PrepareMonsterTurn,chooseMonsterAction:sr18ChooseMonsterAction,resolveMonsterAction:sr18ResolveMonsterAction,monsterTurnSolo:sr18MonsterTurnSolo,monsterDamage:sr18MonsterApplyDamage,typedDamage:sr12ApplyDamage,applySpellUtility:sr18ApplySpellUtility,displacementPlan:sr18DisplacementPlan,displaceCombatant:sr18DisplaceCombatant,classifyImprovisation:sr18ClassifyImprovisation,improvisationDecision:sr18ImprovisationDecision,ensureWorld:sr18EnsureWorld,advanceWorld:sr18AdvanceWorld,addWorldEvent:sr18AddWorldEvent,validateSave:sr18ValidateSave,normalizeImport:sr18NormalizeImported,snapshot:sr18Snapshot,storeSlot:sr18StoreSlot,readSlot:sr18ReadSlot,deleteSlot:sr18DeleteSlot,writeRecovery:sr18WriteRecovery,restore:sr18RestoreState,latestRecovery:sr18LatestRecovery,exportSave:sr18SaveExport,importFile:sr18ImportFile,saveCenter:sr18SaveCenter,render:render,header:header,adventurePage:adventurePage,tests:sr18RunTests,get state(){return state;},set state(v){state=v;}};
 // Re-render after the additive systems are installed so the V18 header and Save Center are visible on first boot.
 try { render(); } catch (error) { console.warn('V18 initial render:', error); }
