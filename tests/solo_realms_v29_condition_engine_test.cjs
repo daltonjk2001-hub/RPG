@@ -51,7 +51,7 @@ try{
  const incapacitated=actor();T.apply(incapacitated,'paralyzed',2,'ghoul');
  assert('Incapacitated blocks action, bonus action and reaction',!T.canAct(incapacitated,'action')&&!T.canAct(incapacitated,'bonus')&&!T.canAct(incapacitated,'reaction'));
  assert('Conditions that set Speed to zero block movement',!T.canMove(incapacitated));
- for(const name of ['grappled','petrified','restrained','stunned','unconscious']){
+ for(const name of ['grappled','petrified','restrained','unconscious']){
    const x=actor();T.apply(x,name,'permanent','test');
    assert(name+' sets Speed to zero',T.status(x).speedOverride===0);
  }
@@ -69,9 +69,15 @@ try{
  }
  const con=T25.resolveCreatureSavingThrow(saves,'CON',[20],0,1);
  assert('Stunned does not automatically fail Constitution saves',con.success&&!con.autoFail);
+ assert('Stunned prevents actions but does not reduce Speed to 0',!T.canAct(saves,'action')&&T.status(saves).speedOverride===null&&T.canMove(saves));
  const petrified=actor({exhaustion:1});T.apply(petrified,'petrified','permanent','stone');
  const exhaustionSave=T25.resolveCreatureSavingThrow(petrified,'CON',[12],5,15);
  assert('Exhaustion applies its -2 per level modifier to creature saves',exhaustionSave.total===15);
+ const restrainedSave=actor();T.apply(restrainedSave,'restrained',2,'net');
+ const restrainedDex=T25.resolveCreatureSavingThrow(restrainedSave,'DEX',[18],0,15);
+ assert('Restrained imposes Disadvantage on Dexterity saves',restrainedDex.dice.length===2&&restrainedDex.die===11);
+ const restrainedAdv=T25.resolveCreatureSavingThrow(restrainedSave,'DEX',[18,4],0,15,{advantage:true});
+ assert('Restrained cancels Advantage on Dexterity saves',restrainedAdv.dice.length===1&&restrainedAdv.die===18);
  assert('Petrified auto-fails Strength and Dexterity saves',T.autoFailSave(petrified,'STR')&&T.autoFailSave(petrified,'DEX'));
  const attacker=actor(),target=actor({id:'target-2'});
  T.apply(target,'paralyzed',2,'ghoul');
@@ -82,11 +88,14 @@ try{
  assert('Grappled attackers do not suffer this penalty against their grappler',T.attackState(grappled,actor({id:'grappler-1'}),{melee:true,distance:5}).mode==='normal');
  const invisible=actor();T.apply(invisible,'invisible',2,'spell');
  assert('Invisible attackers have Advantage',T.attackState(invisible,target,{melee:true,distance:5}).mode==='advantage');
+ assert('Invisible attackers gain no Advantage against a target that can see them',T.attackState(invisible,actor(),{melee:true,distance:5,targetCanSeeInvisible:true}).mode==='normal');
  const invisibleTarget=actor();T.apply(invisibleTarget,'invisible',2,'spell');
  assert('Attacks against Invisible targets have Disadvantage',T.attackState(attacker,invisibleTarget,{melee:true,distance:5}).mode==='disadvantage');
+ assert('Seeing an Invisible target removes that Disadvantage',T.attackState(attacker,invisibleTarget,{melee:true,distance:5,canSeeInvisible:true}).mode==='normal');
  const prone=actor();T.apply(prone,'prone',2,'trip');
- assert('Prone targets grant Advantage to nearby melee attacks',T.attackState(attacker,prone,{melee:true,distance:5}).mode==='advantage');
- assert('Prone targets impose Disadvantage on ranged attacks',T.attackState(attacker,prone,{melee:false,distance:30}).mode==='disadvantage');
+ assert('Prone targets grant Advantage to attacks from within 5 feet',T.attackState(attacker,prone,{melee:true,distance:5}).mode==='advantage');
+ assert('Prone targets also grant Advantage to ranged attacks from within 5 feet',T.attackState(attacker,prone,{melee:false,distance:5}).mode==='advantage');
+ assert('Prone targets impose Disadvantage on attacks from beyond 5 feet',T.attackState(attacker,prone,{melee:false,distance:30}).mode==='disadvantage');
  const poisonedAttacker=actor();T.apply(poisonedAttacker,'poisoned',2,'poison');
  assert('Poisoned attackers have Disadvantage',T.attackState(poisonedAttacker,actor(),{melee:true,distance:5}).mode==='disadvantage');
  const cancellation=actor();T.apply(cancellation,'poisoned',2,'poison');
@@ -104,8 +113,8 @@ try{
  assert('Charmed actor cannot harm its identified charmer',T.cannotHarm(charmed,{id:'archmage'})&&!T.cannotHarm(charmed,{id:'guard'}));
  const socialTarget=actor();T.apply(socialTarget,'charmed',2,'charm',{sourceId:'bard'});
  assert('Charmer gains Advantage on social interaction checks',T.socialCheckAdvantage({id:'bard'},socialTarget));
- assert('Close melee hits against Paralyzed or Unconscious targets are critical hits',T.criticalOnHit(target,{hit:true,melee:true,distance:5}));
- assert('Ranged hits do not receive the close-melee automatic critical',!T.criticalOnHit(target,{hit:true,melee:false,distance:30}));
+ assert('Any attack roll that hits a Paralyzed target within 5 feet is a critical hit',T.criticalOnHit(target,{hit:true,melee:false,distance:5}));
+ assert('Hits from beyond 5 feet do not receive the automatic critical',!T.criticalOnHit(target,{hit:true,melee:false,distance:30}));
  const concentration=actor({concentration:{spell:'Hold Person'},activeEffects:[{name:'Hold Person',concentration:true}]});
  T.apply(concentration,'stunned',2,'shock');
  assert('Applying an incapacitating condition ends concentration and its linked effect',concentration.concentration===null&&concentration.activeEffects.length===0);
