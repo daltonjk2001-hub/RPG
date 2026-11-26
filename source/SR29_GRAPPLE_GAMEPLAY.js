@@ -691,11 +691,11 @@ function sr29SpellSaveDC(caster,spell){
   const ability=typeof sr14CasterAbility==='function'?sr14CasterAbility(klass):'CHA';
   return 8+(typeof sr14Prof==='function'?sr14Prof(caster.level):2)+(typeof sr14AbilityMod==='function'?sr14AbilityMod(caster.stats?.[ability]):0)+(Number(caster.spellDCBonus)||0);
 }
-function sr29AttachRepeatSave(target,condition,spellName,caster,ability,dc,spec){
+function sr29AttachRepeatSave(target,condition,spellName,caster,ability,dc,spec,sourceIdOverride=''){
   if(!target||!condition||!spec||!ability||!Number.isFinite(Number(dc)))return false;
   const normalized=sr29NormalizeSaveAbility(ability),entries=sr29Entries(target),matches=entries.filter(item=>item.name===String(condition).toLowerCase()&&item.source===String(spellName));
   const item=matches[matches.length-1];if(!item)return false;
-  item.repeatSave={trigger:spec.trigger,endsOnSuccess:true,ability:normalized,dc:Number(dc),sourceSpell:String(spellName),sourceId:String(caster?.id||''),sourceName:String(caster?.name||''),appliedRound:Number(state?.combat?.round)||sr29CurrentCycle()};
+  item.repeatSave={trigger:spec.trigger,endsOnSuccess:true,ability:normalized,dc:Number(dc),sourceSpell:String(spellName),sourceId:String(sourceIdOverride||caster?.id||''),sourceName:String(caster?.name||''),appliedRound:Number(state?.combat?.round)||sr29CurrentCycle()};
   target.conditions=entries;return true;
 }
 function sr29SpellTargetFailedSave(target,entries){
@@ -760,7 +760,7 @@ if(typeof sr14CastSpellComplete==='function'){
         if(repeatSave&&effect.condition){
           const details=sr29SpellSaveDetails(victim,entries),ability=sr29NormalizeSaveAbility(effect.save||details.ability||repeatSave.ability||'');
           const dc=Number(details.dc)||sr29SpellSaveDC(caster,spell);
-          sr29AttachRepeatSave(victim,effect.condition,spellName,caster,ability,dc,repeatSave);
+          sr29AttachRepeatSave(victim,effect.condition,spellName,caster,ability,dc,repeatSave,player.id);
         }
         if(displacement&&(failed||attackHit))sr29ApplyPlayerSpellDisplacement(victim,player,displacement.mode,displacement.feet,origin);
       }
