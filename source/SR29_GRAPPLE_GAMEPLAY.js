@@ -637,7 +637,8 @@ function sr29ApplyPlayerSpellDisplacement(target,caster,mode,feet,origin=null){
   }
   const sourcePos=origin||(caster?.id&&typeof sr12PlayerPos==='function'?sr12PlayerPos(caster.id):combat.heroPos);
   if(!sourcePos||typeof sr18DisplaceCombatant!=='function')return false;
-  const moved=sr18DisplaceCombatant({enemy:target},{pos:sourcePos},`The target is ${mode} ${amount} feet.`);
+  const verb=mode==='push'?'pushed':'pulled';
+  const moved=sr18DisplaceCombatant({enemy:target},{pos:sourcePos},`The target is ${verb} ${amount} feet.`);
   if(moved&&target.position)target.position={...target.pos};
   return moved;
 }
