@@ -312,8 +312,8 @@ function sr18TeleportPlan(from,target,feet,isOpen,hasLOS){
 }
 function sr18TeleportMonster(enemy,target,description){
  const d=sr18Text(description);
- if(!/\\bteleport(?:s|ed|ing)?\\b/i.test(d))return false;
- const match=d.match(/teleport(?:s|ed|ing)?[^.]{0,100}?(?:up to |within |no more than )?(\\d+)\\s*feet?/i)||d.match(/(\\d+)\\s*feet?[^.]{0,80}teleport/i);
+ if(!/\bteleport(?:s|ed|ing)?\b/i.test(d))return false;
+ const match=d.match(/teleport(?:s|ed|ing)?[^.]{0,100}?(?:up to |within |no more than )?(\d+)\s*feet?/i)||d.match(/(\d+)\s*feet?[^.]{0,80}teleport/i);
  const feet=Math.max(5,Number(match?.[1])||30),b=state.combat;
  if(!b)return false;
  if(!b.mp){
