@@ -20,7 +20,7 @@ const context={console,document,window:{},location:{protocol:'https:',search:'',
  fetch:async()=>{throw Error('Unexpected network request in V29 condition tests.');}};
 context.globalThis=context;
 vm.runInNewContext(scripts[0],context,{timeout:60000,filename:'Solo_Realms_V29_Condition_Engine'});
-const T=context.__SR29_TEST,T25=context.__SR25_TEST;
+const T=context.__SR29_TEST,T25=context.__SR25_TEST,T21=context.__SR21_TEST;
 if(!T||!T25||T.version!=='29.0.0')throw new Error('V29 condition engine or typed-save integration is missing.');
 const checks=[];
 function assert(name,value,detail=''){checks.push({name,pass:!!value,detail:String(detail||'')});}
@@ -143,6 +143,51 @@ try{
  assert('Condition dashboard applies cumulative Exhaustion levels',uiHero.exhaustion===2&&T.status(uiHero).d20Penalty===4);
  const uiReduce=T.removeUiCondition(uiWorld,'player','exhaustion');
  assert('Condition dashboard can reduce Exhaustion one level at a time',uiReduce.removed===0&&uiHero.exhaustion===1);
+
+
+ const checkPoison=actor({id:'check-poison',level:5,stats:{STR:10,DEX:10,CON:10,INT:10,WIS:14,CHA:10}});
+ T.apply(checkPoison,'poisoned',2,'venom');
+ const poisonCheck=T21.canonicalCheck(checkPoison,'Perception',15,{roll:18,secondRoll:3});
+ assert('Director ability checks apply Poisoned Disadvantage and select the lower die',poisonCheck.disadvantage&&poisonCheck.roll===3);
+ const poisonAdvCheck=T21.canonicalCheck(checkPoison,'Perception',15,{roll:18,secondRoll:3,advantage:true});
+ assert('Poisoned Disadvantage cancels a manually selected Advantage in Director checks',!poisonAdvCheck.advantage&&!poisonAdvCheck.disadvantage&&poisonAdvCheck.roll===18);
+ const fearCheck=actor({id:'check-fear',level:5,stats:{STR:10,DEX:10,CON:10,INT:10,WIS:14,CHA:10}});
+ T.apply(fearCheck,'frightened',2,'dragon',{sourceId:'dragon',sourceVisible:true});
+ const fearRoll=T21.canonicalCheck(fearCheck,'Perception',15,{roll:18,secondRoll:3});
+ assert('Director ability checks apply Frightened Disadvantage while its source is visible',fearRoll.disadvantage&&fearRoll.roll===3);
+ fearCheck.conditions[0].sourceVisible=false;
+ const hiddenFear=T21.canonicalCheck(fearCheck,'Perception',15,{roll:18,secondRoll:3});
+ assert('Director ability checks do not penalize Frightened when the source is not visible',!hiddenFear.disadvantage&&hiddenFear.roll===18);
+ const expertiseCheck=actor({id:'expert-check',level:5,classId:'Wizard',stats:{STR:10,DEX:10,CON:10,INT:14,WIS:10,CHA:10},proficiencies:['History'],expertise:['History'],exhaustion:2});
+ const expectedExpertise=T21.skillBonus(expertiseCheck,'History').total-4;
+ const actualExpertise=T21.canonicalCheck(expertiseCheck,'History',15,{roll:12});
+ assert('Director checks apply Exhaustion once without erasing Expertise',actualExpertise.bonus===expectedExpertise);
+ const sightCheck=actor();T.apply(sightCheck,'blinded',2,'blindness');
+ const forcedSight=T21.canonicalCheck(sightCheck,'Investigation',15,{roll:20,requiresSight:true});
+ assert('Director checks automatically fail when Blinded and sight is required',forcedSight.autoFail&&forcedSight.roll===null&&!forcedSight.success);
+ const hearingCheck=actor();T.apply(hearingCheck,'deafened',2,'thunder');
+ const forcedHearing=T21.canonicalCheck(hearingCheck,'Perception',15,{roll:20,requiresHearing:true});
+ assert('Director checks automatically fail when Deafened and hearing is required',forcedHearing.autoFail&&forcedHearing.roll===null&&!forcedHearing.success);
+ const stunnedSave=actor();T.apply(stunnedSave,'stunned',2,'shock');
+ const forcedHeroSave=T.heroSave(stunnedSave,'STR',null,{saveDC:15});
+ assert('Monster effects automatically fail STR saves against Stunned characters',forcedHeroSave.autoFail&&!forcedHeroSave.success&&forcedHeroSave.total===-Infinity);
+ const petrifiedSave=actor({exhaustion:1});T.apply(petrifiedSave,'petrified','permanent','stone');
+ const forcedPetrifiedSave=T.heroSave(petrifiedSave,'DEX',null,{saveDC:15});
+ assert('Monster effects automatically fail DEX saves against Petrified characters',forcedPetrifiedSave.autoFail&&!forcedPetrifiedSave.success);
+ const exhaustionHeroSave=actor({stats:{STR:10,DEX:10,CON:14,INT:10,WIS:10,CHA:10},exhaustion:2});
+ const reducedHeroSave=T.heroSave(exhaustionHeroSave,'CON',null,{saveDC:15});
+ assert('Monster-originated saving throws apply Exhaustion -2 per level',reducedHeroSave.bonus===-2);
+ const stoneEnemy=actor({id:'stone-enemy',hp:20});T.apply(stoneEnemy,'petrified','permanent','stone');
+ const stoneDamage=T.applyEnemyDamage(stoneEnemy,9,'physical');
+ assert('Petrified enemies resist all damage with 2024 rounding',stoneDamage===4&&stoneEnemy.hp===16);
+ const stoneVulnerable=actor({id:'stone-vulnerable',hp:20,vulnerabilities:['fire']});T.apply(stoneVulnerable,'petrified','permanent','stone');
+ const stoneFire=T.applyEnemyDamage(stoneVulnerable,9,'fire');
+ assert('Petrified resistance cancels matching vulnerability instead of stacking modifiers',stoneFire===9&&stoneVulnerable.hp===11);
+ const stoneRedundant=actor({id:'stone-resistant',hp:20,resistances:['physical']});T.apply(stoneRedundant,'petrified','permanent','stone');
+ const stoneResistant=T.applyEnemyDamage(stoneRedundant,9,'physical');
+ assert('Petrified resistance does not stack with another resistance to the same damage',stoneResistant===4&&stoneRedundant.hp===16);
+ const stonePlayer=actor({resistances:[],vulnerabilities:['fire']});T.apply(stonePlayer,'petrified','permanent','stone');
+ assert('Petrified damage multiplier cancels fire vulnerability for multiplayer damage',T.damageMultiplier(stonePlayer,'fire')===1);
 
  const integrity=html.includes("sr29Tick(e,{phase:'round',cycle:b.round})")&&html.includes('sr29CriticalOnHit')&&sw.includes('solo-realms-systems-v29-');
  assert('Generated build includes V29 tick, critical-hit and service-worker cache integration',integrity);

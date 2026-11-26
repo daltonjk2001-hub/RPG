@@ -356,8 +356,7 @@ if(typeof skillBonus==='function'){
   const sr29PriorSkillBonus=skillBonus;
   skillBonus=function(skill){
     const c=state?.character,exhaustion=Math.max(0,Math.min(6,Math.floor(Number(c?.exhaustion)||0)));
-    const poison=sr29Has(c,'poisoned')?2:0;
-    return sr29PriorSkillBonus(skill)+Math.min(5,exhaustion)+poison-(2*exhaustion);
+    return sr29PriorSkillBonus(skill)-2*exhaustion;
   };
 }
 if(typeof sr7SkillCheck==='function'){
@@ -509,6 +508,119 @@ if(typeof sr10EnemyTurn==='function'){
   const sr29PriorEnemyTurn10=sr10EnemyTurn;
   sr10EnemyTurn=function(entry,...args){const actor=state?.combat?.enemies?.[entry?.index];if(actor&&!sr29CanAct(actor,'action'))return false;return sr29PriorEnemyTurn10.call(this,entry,...args);};
 }
+
+/*
+ * The Director's SR21 action form is the primary ability-check path. Route it
+ * through the same condition rules as the legacy skill-check adapter.
+ */
+function sr29CanonicalAbilityCheck(target,skill,dc,options={},fatiguePenalty=0) {
+  const opts={...(options||{})},mode=sr29SkillMode(target,skill,opts);
+  if(mode==='disadvantage')opts.disadvantage=true;
+  const advantage=!!opts.advantage&&!opts.disadvantage;
+  const disadvantage=!!opts.disadvantage&&!opts.advantage;
+  const fallback=typeof sr21SkillBonus==='function'?sr21SkillBonus(target,skill):{total:0};
+  const exhaustion=Math.max(0,Math.min(6,Math.floor(Number(target?.exhaustion)||0)));
+  const bonus=Number(fallback?.total)||0;
+  if(mode==='auto-fail')return {
+    roll:null,first:null,second:null,advantage:false,disadvantage:false,
+    bonus:bonus-2*exhaustion,total:null,success:false,skill,dc,
+    check:null,d20:null,autoFail:true
+  };
+  const rollMode=advantage?'advantage':disadvantage?'disadvantage':'normal';
+  let rollCheck=null;
+  if(typeof sr14AbilityCheck==='function') {
+    const rollFn=()=>sr14AbilityCheck(target,skill,dc,{mode:rollMode});
+    rollCheck=typeof sr21RandomForRolls==='function'?sr21RandomForRolls(opts,rollFn):rollFn();
+  }
+  const first=Number(opts.roll??rollCheck?.rolls?.[0]??rollCheck?.roll??rollCheck?.r1??rollCheck?.r??Math.floor(Math.random()*20)+1);
+  const second=(advantage||disadvantage)?Number(opts.secondRoll??rollCheck?.rolls?.[1]??rollCheck?.r2??first):null;
+  const selected=second===null?first:(advantage?Math.max(first,second):Math.min(first,second));
+  const effectiveBonus=bonus-2*exhaustion;
+  const resolved=typeof sr25ResolveAbilityCheck==='function'
+    ?sr25ResolveAbilityCheck([selected],effectiveBonus+Number(fatiguePenalty||0),dc)
+    :{die:selected,total:selected+effectiveBonus+Number(fatiguePenalty||0),success:selected+effectiveBonus+Number(fatiguePenalty||0)>=dc};
+  return {roll:resolved.die,first,second,advantage,disadvantage,bonus:effectiveBonus,total:resolved.total,
+    success:resolved.success,skill,dc,check:rollCheck,d20:resolved,autoFail:false};
+}
+if(typeof sr21CanonicalCheck==='function') {
+  sr21CanonicalCheck=sr29CanonicalAbilityCheck;
+  if(globalThis.__SR21_TEST)globalThis.__SR21_TEST.canonicalCheck=sr21CanonicalCheck;
+}
+if(typeof sr21ResolvePlayerAction==='function') {
+  const sr29PriorResolvePlayerAction=sr21ResolvePlayerAction;
+  sr21ResolvePlayerAction=function(text,options={}) {
+    const action=String(text||''),effective={...(options||{})};
+    if(effective.requiresSight!==true&&/\b(look|see|watch|visually|read|inspect|observe|spot|identify|discern)\b/i.test(action))effective.requiresSight=true;
+    if(effective.requiresHearing!==true&&/\b(listen|hear|hearing|sound|overhear|eavesdrop)\b/i.test(action))effective.requiresHearing=true;
+    const result=sr29PriorResolvePlayerAction(text,effective);
+    let decision=null;try{if(typeof sr18ImprovisationDecision==='function')decision=sr18ImprovisationDecision(action);}catch(error){}
+    const mode=SR20_MODES.includes(effective.mode)&&effective.mode!=='auto'?effective.mode:sr21InferMode(action);
+    const skill=sr21SkillFor(mode,action,decision,effective.skill);
+    const checkMode=sr29SkillMode(state?.character,skill,effective);
+    if(checkMode==='auto-fail'&&result) {
+      result.autoFail=true;
+      result.narrative='The required sense is unavailable; the check automatically fails. No die roll can overcome this condition.';
+      if(Array.isArray(state?.log)&&state.log.length)state.log[state.log.length-1].msg=result.narrative;
+      if(typeof save==='function')save();
+    }
+    return result;
+  };
+  if(globalThis.__SR21_TEST)globalThis.__SR21_TEST.resolve=sr21ResolvePlayerAction;
+}
+if(typeof sr133HeroSave==='function') {
+  const sr29PriorHeroSave=sr133HeroSave;
+  sr133HeroSave=function(target,ability,player,attacker) {
+    const result=sr29PriorHeroSave(target,ability,player,attacker);
+    const exhaustion=Math.max(0,Math.min(6,Math.floor(Number(target?.exhaustion)||0)));
+    const forced=sr29AutoFailSave(target,ability);
+    const bonus=Number(result?.bonus||0)-2*exhaustion;
+    const autoFail=!!result?.autoFail||forced;
+    const total=autoFail?-Infinity:Number(result?.selected)+bonus+Number(result?.cover||0);
+    return {...result,bonus,autoFail,total,success:!autoFail&&total>=Number(result?.dc||0)};
+  };
+}
+if(typeof sr12ApplyDamage==='function') {
+  const sr29PriorEnemyDamage=sr12ApplyDamage;
+  sr12ApplyDamage=function(enemy,amount,type='physical') {
+    if(!enemy||!sr29Has(enemy,'petrified'))return sr29PriorEnemyDamage(enemy,amount,type);
+    const key=String(type||'physical').toLowerCase();
+    const immunities=(enemy.immunities||[]).map(x=>String(x).toLowerCase());
+    const resistances=(enemy.resistances||[]).map(x=>String(x).toLowerCase());
+    const vulnerabilities=(enemy.vulnerabilities||[]).map(x=>String(x).toLowerCase());
+    const immune=immunities.includes(key)||immunities.includes('all');
+    const resistant=true; // Petrified always grants resistance to every damage type.
+    const vulnerable=vulnerabilities.includes(key);
+    let dealt=Math.max(0,Number(amount)||0);
+    if(immune)dealt=0;
+    else if(resistant!==vulnerable)dealt=resistant?Math.floor(dealt/2):dealt*2;
+    enemy.hp=Math.max(0,Number(enemy.hp||0)-dealt);
+    enemy.lastDamageType=key;
+    if((key==='fire'||key==='acid')&&enemy.role==='regenerator')enemy.regenerationStopped=true;
+    return dealt;
+  };
+  if(globalThis.__SR29_TEST)globalThis.__SR29_TEST.applyEnemyDamage=sr12ApplyDamage;
+}
+function sr29DamageMultiplier(target,type) {
+  if(!target||!sr29Has(target,'petrified'))return typeof sr14DamageMultiplier==='function'?sr14DamageMultiplier(target,type):1;
+  const resistances=Array.isArray(target.resistances)?target.resistances.slice():[];
+  if(!resistances.some(x=>String(x).toLowerCase()==='all'))resistances.push('all');
+  const effective={...target,resistances};
+  return typeof sr14DamageMultiplier==='function'?sr14DamageMultiplier(effective,type):0.5;
+}
+if(typeof sr18MonsterApplyDamage==='function') {
+  const sr29PriorMonsterDamage=sr18MonsterApplyDamage;
+  sr18MonsterApplyDamage=function(target,amount,type,enemy) {
+    const character=target?.player?.character;
+    if(!state?.combat?.mp||!sr29Has(character,'petrified'))return sr29PriorMonsterDamage(target,amount,type,enemy);
+    const original=Array.isArray(character.resistances)?character.resistances:null;
+    const resistances=original?original.slice():[];
+    if(!resistances.some(x=>String(x).toLowerCase()==='all'))resistances.push('all');
+    character.resistances=resistances;
+    try{return sr29PriorMonsterDamage(target,amount,type,enemy);}
+    finally{if(original)character.resistances=original;else delete character.resistances;}
+  };
+}
+
 globalThis.__SR29_TEST={
   version:SR29_VERSION,schema:SR29_SCHEMA,names:SR29_CONDITION_NAMES.slice(),registry:SR29_CONDITIONS,
   normalizeName:sr29Name,entries:sr29Entries,has:sr29Has,apply:sr29Apply,remove:sr29Remove,tick:sr29Tick,
@@ -517,6 +629,8 @@ globalThis.__SR29_TEST={
   skillMode:sr29SkillMode,criticalOnHit:sr29CriticalOnHit,canAct:sr29CanAct,canMove:sr29CanMove,
   canMoveToward:sr29CanMoveToward,cannotHarm:sr29CannotHarm,socialCheckAdvantage:sr29SocialCheckAdvantage,
   conditionPanel:sr29ConditionPanel,uiTargets:sr29UiTargets,resolveUiTarget:sr29UiTarget,
+  canonicalAbilityCheck:sr29CanonicalAbilityCheck,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,
+  damageMultiplier:sr29DamageMultiplier,applyEnemyDamage:typeof sr12ApplyDamage==='function'?sr12ApplyDamage:null,
   applyUiCondition:sr29ApplyUiCondition,removeUiCondition:sr29RemoveUiCondition,
   currentPhase:()=>({phase:SR29_PHASE,cycle:SR29_COMBAT_CYCLE})
 };
