@@ -440,6 +440,22 @@ try{
  assert('Frightened does not assume an unidentified source is in line of sight',T.skillMode(unknownFear,'Perception')==='normal'&&T.canMoveToward(unknownFear,{id:'unknown'}));
  const charmed=actor();T.apply(charmed,'charmed',2,'charm',{sourceId:'archmage'});
  assert('Charmed actor cannot harm its identified charmer',T.cannotHarm(charmed,{id:'archmage'})&&!T.cannotHarm(charmed,{id:'guard'}));
+ const charmedAttackHero=actor({id:'charmed-attack-hero',name:'Charmed Attack Hero',classId:'Fighter',level:1,weapon:'Longsword',actionSpent:false});
+ const charmedAttackSource=actor({id:'charmed-attack-source',name:'Charmed Attack Source',hp:20,maxHp:20,ac:10,pos:{x:2,y:1}});
+ T.apply(charmedAttackHero,'charmed',2,'Charm',{sourceId:'charmed-attack-source'});
+ const charmedAttackPlayer={id:'charmed-attack-hero',name:'Charmed Attack Hero',connected:true,character:charmedAttackHero};
+ T18.state={character:charmedAttackHero,campaign:{day:1,region:'Charmed Attack Test',location:'Charmed Attack Test',visited:['Charmed Attack Test'],companions:[],npcs:[],sideQuests:[],story:{},flags:{},mainQuest:{kind:'test',title:'Charmed Attack Test',goal:'Validate charmed target restrictions'},multiplayer:{players:[charmedAttackPlayer]}},combat:{mp:{heroPositions:{'charmed-attack-hero':{x:1,y:1}},turnOrder:[{kind:'hero',id:'charmed-attack-hero',faction:'hero'}],index:0},target:0,enemies:[charmedAttackSource],map:{width:8,height:6,terrain:openTerrain}},log:[]};
+ const charmedAttackResult=T.gameplay.heroAttack(charmedAttackPlayer,charmedAttackSource,false);
+ assert('A Charmed multiplayer hero cannot attack the identified charmer and spends no Action',charmedAttackResult===false&&charmedAttackSource.hp===20&&charmedAttackHero.actionSpent===false);
+ const charmedSpellCaster=actor({id:'charmed-spell-caster',name:'Charmed Spell Caster',classId:'Wizard',level:3,classLevels:{Wizard:3},spells:['Hold Person'],preparedSpells:['Hold Person'],spellSlotsByLevel:{2:1},actionSpent:false});
+ const charmedSpellSource=actor({id:'charmed-spell-source',name:'Charmed Spell Source',hp:20,maxHp:20,ac:10,pos:{x:2,y:1}});
+ T.apply(charmedSpellCaster,'charmed',2,'Charm',{sourceId:'charmed-spell-source'});
+ const charmedSpellPlayer={id:'charmed-spell-caster',name:'Charmed Spell Caster',connected:true,character:charmedSpellCaster};
+ T.gameplay.setSpellData('Hold Person',{name:'Hold Person',level:2,classes:['Wizard'],kind:'control',range:'60 feet',castingTime:'Action',description:'The target must succeed on a Wisdom saving throw or be Paralyzed for the duration.'});
+ T18.state={character:charmedSpellCaster,campaign:{day:1,region:'Charmed Spell Test',location:'Charmed Spell Test',visited:['Charmed Spell Test'],companions:[],npcs:[],sideQuests:[],story:{},flags:{},mainQuest:{kind:'test',title:'Charmed Spell Test',goal:'Validate harmful spell target restrictions'},multiplayer:{players:[charmedSpellPlayer]}},combat:{mp:{heroPositions:{'charmed-spell-caster':{x:1,y:1}},turnOrder:[{kind:'hero',id:'charmed-spell-caster',faction:'hero'}],index:0},target:0,enemies:[charmedSpellSource],map:{width:8,height:6,terrain:openTerrain}},log:[]};
+ const charmedHoldPerson=T.gameplay.castSpell(charmedSpellPlayer,'Hold Person');
+ assert('A Charmed multiplayer caster cannot target its charmer with a harmful control spell and spends no slot or Action',charmedHoldPerson===false&&Number(charmedSpellCaster.spellSlotsByLevel[2])===1&&charmedSpellCaster.actionSpent===false&&charmedSpellSource.hp===20);
+
  const socialTarget=actor();T.apply(socialTarget,'charmed',2,'charm',{sourceId:'bard'});
  assert('Charmer gains Advantage on social interaction checks',T.socialCheckAdvantage({id:'bard'},socialTarget));
  assert('Any attack roll that hits a Paralyzed target within 5 feet is a critical hit',T.criticalOnHit(target,{hit:true,melee:false,distance:5}));
