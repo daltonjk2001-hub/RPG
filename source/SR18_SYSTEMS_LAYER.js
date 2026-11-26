@@ -40,6 +40,7 @@ function sr18InferSpellEffect(name,sp,base={kind:'utility'}){
  else if(base.kind==='utility'&&/damage|attack roll/i.test(d)&&area.active)effect.kind='saveDamage';
  if(['attack','saveDamage','control','debuff'].includes(effect.kind)){
   effect.save=effect.save||save;effect.condition=effect.condition||condition;
+  if(effect.kind==='control'&&typeof sr29ParseForcedDisplacement==='function'&&sr29ParseForcedDisplacement(desc)&&!condition)effect.condition='';
   if(area.active){effect.area=true;effect.shape=effect.shape||area.shape;effect.size=effect.size||area.size;}
   if(effect.kind==='saveDamage'&&!effect.type)effect.type=sr18Text(sp?.damageType||'force').toLowerCase();
  }
