@@ -247,8 +247,10 @@ function sr29SocialCheckAdvantage(actor,target) {
 }
 function sr29CanAct(actor,actionType='action') {
   const status=sr29Status(actor);
-  if(actionType==='reaction')return status.canReact;
-  if(actionType==='bonus'||actionType==='bonus-action')return status.canBonusAction;
+  const kind=String(actionType||'action').trim().toLowerCase().replace(/[ _]+/g,'-');
+  if(kind==='reaction')return status.canReact;
+  if(kind==='bonus'||kind==='bonus-action')return status.canBonusAction;
+  if(kind==='action'||kind==='legendary-action'||kind==='special-action')return status.canAct;
   return status.canAct;
 }
 function sr29CanMove(actor){return sr29Status(actor).speedOverride!==0;}
@@ -804,6 +806,7 @@ globalThis.__SR29_TEST={
   canSeeInvisible:sr29CanSeeInvisible,
   applyUiCondition:sr29ApplyUiCondition,removeUiCondition:sr29RemoveUiCondition,
   currentPhase:()=>({phase:SR29_PHASE,cycle:SR29_COMBAT_CYCLE}),
+  canUseAction:sr29CanAct,
   releaseGrapple:sr29ReleaseGrapple,reconcileGrapples:sr29ReconcileGrapples,
   combatParticipants:sr29CombatParticipants,reconcileCombatGrapples:sr29ReconcileCombatGrapples
 };

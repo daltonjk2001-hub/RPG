@@ -22,7 +22,7 @@ The Exhaustion condition is handled separately as a cumulative level from 0 to 6
 
 - A single registry and status service cover the fifteen conditions, derived Incapacitated/Prone state, Speed-zero state, condition immunity, and the condition-driven Strength/Dexterity saving-throw failure matrix.
 - Paralyzed, Petrified, Stunned, and Unconscious automatically fail Strength and Dexterity saves; the V25 creature-save resolver enforces this without changing other saving-throw abilities.
-- Incapacitating applications end concentration. The player action paths for attacks and spellcasting are guarded; the initiative enemy path skips incapacitated creatures.
+- Incapacitating applications end concentration. Player attack and spellcasting paths are guarded; solo and multiplayer monster action resolution and legendary actions consult the canonical action gate. Monster Parry and damage-reduction reactions consult the canonical reaction gate and cannot trigger while Incapacitated.
 - Blinded sight-dependent and Deafened hearing-dependent checks can be represented as automatic failures in the skill-mode service. Blinded does not auto-fail an unspecified Perception check, because that check may rely on hearing or another sense; the calling action must identify the sense it requires. Frightened modifiers require confirmed line of sight to the source rather than assuming an unknown source is visible.
 - Poisoned, Frightened, Prone, Restrained, Blinded, Invisible, and target-condition effects feed the shared attack-mode logic for the V7 and V11 attack paths. Advantage and Disadvantage cancel rather than accumulate.
 - Prone gives Advantage to any attack made from within 5 feet and Disadvantage to attacks made from farther away. Movement through the legacy player-movement adapter spends the existing half-speed allowance to stand and then removes Prone.
@@ -48,11 +48,11 @@ This slice does not yet implement the extra movement cost for dragging/carrying 
 
 A timed condition instance has its own round count. Reapplying a condition creates a new instance unless the caller explicitly supplies the same instance ID to refresh it. Permanent legacy conditions remain permanent. The turn-phase metadata prevents a condition applied during the current enemy phase from immediately losing a round in that same phase.
 
-The current game has more than one combat adapter, and not every old feature path uses the same turn lifecycle. V29 consolidates the known V7/V10/V11 condition application and expiry helpers, but a full event-sourced combat timeline and exhaustive timing audit across every feature and multiplayer encounter remain future work.
+The current game has more than one combat adapter, and not every old feature path uses the same turn lifecycle. The V18 monster action, legendary-action, Parry, and damage-reduction reaction adapters now consult the canonical V29 action/reaction eligibility service. V29 consolidates the known V7/V10/V11 condition application and expiry helpers, but a full event-sourced combat timeline and exhaustive timing audit across every feature and multiplayer encounter remain future work.
 
 ## Verification
 
-tests/solo_realms_v29_condition_engine_test.cjs covers registry presence, separate durations, legacy migration, immunity, derived conditions, Exhaustion, automatic save failure, attack Advantage/Disadvantage, critical-hit boundaries, sensory checks, source-specific Charmed/Frightened behavior, concentration loss, source-specific removal, grapple reach boundaries, incapacitated-grappler release, instance-specific release, and current-combat reconciliation.
+tests/solo_realms_v29_condition_engine_test.cjs covers registry presence, separate durations, legacy migration, immunity, derived conditions, Exhaustion, automatic save failure, action/bonus-action/reaction eligibility, monster Parry and damage-reduction reaction gates, attack Advantage/Disadvantage, critical-hit boundaries, sensory checks, source-specific Charmed/Frightened behavior, concentration loss, source-specific removal, grapple reach boundaries, incapacitated-grappler release, instance-specific release, and current-combat reconciliation.
 
 Run the complete repository suite with: bash tests/run_v18.sh
 
@@ -61,7 +61,7 @@ Run the complete repository suite with: bash tests/run_v18.sh
 The condition dashboard remains **Partial** until the remaining acceptance criteria are met:
 
 1. Extend the current player/solo-enemy condition panel to remote multiplayer participants and dedicated character/combat/enemy status views.
-2. Complete every bonus-action and reaction gate, and make every harmful spell/feature path honor the Charmed source restriction.
+2. Audit every player-facing bonus-action and reaction feature path and make every harmful spell/feature path honor the Charmed source restriction. The canonical eligibility service and V18 monster Parry/damage-reduction reaction gates are implemented; player-side feature-specific reaction dispatch remains to be traced and verified.
 3. Route every ability check, saving throw, initiative roll, and attack path—including Director-proposed and multiplayer actions—through Exhaustion and condition modifiers.
 4. Complete grapple drag/carry movement and extra movement cost, one-grapple-per-hand/appendage enforcement, player-side forced-movement/teleport integration, and live multiplayer timing tests. Automatic release for an Incapacitated grappler or a target moved beyond its stored reach is implemented and covered by regression tests.
 5. Complete Frightened source visibility and movement restrictions against exact line of sight and target identity.

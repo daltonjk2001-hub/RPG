@@ -20,7 +20,7 @@ const context={console,document,window:{},location:{protocol:'https:',search:'',
  fetch:async()=>{throw Error('Unexpected network request in V29 condition tests.');}};
 context.globalThis=context;
 vm.runInNewContext(scripts[0],context,{timeout:60000,filename:'Solo_Realms_V29_Condition_Engine'});
-const T=context.__SR29_TEST,T25=context.__SR25_TEST,T21=context.__SR21_TEST;
+const T=context.__SR29_TEST,T25=context.__SR25_TEST,T21=context.__SR21_TEST,T18=context.__SR18_TEST;
 if(!T||!T25||T.version!=='29.0.0')throw new Error('V29 condition engine or typed-save integration is missing.');
 const checks=[];
 function assert(name,value,detail=''){checks.push({name,pass:!!value,detail:String(detail||'')});}
@@ -50,6 +50,18 @@ try{
  assert('Prone persists after Unconscious ends',T.has(unsteady,'prone'));
  const incapacitated=actor();T.apply(incapacitated,'paralyzed',2,'ghoul');
  assert('Incapacitated blocks action, bonus action and reaction',!T.canAct(incapacitated,'action')&&!T.canAct(incapacitated,'bonus')&&!T.canAct(incapacitated,'reaction'));
+ assert('Action eligibility normalizes bonus-action aliases without permitting an incapacitated creature to bypass the gate',!T.canUseAction(incapacitated,'bonus_action')&&!T.canUseAction(incapacitated,'bonus action')&&!T.canUseAction(incapacitated,'bonus-action'));
+ assert('Unrestricted creatures remain eligible for actions, bonus actions and reactions',T.canUseAction(actor(),'action')&&T.canUseAction(actor(),'bonus action')&&T.canUseAction(actor(),'reaction'));
+ assert('V18 monster action and reaction adapters defer to the canonical V29 condition engine',T18.canUseAction(incapacitated)===false&&T18.canUseReaction(incapacitated)===false&&T18.canUseReaction(actor())===true);
+ const paralyzedReaction=actor({hp:20,ac:10,reactions:[{name:'Parry',description:'adds 3 to its AC'}],reactionAvailable:true});
+ T.apply(paralyzedReaction,'paralyzed',2,'test');
+ const parryAttempt=T18.attackRoll(15,actor(),paralyzedReaction,true);
+ assert('An Incapacitated monster cannot spend a Parry reaction to turn a hit into a miss',paralyzedReaction.reactionAvailable===true&&!paralyzedReaction._sr18ParryUsed&&parryAttempt.total>=10);
+ const stunnedReducer=actor({hp:20,reactions:[{name:'Damage Reduction',description:'Reduce damage by 1d6.'}],reactionAvailable:true});
+ T.apply(stunnedReducer,'stunned',2,'test');
+ const hpBeforeReduction=stunnedReducer.hp;
+ T18.typedDamage(stunnedReducer,8,'physical');
+ assert('An Incapacitated monster cannot use a damage-reduction reaction',stunnedReducer.reactionAvailable===true&&!stunnedReducer._sr18ReductionUsed&&stunnedReducer.hp===hpBeforeReduction-8);
  assert('Conditions that set Speed to zero block movement',!T.canMove(incapacitated));
  for(const name of ['grappled','petrified','restrained','unconscious']){
    const x=actor();T.apply(x,name,'permanent','test');
@@ -271,6 +283,8 @@ try{
  assert('Generated player grid attack uses the V29 automatic-critical rule for Paralyzed and Unconscious targets within 5 feet',html.includes("automaticCritical=sr29CriticalOnHit(e,{hit:true,distance:dist})"));
  assert('Generated build records monster Grappled source IDs and parsed reach',html.includes("grappleRange=Math.max(5,Number(range.ranged?range.normalRange:range.reach)||5)"));
  assert('Condition panel exposes a grapple reach control',html.includes('id="sr29-grapple-range"'));
+ assert('Generated build contains canonical V18 reaction eligibility gates',html.includes('sr18CanUseReaction(target)')&&html.includes('sr18CanUseReaction(enemy)'));
+ assert('Generated build gates solo and multiplayer monster actions through V29',html.includes('if(!sr18CanUseAction(enemy))'));
  assert('Generated build includes V29 tick, critical-hit and service-worker cache integration',integrity);
 }catch(error){assert('V29 condition suite completes without uncaught runtime errors',false,error?.stack||String(error));}
 for(const check of checks)console.log((check.pass?'PASS ':'FAIL ')+check.name+(check.detail?' — '+check.detail:''));

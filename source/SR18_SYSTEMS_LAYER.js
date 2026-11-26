@@ -10,6 +10,8 @@ const SR18_MAX_SLOTS=8;
 let SR18_DB_PROMISE=null, SR18_RECOVERY_TIMER=null, SR18_LAST_RECOVERY=0, SR18_RECOVERY_SEQ=0;
 
 function sr18Text(x){return String(x??'');}
+function sr18CanUseAction(actor){return typeof sr29CanAct!=='function'||sr29CanAct(actor,'action');}
+function sr18CanUseReaction(actor){return typeof sr29CanAct!=='function'||sr29CanAct(actor,'reaction');}
 function sr18DiceAverage(expr){const m=sr18Text(expr).replace(/\s/g,'').match(/^(\d+)?d(\d+)([+-]\d+)?$/i);return m?(Number(m[1]||1)*(Number(m[2])+1)/2+Number(m[3]||0)):0;}
 function sr18DamageExpr(sp){return sr18Text(sp?.damage||'').replace(/\s/g,'')||sr18Text(sp?.description||'').match(/\b\d+d\d+(?:\s*[+-]\s*\d+)?\b/i)?.[0]?.replace(/\s/g,'')||'';}
 function sr18SaveAbility(sp,desc){const direct=sr18Text(sp?.saveAbility||'').toUpperCase().slice(0,3);if(['STR','DEX','CON','INT','WIS','CHA'].includes(direct))return direct;const m=sr18Text(desc).match(/\b(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma) saving throw\b/i);return m?m[1].slice(0,3).toUpperCase():'DEX';}
@@ -183,7 +185,7 @@ sr11RollAttack=function(base,actor,target,melee=false){
  let extra=0,spellAdv=false;for(const e of sr18ActiveEffect(actor)){if(e.bonusType==='attack'||e.bonusType==='attackSave')extra+=Number(e.bonus||0)+(e.bonusDice?rollDice(e.bonusDice):0);if(e.attackAdvantage)spellAdv=true;}
  const out=sr18AttackBase(Number(base||0)+extra,actor,target,melee);if(spellAdv&&!out.adv&&!out.dis){const r2=die(20);out.r2=r2;out.r1=out.r;out.r=Math.max(out.r,r2);out.adv=true;out.total=out.r+Number(base||0)+extra;}if(actor&&typeof actor==='object')actor.lastAttackRoll=out;for(const x of sr18ActiveEffect(actor).filter(x=>x.once&&(x.bonusType==='attack'||x.bonusType==='attackSave'))){actor.activeEffects=actor.activeEffects.filter(y=>y!==x);if(actor.concentration?.spell===x.name)actor.concentration=null;}
  // A monster's Parry reaction can turn one otherwise-hit melee attack into a miss.
- if(target&&target.hp!==undefined&&target.reactions?.length&&target.reactionAvailable!==false&&melee&&!target._sr18ParryUsed&&out.r!==1){
+ if(target&&target.hp!==undefined&&target.reactions?.length&&target.reactionAvailable!==false&&sr18CanUseReaction(target)&&melee&&!target._sr18ParryUsed&&out.r!==1){
   const parry=target.reactions.find(x=>/parry|adds?\s+\d+\s+to its AC|increases? its AC/i.test(`${x.name} ${x.description}`));
   const bonus=Number((sr18Text(parry?.description).match(/(?:adds?|increase[sd]?)\s+(\d+)\s+to (?:its )?AC/i)||[])[1]||3);
   const ac=Number(target.ac)||10;if(parry&&out.total>=ac&&out.total<ac+bonus){out.total-=bonus;target.reactionAvailable=false;target._sr18ParryUsed=true;log(`${target.name} uses ${parry.name||'Parry'} to turn the blow aside.`,'rolllog');}
@@ -236,7 +238,7 @@ function sr18MonsterTargetsForAction(enemy,action,target,save){
  const center=target?.pos||state.combat.heroPos;return sr12AllHeroPositions().filter(h=>h.player.character?.hp>0&&sr14AreaHit({pos:h.pos},enemy.pos,center,area.shape,area.size)).map(h=>({player:h.player,pos:h.pos}));
 }
 function sr18ResolveMonsterAction(enemy,action,target){
- if(!target?.player?.character||!action)return false;
+ if(!target?.player?.character||!action||!sr18CanUseAction(enemy))return false;
  const p=target.player,c=p.character,desc=sr18Text(action.description),save=sr14ParseMonsterSave(desc),dice=sr14MonsterActionDamage(action)||'1d4',type=sr18Text(action.damage?.[0]?.type||'physical').toLowerCase();
  const range=sr18ParseActionRange(action),dist=enemy.pos&&target.pos?sr12Distance(enemy.pos,target.pos):0;
  if(!range.ranged&&dist>range.reach){if(state.combat?.mp)sr12EnemyStep(enemy,target.pos);else if(typeof sr10EnemyMove==='function')sr10EnemyMove(enemy);return false;}
@@ -287,7 +289,7 @@ function sr18MonsterMorale(enemy){
 function sr18MonsterTurnSolo(entry){
  const b=state.combat,enemy=b?.enemies?.[entry?.index];if(!enemy?.statBlock||enemy._sr18ActedTurn===`${b.round}:${entry.index}`)return false;
  sr18PrepareMonsterTurn(enemy);enemy._sr18ActedTurn=`${b.round}:${entry.index}`;
- if((enemy.conditions||[]).some(x=>['incapacitated','stunned','paralyzed','unconscious'].includes(typeof x==='string'?x:x.name))){log(`${enemy.name} cannot act because of a condition.`,'muted');return true;}
+ if(!sr18CanUseAction(enemy)){log(`${enemy.name} cannot act because of a condition.`,'muted');return true;}
  const target=sr18MonsterTarget(enemy);if(!target)return false;
  const seq=sr18AvailableMultiattack(enemy);let action=seq?.[0]||sr18ChooseMonsterAction(enemy,target);
  if(!action)return false;
@@ -309,14 +311,14 @@ sr12EnemyTurn=function(enemy){
  if(!enemy?.statBlock)return sr18MPMonsterTurnBase(enemy);
  sr18PrepareMonsterTurn(enemy);
  const target=sr18MonsterTarget(enemy);if(!target)return;
- if((enemy.conditions||[]).some(x=>['incapacitated','stunned','paralyzed','unconscious'].includes(typeof x==='string'?x:x.name))){log(`${enemy.name} cannot act because of a condition.`,'muted');return;}
+ if(!sr18CanUseAction(enemy)){log(`${enemy.name} cannot act because of a condition.`,'muted');return;}
  const seq=sr18AvailableMultiattack(enemy),action=seq?.[0]||sr18ChooseMonsterAction(enemy,target);if(!action)return sr18MPMonsterTurnBase(enemy);
  if(seq){const d=sr18ParseActionRange(seq[0]),dist=enemy.pos&&target.pos?sr12Distance(enemy.pos,target.pos):0;if(!d.ranged&&dist>d.reach){sr12EnemyStep(enemy,target.pos);if(sr12Distance(enemy.pos,target.pos)>d.reach){enemy.specialUsedRound=state.combat.round;return;}}let done=0;for(const a of seq){if(target.player.character.hp<=0)break;if(sr18ResolveMonsterAction(enemy,a,target)){done++;sr18MarkRechargeUsed(enemy,a);}}if(done)log(`${enemy.name} completes its Multiattack (${done} attacks resolved).`,'badlog');}
  else{const d=sr18ParseActionRange(action),dist=enemy.pos&&target.pos?sr12Distance(enemy.pos,target.pos):0;if(!d.ranged&&dist>d.reach){sr12EnemyStep(enemy,target.pos);if(sr12Distance(enemy.pos,target.pos)>d.reach){enemy.specialUsedRound=state.combat.round;return;}}if(sr18ResolveMonsterAction(enemy,action,target))sr18MarkRechargeUsed(enemy,action);}
  sr18MonsterMorale(enemy);enemy.specialUsedRound=state.combat.round;return;
 };
 function sr18RunLegendaryAction(enemy){
- if(!enemy?.legendaryActions?.length||enemy.hp<=0)return false;
+ if(!enemy?.legendaryActions?.length||enemy.hp<=0||!sr18CanUseAction(enemy))return false;
  const max=Number(enemy.statBlock?.legendary_actions_per_round||3);enemy.legendaryRemaining=Number(enemy.legendaryRemaining??max);const target=sr18MonsterTarget(enemy);if(!target||enemy.legendaryRemaining<=0)return false;
  const available=enemy.legendaryActions.map(a=>({a,cost:Number(a.cost)||Number((sr18Text(a.description).match(/costs?\s+(\d+)\s+actions?/i)||[])[1]||1)})).filter(x=>x.cost<=enemy.legendaryRemaining);
  const selected=available.sort((x,y)=>sr18DiceAverage(sr14MonsterActionDamage(y.a))-sr18DiceAverage(sr14MonsterActionDamage(x.a)))[0];if(!selected)return false;
@@ -330,7 +332,7 @@ sr14LegendaryActionsAfterTurn=function(){if(!state.combat?.mp)return;for(const e
 const sr18ApplyDamageBase=sr12ApplyDamage;
 sr12ApplyDamage=function(enemy,amount,type='physical'){
  let n=Number(amount)||0;
- if(enemy?.reactions?.length&&enemy.reactionAvailable!==false&&!enemy._sr18ReductionUsed){const reaction=enemy.reactions.find(x=>/reduce[s]? (?:the )?damage|takes? .*?less damage|halve[s]? the damage/i.test(`${x.name} ${x.description}`));if(reaction){const formula=(reaction.description.match(/\b\d+d\d+(?:\s*[+-]\s*\d+)?\b/i)||[])[0];const reduction=formula?rollDice(formula):0;if(reduction>0){n=Math.max(0,n-reduction);enemy.reactionAvailable=false;enemy._sr18ReductionUsed=true;log(`${enemy.name} uses ${reaction.name} to reduce the damage by ${reduction}.`,'rolllog');}}}
+ if(enemy?.reactions?.length&&enemy.reactionAvailable!==false&&sr18CanUseReaction(enemy)&&!enemy._sr18ReductionUsed){const reaction=enemy.reactions.find(x=>/reduce[s]? (?:the )?damage|takes? .*?less damage|halve[s]? the damage/i.test(`${x.name} ${x.description}`));if(reaction){const formula=(reaction.description.match(/\b\d+d\d+(?:\s*[+-]\s*\d+)?\b/i)||[])[0];const reduction=formula?rollDice(formula):0;if(reduction>0){n=Math.max(0,n-reduction);enemy.reactionAvailable=false;enemy._sr18ReductionUsed=true;log(`${enemy.name} uses ${reaction.name} to reduce the damage by ${reduction}.`,'rolllog');}}}
  const applied=sr18ApplyDamageBase(enemy,n,type);if(applied>0&&enemy.hp>0)sr18MonsterMorale(enemy);return applied;
 };
 
@@ -521,6 +523,6 @@ function sr18RunTests(){
  }catch(e){ok('V18 rules, living world and save tests execute without runtime errors',false,String(e?.stack||e));}
  return out;
 }
-globalThis.__SR18_TEST={version:SR18_VERSION,openDB:sr18OpenDB,inferSpell:sr18InferSpellEffect,area:sr18Area,condition:sr18DetectCondition,expandMultiattack:sr18ExpandMultiattack,availableMultiattack:sr18AvailableMultiattack,rechargeReady:sr18RechargeReady,recharge:sr18ParseRecharge,parseActionRange:sr18ParseActionRange,markRechargeUsed:sr18MarkRechargeUsed,prepareMonsterTurn:sr18PrepareMonsterTurn,chooseMonsterAction:sr18ChooseMonsterAction,resolveMonsterAction:sr18ResolveMonsterAction,monsterTurnSolo:sr18MonsterTurnSolo,monsterDamage:sr18MonsterApplyDamage,typedDamage:sr12ApplyDamage,applySpellUtility:sr18ApplySpellUtility,classifyImprovisation:sr18ClassifyImprovisation,improvisationDecision:sr18ImprovisationDecision,ensureWorld:sr18EnsureWorld,advanceWorld:sr18AdvanceWorld,addWorldEvent:sr18AddWorldEvent,validateSave:sr18ValidateSave,normalizeImport:sr18NormalizeImported,snapshot:sr18Snapshot,storeSlot:sr18StoreSlot,readSlot:sr18ReadSlot,deleteSlot:sr18DeleteSlot,writeRecovery:sr18WriteRecovery,restore:sr18RestoreState,latestRecovery:sr18LatestRecovery,exportSave:sr18SaveExport,importFile:sr18ImportFile,saveCenter:sr18SaveCenter,render:render,header:header,adventurePage:adventurePage,tests:sr18RunTests,get state(){return state;},set state(v){state=v;}};
+globalThis.__SR18_TEST={version:SR18_VERSION,canUseAction:sr18CanUseAction,canUseReaction:sr18CanUseReaction,attackRoll:sr11RollAttack,openDB:sr18OpenDB,inferSpell:sr18InferSpellEffect,area:sr18Area,condition:sr18DetectCondition,expandMultiattack:sr18ExpandMultiattack,availableMultiattack:sr18AvailableMultiattack,rechargeReady:sr18RechargeReady,recharge:sr18ParseRecharge,parseActionRange:sr18ParseActionRange,markRechargeUsed:sr18MarkRechargeUsed,prepareMonsterTurn:sr18PrepareMonsterTurn,chooseMonsterAction:sr18ChooseMonsterAction,resolveMonsterAction:sr18ResolveMonsterAction,monsterTurnSolo:sr18MonsterTurnSolo,monsterDamage:sr18MonsterApplyDamage,typedDamage:sr12ApplyDamage,applySpellUtility:sr18ApplySpellUtility,classifyImprovisation:sr18ClassifyImprovisation,improvisationDecision:sr18ImprovisationDecision,ensureWorld:sr18EnsureWorld,advanceWorld:sr18AdvanceWorld,addWorldEvent:sr18AddWorldEvent,validateSave:sr18ValidateSave,normalizeImport:sr18NormalizeImported,snapshot:sr18Snapshot,storeSlot:sr18StoreSlot,readSlot:sr18ReadSlot,deleteSlot:sr18DeleteSlot,writeRecovery:sr18WriteRecovery,restore:sr18RestoreState,latestRecovery:sr18LatestRecovery,exportSave:sr18SaveExport,importFile:sr18ImportFile,saveCenter:sr18SaveCenter,render:render,header:header,adventurePage:adventurePage,tests:sr18RunTests,get state(){return state;},set state(v){state=v;}};
 // Re-render after the additive systems are installed so the V18 header and Save Center are visible on first boot.
 try { render(); } catch (error) { console.warn('V18 initial render:', error); }
