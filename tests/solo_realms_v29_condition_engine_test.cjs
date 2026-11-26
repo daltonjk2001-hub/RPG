@@ -350,6 +350,16 @@ try{
  assert('Multiplayer heroes can choose Athletics or Acrobatics for Escape',typeof T.gameplay.multiplayerEscapeGrapple==='function'&&html.includes('Escape · Athletics')&&html.includes('Escape · Acrobatics'));
  assert('Multiplayer grappled monsters use their stored escape DC and release one grapple instance',html.includes('sr29EscapeGrapple(enemy,{instanceId:grapple.id')&&html.includes('grapple.escapeDC??enemy.grappleDC??12'));
  assert('Multiplayer grapple initiation uses source-linked V29 conditions and the canonical target save resolver',html.includes('sr29StartGrapple(grappler,e')&&html.includes('sr29SoloTargetSave(e,ability,escapeDC)'));
+ const abstractGrappler=actor({id:'abstract-hero',name:'Abstract Hero'}),abstractTarget=actor({id:'abstract-foe',name:'Abstract Foe',distance:10});
+ T.apply(abstractTarget,'grappled','permanent','Abstract Hero',{grapplerId:'abstract-hero',grappleRange:5,escapeDC:12});
+ const abstractRelease=T.gameplay.reconcileAbstractGrapples({character:abstractGrappler,combat:{enemies:[abstractTarget]}});
+ assert('Forced movement beyond reach releases only the matching abstract-distance grapple',abstractRelease.count===1&&!T.has(abstractTarget,'grappled'));
+ const abstractHolder=actor({id:'abstract-foe',name:'Abstract Foe',distance:10}),abstractVictim=actor({id:'abstract-hero',name:'Abstract Hero'});
+ T.apply(abstractVictim,'grappled','permanent','Abstract Foe',{grapplerId:'abstract-foe',grappleRange:5,escapeDC:12});
+ const abstractVictimRelease=T.gameplay.reconcileAbstractGrapples({character:abstractVictim,combat:{enemies:[abstractHolder]}});
+ assert('Abstract-distance reconciliation also releases a player held by a displaced enemy',abstractVictimRelease.count===1&&!T.has(abstractVictim,'grappled'));
+ assert('V29 reconciliation runs after multiplayer hero movement, shove, weapon mastery push and spell resolution',html.includes('sr12MoveHero=function(...args)')&&html.includes('sr131Maneuver=function(...args)')&&html.includes('sr7ApplyMastery=function(...args)')&&html.includes('sr14CastSpellComplete=function(...args)'));
+
 
 }catch(error){assert('V29 condition suite completes without uncaught runtime errors',false,error?.stack||String(error));}
 for(const check of checks)console.log((check.pass?'PASS ':'FAIL ')+check.name+(check.detail?' — '+check.detail:''));
