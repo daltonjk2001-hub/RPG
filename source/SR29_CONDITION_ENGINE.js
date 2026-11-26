@@ -384,11 +384,16 @@ function sr29StartGrapple(grappler,target,options={}) {
     grapplerId,sourceId:grapplerId,grappleRange:reach
   });
   if(!result.applied)return {started:false,reason:result.reason||'condition-not-applied'};
-  result.instance.escapeDC=sr29GrappleEscapeDC(grappler,options);
-  result.instance.grapplerSize=eligibility.grapplerSize;
-  result.instance.targetSize=eligibility.targetSize;
-  result.instance.handSlot=options.handSlot===undefined?null:String(options.handSlot);
-  return {started:true,instance:result.instance,escapeDC:result.instance.escapeDC};
+  // Applying Grappled can reconcile the live combat and normalize/replace the
+  // condition array. Reacquire the stored instance before attaching grapple metadata.
+  const instanceId=result.instance.id;
+  const instance=sr29Entries(target).find(item=>item.id===instanceId&&item.name==='grappled');
+  if(!instance)return {started:false,reason:'grapple-instance-not-retained'};
+  instance.escapeDC=sr29GrappleEscapeDC(grappler,options);
+  instance.grapplerSize=eligibility.grapplerSize;
+  instance.targetSize=eligibility.targetSize;
+  instance.handSlot=options.handSlot===undefined?null:String(options.handSlot);
+  return {started:true,instance,escapeDC:instance.escapeDC};
 }
 function sr29EscapeGrapple(target,options={}) {
   const item=sr29Entries(target).find(x=>x.name==='grappled'&&
