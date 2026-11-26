@@ -53,7 +53,7 @@ try{
  assert('Applying player teleport updates solo tactical position through the same movement transaction',soloTeleportApplied&&T18.state.combat.heroPos.x===soloPlayerTeleport.to.x&&T18.state.combat.heroPos.y===soloPlayerTeleport.to.y);
  const mistyCaster=actor({id:'misty-caster',name:'Misty Caster',classId:'Wizard',level:3,classLevels:{Wizard:3},spells:['Misty Step'],preparedSpells:['Misty Step'],spellSlotsByLevel:{2:1},actionSpent:false});
  const mistyEnemy=actor({id:'misty-enemy',name:'Misty Enemy',hp:20,pos:{x:6,y:3}});
- T18.state={character:mistyCaster,campaign:{},combat:{mp:null,heroPos:{x:1,y:3},target:0,enemies:[mistyEnemy],map:{width:8,height:6,terrain:teleportTerrain}},log:[]};
+ T18.state={character:mistyCaster,campaign:{day:1,region:'Teleport Test',location:'Teleport Test',visited:['Teleport Test'],companions:[],npcs:[],sideQuests:[],story:{},flags:{},mainQuest:{kind:'test',title:'Teleport Test',goal:'Validate Misty Step'}},combat:{mp:null,heroPos:{x:1,y:3},target:0,enemies:[mistyEnemy],map:{width:8,height:6,terrain:teleportTerrain}},log:[]};
  T.gameplay.setSpellData('Misty Step',{name:'Misty Step',level:2,classes:['Wizard'],kind:'utility',range:'Self',castingTime:'Bonus Action',description:'Teleport a short distance in a flash.'});
  const mistyPreflight=T.gameplay.spellDiagnostics(mistyCaster,'Misty Step');
  const mistyCast=T.gameplay.castSpell({id:'solo',name:'Misty Caster',character:mistyCaster},'Misty Step');
