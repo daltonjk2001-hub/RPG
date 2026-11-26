@@ -348,7 +348,7 @@ function sr18ResolveMonsterAction(enemy,action,target){
  const teleportIntent=/\bteleport(?:s|ed|ing)?\b/i.test(desc);
  sr18TeleportMonster(enemy,target,desc);
  // A teleport-only stat-block action consumes its action; it must not fall through to the legacy default 1d4 attack.
- if(teleportIntent&&!save&&!sr14MonsterActionDamage(action)&&!action.damage?.length&&!/\\b(?:attack roll|melee attack|ranged attack|hit:|damage)\\b/i.test(desc))return true;
+ if(teleportIntent&&!save&&!sr14MonsterActionDamage(action)&&!action.damage?.length&&!/\b(?:attack roll|melee attack|ranged attack|hit:|damage)\b/i.test(desc))return true;
  const range=sr18ParseActionRange(action),dist=enemy.pos&&target.pos?sr12Distance(enemy.pos,target.pos):0;
  if(!range.ranged&&dist>range.reach){if(state.combat?.mp)sr12EnemyStep(enemy,target.pos);else if(typeof sr10EnemyMove==='function')sr10EnemyMove(enemy);return false;}
  if(enemy.pos&&target.pos&&!sr11HasLOS(enemy.pos,target.pos))return false;
