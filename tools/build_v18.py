@@ -25,6 +25,7 @@ DIRECTOR = ROOT / "source" / "SR23_DUNGEON_MASTER.js"
 CUSTOM_AI_DM = ROOT / "source" / "SR24_CUSTOM_AI_DM.js"
 RULES_CONTRACT = ROOT / "source" / "SR25_RULES_CONTRACT.js"
 CONDITION_ENGINE = ROOT / "source" / "SR29_CONDITION_ENGINE.js"
+GRAPPLE_GAMEPLAY = ROOT / "source" / "SR29_GRAPPLE_GAMEPLAY.js"
 SAVE_GUARD = ROOT / "source" / "SR22_SAVE_GUARD.js"
 LEGACY_LEDGER = ROOT / "source" / "SR22_LEGACY_LEDGER.js"
 THEME_CSS = ROOT / "source" / "SR20_UI_THEME.css"
@@ -75,6 +76,7 @@ def build_runtime() -> str:
     custom_ai_dm = CUSTOM_AI_DM.read_text(encoding="utf-8").rstrip()
     rules_contract = RULES_CONTRACT.read_text(encoding="utf-8").rstrip()
     condition_engine = CONDITION_ENGINE.read_text(encoding="utf-8").rstrip()
+    grapple_gameplay = GRAPPLE_GAMEPLAY.read_text(encoding="utf-8").rstrip()
     save_guard = SAVE_GUARD.read_text(encoding="utf-8").rstrip()
     legacy_ledger = LEGACY_LEDGER.read_text(encoding="utf-8").rstrip()
 
@@ -267,7 +269,7 @@ def build_runtime() -> str:
     base = base.replace("reliable-v17", "systems-v18")
     base = base.replace("Solo Realms V17 character and client.", "Solo Realms V18 character and client.")
 
-    combined = base + save_guard + "\n\n" + legacy_ledger + "\n\n" + layer + "\n\n" + studio + "\n\n" + behavior + "\n\n" + gameplay + "\n\n" + screen_layout + "\n\n" + playtest_hardening + "\n\n" + director + "\n\n" + custom_ai_dm + "\n\n" + rules_contract + "\n\n" + condition_engine + "\n})();\n"
+    combined = base + save_guard + "\n\n" + legacy_ledger + "\n\n" + layer + "\n\n" + studio + "\n\n" + behavior + "\n\n" + gameplay + "\n\n" + screen_layout + "\n\n" + playtest_hardening + "\n\n" + director + "\n\n" + custom_ai_dm + "\n\n" + rules_contract + "\n\n" + condition_engine + "\n\n" + grapple_gameplay + "\n})();\n"
     required_contracts = {
         "six four-hour watches per calendar day": "const SR18_WATCHES_PER_DAY=6;",
         "V21 four-hour watch integration": "const SR21_WORLD_CLOCK_CONTRACT='four-hour-watches-v1';",
@@ -277,6 +279,7 @@ def build_runtime() -> str:
         "V24 custom AI Dungeon Master module": "const SR24_VERSION = '24.0.0';",
         "V25 campaign rules and d20 contract": "const SR25_VERSION = '25.0.0';",
         "V29 canonical condition engine": "const SR29_VERSION = '29.0.0';",
+        "V29.1 live grapple gameplay adapter": "const SR29_GRAPPLE_GAMEPLAY_VERSION='29.1.0';",
     }
     missing = [label for label, marker in required_contracts.items() if marker not in combined]
     if missing:
@@ -285,7 +288,7 @@ def build_runtime() -> str:
 
 
 def main() -> None:
-    for path in (SRC, SAVE_GUARD, LEGACY_LEDGER, LAYER, STUDIO, BEHAVIOR, GAMEPLAY, SCREEN_LAYOUT, PLAYTEST_HARDENING, DIRECTOR, CUSTOM_AI_DM, RULES_CONTRACT, CONDITION_ENGINE, THEME_CSS, BASE_HTML, MANIFEST, SERVICE_WORKER):
+    for path in (SRC, SAVE_GUARD, LEGACY_LEDGER, LAYER, STUDIO, BEHAVIOR, GAMEPLAY, SCREEN_LAYOUT, PLAYTEST_HARDENING, DIRECTOR, CUSTOM_AI_DM, RULES_CONTRACT, CONDITION_ENGINE, GRAPPLE_GAMEPLAY, THEME_CSS, BASE_HTML, MANIFEST, SERVICE_WORKER):
         require_file(path)
 
     combined = build_runtime()
@@ -389,7 +392,7 @@ def main() -> None:
 
     print(f"Built {PWA_HTML.relative_to(ROOT)} ({PWA_HTML.stat().st_size:,} bytes)")
     print(f"Synchronized {DOCS_DIR.relative_to(ROOT)}/ from {PWA_DIR.relative_to(ROOT)}/")
-    print("Assembled V18 rules, V19 Director/world, V20 gameplay/layout, V21 hardening, V23 Director-first gameplay, and V24 The Chronicler custom AI Director, V25 campaign ruleset contract, and V29 canonical condition engine.")
+    print("Assembled V18 rules, V19 Director/world, V20 gameplay/layout, V21 hardening, V23 Director-first gameplay, and V24 The Chronicler custom AI Director, V25 campaign ruleset contract, and V29 canonical condition engine and V29.1 live grapple gameplay adapters.")
 
 
 if __name__ == "__main__":
