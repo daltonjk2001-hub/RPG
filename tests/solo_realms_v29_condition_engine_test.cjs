@@ -474,6 +474,12 @@ try{
  T18.state={character:pullHero,combat:{mp:null,enemies:[pulledTarget]},log:[]};
  const spellPull=T.gameplay.playerSpellDisplace(pulledTarget,pullHero,'pull',10);
  assert('Player spell Pull updates solo abstract distance without producing a negative separation',spellPull&&pulledTarget.distance===0);
+ const mpCaster={id:'mp-caster',name:'MP Caster',connected:true,character:actor({id:'mp-caster',name:'MP Caster'})};
+ const tacticalTarget=actor({id:'tactical-spell-target',name:'Tactical Spell Target',hp:20,pos:{x:2,y:1}});
+ const openTerrain=[];for(let x=0;x<8;x++)for(let y=0;y<6;y++)openTerrain.push({x,y,kind:'floor'});
+ T18.state={character:mpCaster.character,campaign:{multiplayer:{players:[mpCaster]}},combat:{mp:{heroPositions:{'mp-caster':{x:1,y:1}}},enemies:[tacticalTarget],map:{width:8,height:6,terrain:openTerrain}},log:[]};
+ const tacticalPush=T.gameplay.playerSpellDisplace(tacticalTarget,mpCaster,'push',10,{x:1,y:1});
+ assert('Player spell Push uses collision-aware tactical displacement in multiplayer combat',tacticalPush&&tacticalTarget.pos.x===4&&tacticalTarget.pos.y===1);
  T18.state=priorSpellState;
 
  assert('Solo grapple panel exposes both 2024 Shove outcomes',html.includes('data-action="sr29-shove-push"')&&html.includes('data-action="sr29-shove-prone"')&&html.includes('function sr29SoloShove(mode='));
