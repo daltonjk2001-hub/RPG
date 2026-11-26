@@ -18,7 +18,8 @@ function sr29SoloActiveGrapples(actor){
 }
 function sr29SoloFreeHands(actor){
   const weapon=WEAPONS?.[actor?.weapon]||{};
-  const weaponHands=Number(weapon.hands||weapon.handedness||((weapon.twoHanded||weapon.properties?.includes?.('Two-Handed'))?2:1));
+  const intrinsicallyTwoHanded=['Greatsword','Greataxe','Longbow','Crossbow'].includes(String(actor?.weapon||''));
+  const weaponHands=Number(weapon.hands||weapon.handedness||((intrinsicallyTwoHanded||weapon.twoHanded||weapon.properties?.includes?.('Two-Handed')||/two-handed/i.test(String(weapon.desc||'')))?2:1));
   const shieldEquipped=!!(actor?.shieldEquipped||actor?.shield||actor?.offHandShield||actor?.equipment?.shield);
   return Math.max(0,2-Math.min(2,Math.max(0,weaponHands||0))-(shieldEquipped?1:0));
 }
