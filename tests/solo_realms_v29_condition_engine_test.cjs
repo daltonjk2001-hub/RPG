@@ -534,7 +534,8 @@ try{
  const masteryHero=actor({id:'mastery-hero',name:'Mastery Hero',classId:'Fighter',level:1,classLevels:{Fighter:1},weapon:'Warhammer',weaponMasteries:['Warhammer'],actionSpent:false,bonusActionSpent:false,stats:{STR:18,DEX:10,CON:10,INT:10,WIS:10,CHA:10}});
  const masteryPlayer={id:'mastery-hero',name:'Mastery Hero',connected:true,character:masteryHero};
  const masteryEnemy=actor({id:'mastery-enemy',name:'Mastery Enemy',size:'Medium',hp:100,maxHp:100,ac:1,pos:{x:2,y:1},stats:{STR:12,DEX:10,CON:10,INT:10,WIS:10,CHA:10}});
- T18.state={character:masteryHero,campaign:{multiplayer:{players:[masteryPlayer]},companions:[]},combat:{round:1,mp:{heroPositions:{'mastery-hero':{x:1,y:1}},turnOrder:[{kind:'hero',id:'mastery-hero'}],index:0},enemies:[masteryEnemy],map:{width:8,height:6,terrain:openTerrain}},log:[]};
+ const masteryTerrain=[];for(let x=0;x<8;x++)for(let y=0;y<6;y++)masteryTerrain.push({x,y,kind:'floor'});
+ T18.state={character:masteryHero,campaign:{multiplayer:{players:[masteryPlayer]},companions:[]},combat:{round:1,mp:{heroPositions:{'mastery-hero':{x:1,y:1}},turnOrder:[{kind:'hero',id:'mastery-hero'}],index:0},enemies:[masteryEnemy],map:{width:8,height:6,terrain:masteryTerrain}},log:[]};
  T.apply(masteryEnemy,'grappled','permanent','Mastery Hero',{grapplerId:'mastery-hero',sourceId:'mastery-hero',grappleRange:5,escapeDC:12});
  math.random=()=>0.99;
  let masteryAttackResult=false;
