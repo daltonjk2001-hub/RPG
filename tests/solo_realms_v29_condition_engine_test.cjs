@@ -65,8 +65,8 @@ try{
  assert('Same condition has one effective status rather than stacking its penalties',T.namesFor(stacked).filter(n=>n==='poisoned').length===1);
  const tick=T.tick(stacked);
  assert('Each condition instance expires on its own duration',tick.expired===1&&T.entries(stacked).length===1&&T.entries(stacked)[0].rounds===2&&T.has(stacked,'poisoned'));
- const holdRepeat=T.gameplay.parseRepeatSave('At the end of each of its turns, the target repeats the saving throw, ending the spell on itself on a success. The target makes a Wisdom saving throw.');
- const dominateRepeat=T.gameplay.parseRepeatSave('Whenever the target takes damage, it repeats the saving throw, ending the spell on itself on a success. The target makes a Wisdom saving throw.');
+ const holdRepeat=T.gameplay.parseRepeatSave('Choose a Humanoid that you can see within range. The target must succeed on a Wisdom saving throw or have the Paralyzed condition for the duration. At the end of each of its turns, the target repeats the save, ending the spell on itself on a success.');
+ const dominateRepeat=T.gameplay.parseRepeatSave('One Humanoid you can see within range must succeed on a Wisdom saving throw or have the Charmed condition for the duration. Whenever the target takes damage, it repeats the save, ending the spell on itself on a success.');
  const nonEndingRepeat=T.gameplay.parseRepeatSave('At the start of each of its turns, the target must succeed on a Wisdom saving throw or take the Dodge action.');
  assert('Repeat-save parser distinguishes end-turn and damage triggers and ignores non-ending recurring saves',holdRepeat?.trigger==='end-turn'&&holdRepeat.endsOnSuccess&&holdRepeat.ability==='WIS'&&dominateRepeat?.trigger==='damage'&&nonEndingRepeat===null);
  const holdSpellData={kind:'control',classes:['Wizard'],desc:'Paralyze a humanoid foe with binding magic.'};
