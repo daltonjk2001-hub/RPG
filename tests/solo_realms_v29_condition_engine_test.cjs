@@ -674,7 +674,7 @@ try{
  const abstractVictimRelease=T.gameplay.reconcileAbstractGrapples({character:abstractVictim,combat:{enemies:[abstractHolder]}});
  assert('Abstract-distance reconciliation also releases a player held by a displaced enemy',abstractVictimRelease.count===1&&!T.has(abstractVictim,'grappled'));
    assert('V29 reconciliation runs after solo and multiplayer enemy movement and monster actions',html.includes('sr10EnemyMove=function(...args)')&&html.includes('sr12EnemyStep=function(...args)')&&html.includes('sr18ResolveMonsterAction=function(...args)')&&html.includes('sr29ReconcileAbstractGrapples();')&&html.includes('sr29ReconcileCombatGrapples();'));
-  const movementHooks=['sr12MoveHero=function(player,x,y)','sr29MpGrappleMovePlan(player,from,to,stepCost,standCost)','sr131Maneuver=function(...args)','sr7ApplyMastery=function(...args)','sr14CastSpellComplete=function(...args)'];
+  const movementHooks=['sr12MoveHero=function(player,x,y)','sr29MpGrappleMovePlan(player,from,to,stepCost,standCost)','sr131Maneuver=function(...args)','sr7ApplyMastery=function(enemy,actor,weapon,hit,...args)','sr14CastSpellComplete=function(...args)'];
   const movementHookChecks=movementHooks.map(hook=>({hook,present:html.includes(hook)}));
   assert('V29 reconciliation runs after multiplayer hero movement, shove, weapon mastery push and spell resolution',movementHookChecks.every(item=>item.present),JSON.stringify(movementHookChecks));
   const maneuverHook=html.slice(html.indexOf("if(typeof sr131Maneuver==='function')"),html.indexOf("if(typeof sr7ApplyMastery==='function')"));
