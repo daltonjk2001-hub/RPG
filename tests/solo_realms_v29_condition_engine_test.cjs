@@ -564,6 +564,9 @@ try{
  const gateSpell=T.gameplay.castSpell(gatePlayer,'Thunderwave');
  const gateReaction=T.gameplay.heroAttack(gatePlayer,gateEnemy,true);
  assert('Incapacitated blocks player class Bonus Actions, Cunning Action, ordinary actions, spellcasting, and reactions',!gateFeature&&!gateLegacyPower&&!gateCunning&&!gateHeroAction&&!gateSpell&&!gateReaction&&!incapacitatedGateActor.bonusActionSpent&&!incapacitatedGateActor.actionSpent&&incapacitatedGateActor.reactionAvailable);
+ const spentActionActor=actor({id:'spent-action',name:'Spent Action',actionSpent:true});
+ const spentBonusActor=actor({id:'spent-bonus',name:'Spent Bonus',bonusActionSpent:true});
+ assert('The canonical action-economy gate rejects already-spent Actions and Bonus Actions',!T.gameplay.actionEconomyGate(spentActionActor,'action',true)&&!T.gameplay.actionEconomyGate(spentBonusActor,'bonus-action',true));
  const spentReactionActor=actor({id:'spent-reaction',name:'Spent Reaction',reactionAvailable:false});
  assert('Spent Reaction blocks only reaction use while leaving Action and Bonus Action eligibility intact',!T.gameplay.actionEconomyGate(spentReactionActor,'reaction',true)&&T.gameplay.actionEconomyGate(spentReactionActor,'action',true)&&T.gameplay.actionEconomyGate(spentReactionActor,'bonus-action',true));
  const spentBard=actor({id:'spent-bard',name:'Spent Bard',classId:'Bard',level:3,classLevels:{Bard:3},stats:{STR:10,DEX:12,CON:12,INT:10,WIS:12,CHA:16},reactionAvailable:false,resourcesByClass:{Bard:{inspiration:3}}});
