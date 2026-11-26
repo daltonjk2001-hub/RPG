@@ -131,6 +131,7 @@ try{
  T.apply(uiGoblin,'paralyzed',3,'Ghoul');
  const uiWorld={character:uiHero,combat:{enemies:[uiGoblin]}};
  const conditionPanel=T.conditionPanel(uiWorld);
+ assert('Condition dashboard resolves the selected solo enemy',T.resolveUiTarget('enemy:0',uiWorld)===uiGoblin);
  assert('Condition dashboard renders for the player and solo combat enemies',conditionPanel.includes('sr29-condition-panel')&&conditionPanel.includes('You · Hero')&&conditionPanel.includes('Enemy · Goblin'));
  assert('Condition dashboard displays existing source and duration instances',conditionPanel.includes('Spider venom')&&conditionPanel.includes('2 rounds')&&conditionPanel.includes('Ghoul'));
  const uiApplied=T.applyUiCondition(uiWorld,'enemy:0','frightened',3,false,'Dragon fear','dragon-ui',true);
