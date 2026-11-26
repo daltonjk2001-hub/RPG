@@ -526,7 +526,9 @@ try{
  const soloGrappleReleased=!T.has(soloMasteryTarget,'grappled');
  const soloHugeTarget=actor({id:'solo-huge-target',name:'Solo Huge Target',size:'Huge',distance:5});
  const soloHugePush=T.gameplay.applyMastery(soloHugeTarget,soloMasteryHero,'Warhammer',true,20,5);
- assert('Solo Push mastery moves eligible targets, reconciles grapples, and rejects Huge targets',soloMasteryPush===true&&soloMasteryTarget.distance===15&&soloGrappleReleased&&soloHugePush===false&&soloHugeTarget.distance===5);
+ const soloMissTarget=actor({id:'solo-miss-target',name:'Solo Miss Target',size:'Medium',distance:5});
+ const soloMissPush=T.gameplay.applyMastery(soloMissTarget,soloMasteryHero,'Warhammer',false,1,0);
+ assert('Solo Push mastery moves eligible targets, reconciles grapples, and rejects Huge targets and misses',soloMasteryPush===true&&soloMasteryTarget.distance===15&&soloGrappleReleased&&soloHugePush===false&&soloHugeTarget.distance===5&&soloMissPush===false&&soloMissTarget.distance===5);
  const priorSpellMoveState=T18.state;
  const forcedSpellCaster=actor({id:'spell-caster',name:'Spell Caster'});
  const abstractDisplacementTarget=actor({id:'spell-target',name:'Spell Target',distance:10});
