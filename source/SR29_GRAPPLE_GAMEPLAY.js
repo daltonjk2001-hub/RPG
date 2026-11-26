@@ -836,12 +836,12 @@ if(typeof sr14CastSpellComplete==='function'){
       const slotMap=slotKind==='pact'?caster?.pactSlotsByLevel:caster?.spellSlotsByLevel;
       const currentCount=Number(slotMap?.[slotLevel])||0;
       if(currentCount>=slotCountBefore){
-        if(typeof reservedSlot==='object'&&typeof sr7ConsumeCastSlot==='function')sr7ConsumeCastSlot(caster,reservedSlot);
-        else if(slotMap){slotMap[slotLevel]=Math.max(0,currentCount-1);if(typeof sr7UpdateSlotTotals==='function')sr7UpdateSlotTotals(caster);}
+        if(typeof reservedSlot==='object'&&typeof sr7ConsumeCastSlot==='function'){sr7ConsumeCastSlot(caster,reservedSlot);if(castKind!=='reaction')caster.spellSlotSpentThisTurn=true;}
+        else if(slotMap){slotMap[slotLevel]=Math.max(0,currentCount-1);if(typeof sr7UpdateSlotTotals==='function')sr7UpdateSlotTotals(caster);if(castKind!=='reaction')caster.spellSlotSpentThisTurn=true;}
       }
     }else if(result&&reservedSlot===0&&scalarSlotsBefore>0){
       const currentScalarSlots=Number(caster?.spellSlots)||0;
-      if(currentScalarSlots>=scalarSlotsBefore)caster.spellSlots=Math.max(0,currentScalarSlots-1);
+      if(currentScalarSlots>=scalarSlotsBefore){caster.spellSlots=Math.max(0,currentScalarSlots-1);if(castKind!=='reaction')caster.spellSlotSpentThisTurn=true;}
     }
     if(result&&teleportPlan){
       // The legacy cast path still performs its own fallback relocation. Replace it with
