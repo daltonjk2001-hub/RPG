@@ -95,6 +95,12 @@ try{
  T.apply(gridHero,'grappled','permanent','Grid Held Enemy',{sourceId:'grid-held-enemy',grapplerId:'grid-held-enemy',grappleRange:5});
  const blockedGrappledGridMove=T.gameplay.gridMove(0,-1);
  assert('Solo tactical grid movement rejects voluntary movement by a Grappled hero',blockedGrappledGridMove===false&&T18.state.combat.heroPos.x===0&&T18.state.combat.heroPos.y===3&&gridHero.movementSpent===10);
+ const phaseHero=actor({id:'phase-hero',name:'Phase Hero',hp:30,maxHp:30});
+ const phaseEnemy=actor({id:'phase-enemy',name:'Phase Enemy',hp:20,pos:{x:4,y:3}});
+ T18.state={character:phaseHero,campaign:{day:1,region:'Grid Test',location:'Grid Test',visited:['Grid Test'],companions:[],npcs:[],sideQuests:[],story:{},flags:{},mainQuest:{kind:'test',title:'Grid Test',goal:'Validate enemy movement grapple release'}},combat:{mp:null,heroPos:{x:1,y:3},enemies:[phaseEnemy],map:{width:8,height:6,terrain:teleportTerrain.filter(cell=>cell.kind!=='wall')}},log:[]};
+ T.apply(phaseHero,'grappled','permanent','Phase Enemy',{sourceId:'phase-enemy',grapplerId:'phase-enemy',grappleRange:5});
+ T.gameplay.gridEnemyPhase();
+ assert('Solo grid enemy movement reconciles and releases a grapple when the grappler moves beyond reach',phaseEnemy.pos.x===3&&!T.has(phaseHero,'grappled'),JSON.stringify({enemyPos:phaseEnemy.pos,heroConditions:phaseHero.conditions}));
  T18.state=gridPriorState;
  const priorState=T18.state;
  const soloMonster={id:'solo-displacer',name:'Solo Displacer',distance:10,hp:20};
