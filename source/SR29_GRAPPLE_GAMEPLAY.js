@@ -335,6 +335,9 @@ if(typeof sr18ResolveMonsterAction==='function'&&typeof sr29Apply==='function'){
 if(typeof sr12HeroAction==='function'){
   const sr29MpPriorHeroAction=sr12HeroAction;
   sr12HeroAction=function(player,action,spellName,targetId,data={}){
+    if(state?.combat?.mp&&(state.combat.mp.grappleChallenges||[]).some(item=>item.attackerId===player?.id)){
+      toast('Wait for the target to resolve the grapple saving throw.');return false;
+    }
     if(state?.combat?.mp&&action==='grapple'){
       const pending=(state.combat.mp.grappleChallenges||[]).some(item=>item.attackerId===player?.id);
       if(pending){toast('Wait for the target to resolve the grapple saving throw.');return false;}
@@ -366,7 +369,7 @@ if(typeof sr12CombatPage==='function'){
     const me=SR4.myPlayerId,players=state.campaign?.multiplayer?.players||[];
     const targets=players.filter(p=>p.id!==me&&p.connected&&p.character?.hp>0);
     const mine=sr12CurrentPlayer()?.id===me;
-    const targetButtons=mine?targets.map(p=>'<button class="btn small" data-action="sr29-mp-grapple" data-target-id="'+sr29Html(p.id)+'" '+(sr12Distance(sr12PlayerPos(me),sr12PlayerPos(p.id))>5?'disabled':'')+'>Grapple '+sr29Html(p.name)+'</button>').join(''):'';
+    const targetButtons=mine?targets.map(p=>'<button class="btn small" data-action="sr29-mp-grapple" data-target-id="'+sr29Html(p.id)+'" '+(sr12Distance(sr12PlayerPos(me),sr12PlayerPos(p.id))>5||!mine?'disabled':'')+'>Grapple '+sr29Html(p.name)+'</button>').join(''):'';
     const challenges=(state.combat.mp.grappleChallenges||[]).filter(item=>item.targetId===me);
     const savePrompts=challenges.map(item=>'<section class="card"><h3>Grapple saving throw</h3><p>'+sr29Html(item.attackerName)+' hit you with an Unarmed Strike. Choose Strength or Dexterity against DC '+Number(item.escapeDC)+'.</p><div class="item-actions"><button class="btn primary" data-action="sr29-mp-grapple-save" data-challenge-id="'+sr29Html(item.id)+'" data-ability="STR">Strength save</button><button class="btn primary" data-action="sr29-mp-grapple-save" data-challenge-id="'+sr29Html(item.id)+'" data-ability="DEX">Dexterity save</button></div></section>').join('');
     return html+(targetButtons?'<section class="card"><h3>Grapple a hero</h3><p class="smalltext muted">Select a connected party member within 5 feet. They choose their own Strength or Dexterity saving throw.</p><div class="item-actions">'+targetButtons+'</div></section>':'')+savePrompts;
