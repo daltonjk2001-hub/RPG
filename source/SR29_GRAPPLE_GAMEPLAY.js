@@ -100,22 +100,21 @@ sr7Move=function(direction){
   const id=sr29SoloGrapplerId(c),held=(b.enemies||[]).filter(enemy=>sr29Entries(enemy).some(item=>item.name==='grappled'&&String(item.grapplerId||item.sourceId||'')===id));
   if(!held.length||!['closer','retreat'].includes(direction))return sr29SoloMoveBase(direction);
   const enemy=held[0],baseSpeed=Math.max(0,(c.baseMovement||c.movement||30)+(c.movementBonus||0)-(sr7HasCondition(c,'prone')?15:0)-5*(Number(c.exhaustion)||0));
-  const allowance=baseSpeed*(c.dashUsed?2:1),planned=Math.min(Math.max(0,allowance-(Number(c.movementSpent)||0)),baseSpeed);
+  const allowance=baseSpeed*(c.dashUsed?2:1),before=Number(c.movementSpent)||0,remaining=Math.max(0,allowance-before);
+  const planned=Math.min(baseSpeed,remaining/2);
   if(!planned)return sr29SoloMoveBase(direction);
   const cost=sr29GrappleMovementCost(c,enemy,planned,{grapplerSize:sr29SoloSize(c)||'medium',targetSize:sr29SoloSize(enemy)||'medium'});
-  const before=Number(c.movementSpent)||0,oldDistance=Number(enemy.distance)||5;
+  const oldDistance=Number(enemy.distance)||5,temporarySpent=allowance-planned;
+  c.movementSpent=temporarySpent;
   sr29SoloMoveBase(direction);
-  const spent=Math.max(0,(Number(c.movementSpent)||0)-before);
-  if(spent>0){
-    const extra=Math.max(0,cost.movementCost-spent);
-    c.movementSpent+=extra;
+  const moved=(Number(c.movementSpent)||0)>temporarySpent;
+  if(moved){
+    c.movementSpent=Math.min(allowance,before+cost.movementCost);
     enemy.distance=5;
     log(`Dragging ${enemy.name} costs ${cost.movementCost} feet of movement${cost.speedHalved?' (speed halved)':''}.`,'rolllog');
-    if(c.movementSpent>allowance){c.movementSpent=allowance;log('The remaining movement is insufficient to drag the grappled creature farther.','muted');}
     sr29ReconcileCombatGrapples(state);
-    sr29SoloMoveBase===sr7Move?null:null;
     render();save();
-  }else enemy.distance=oldDistance;
+  }else{c.movementSpent=before;enemy.distance=oldDistance;}
 };
 
 if(globalThis.__SR29_TEST){
