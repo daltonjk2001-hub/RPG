@@ -197,6 +197,33 @@ function sr29ResolveRepeatSave(target,spec,rolls=null){
   const total=Number(dice[0])+bonus;
   return {success:total>=dc,total,dc,autoFail:false};
 }
+function sr29RepeatSaveActorRecords(){
+  const records=[],seen=new Set(),add=(actor,id='',name='')=>{
+    if(!actor||typeof actor!=='object'||seen.has(actor))return;
+    seen.add(actor);records.push({actor,id:String(id||actor.id||''),name:String(name||actor.name||'')});
+  };
+  add(state?.character,state?.character?.id,state?.character?.name);
+  for(const player of state?.campaign?.multiplayer?.players||[])add(player?.character,player?.id,player?.name);
+  for(const companion of state?.campaign?.companions||[])add(companion,companion?.id,companion?.name);
+  for(const enemy of state?.combat?.enemies||[])add(enemy,enemy?.id,enemy?.name);
+  return records;
+}
+function sr29EndRepeatSaveConcentration(spec){
+  const spellName=String(spec?.sourceSpell||''),sourceId=String(spec?.sourceId||''),sourceName=String(spec?.sourceName||'');
+  if(!spellName)return {ended:false,reason:'missing-spell'};
+  const records=sr29RepeatSaveActorRecords();
+  const sameSpell=(item)=>item?.repeatSave&&String(item.repeatSave.sourceSpell||'')===spellName&&
+    (sourceId?String(item.repeatSave.sourceId||'')===sourceId:String(item.repeatSave.sourceName||'')===sourceName);
+  const stillActive=records.some(({actor})=>sr29Entries(actor).some(sameSpell));
+  if(stillActive)return {ended:false,reason:'other-targets-remain'};
+  const casterRecord=records.find(record=>(sourceId&&(record.id===sourceId||String(record.actor.id||'')===sourceId))||
+    (sourceName&&(record.name===sourceName||String(record.actor.name||'')===sourceName)));
+  const caster=casterRecord?.actor;
+  if(caster?.concentration?.spell===spellName)caster.concentration=null;
+  if(Array.isArray(caster?.activeEffects))caster.activeEffects=caster.activeEffects.filter(effect=>
+    !(String(effect?.name||'')===spellName&&(effect?.concentration===true||effect?.kind==='concentration')));
+  return {ended:!!caster,reason:caster?'last-target-ended':'caster-not-found'};
+}
 function sr29ProcessRepeatSaves(target,trigger='end-turn',turnKey='',rolls=null){
   if(!target||target.dead===true||target.isDead===true)return {attempted:0,ended:0,failed:0,skipped:0};
   const entries=sr29Entries(target);target.conditions=entries;
@@ -210,7 +237,7 @@ function sr29ProcessRepeatSaves(target,trigger='end-turn',turnKey='',rolls=null)
     const result=sr29ResolveRepeatSave(target,spec,rolls);
     log(`${target.name||'Target'} repeats ${spec.ability} save for ${spec.sourceSpell||item.source}: ${result.total??'—'} vs DC ${spec.dc} — ${result.success?'SUCCESS':'FAILURE'}.`,result.success?'goodlog':'rolllog');
     if(result.legendaryResistanceUsed)log(`${target.name||'Target'} uses Legendary Resistance to overcome the repeat save.`,'rolllog');
-    if(result.success&&spec.endsOnSuccess===true){sr29Remove(target,item.name,{instanceId:item.id});ended++;}
+    if(result.success&&spec.endsOnSuccess===true){sr29Remove(target,item.name,{instanceId:item.id});sr29EndRepeatSaveConcentration(spec);ended++;}
     else if(!result.success)failed++;
   }
   return {attempted,ended,failed,skipped};
@@ -951,7 +978,7 @@ if(typeof sr18MonsterApplyDamage==='function') {
 }
 
 globalThis.__SR29_TEST={
-  version:SR29_VERSION,schema:SR29_SCHEMA,names:SR29_CONDITION_NAMES.slice(),registry:SR29_CONDITIONS,
+  version:SR29_VERSION,schema:SR29_SCHEMA,names:SR29_CONDITION_NAMES.slice(),registry:SR29_CONDITIONS,endRepeatSaveConcentration:sr29EndRepeatSaveConcentration,
   normalizeName:sr29Name,entries:sr29Entries,has:sr29Has,apply:sr29Apply,remove:sr29Remove,tick:sr29Tick,processRepeatSaves:sr29ProcessRepeatSaves,resolveRepeatSave:sr29ResolveRepeatSave,nextDamageEventKey:sr29NextDamageEventKey,
   namesFor:sr29Names,status:sr29Status,isImmune:sr29IsImmune,changeExhaustion:sr29ChangeExhaustion,
   longRestExhaustion:sr29LongRestExhaustion,autoFailSave:sr29AutoFailSave,attackState:sr29AttackState,
