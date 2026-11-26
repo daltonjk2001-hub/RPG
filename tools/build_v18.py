@@ -85,6 +85,54 @@ def build_runtime() -> str:
     # inside the same application scope.
     base = base.rstrip()[:-5].rstrip() + "\n\n"
 
+    # V29: retain each condition application independently and expire it through
+    # the canonical per-instance engine at the round boundary.
+    legacy_expiry = "if(e.conditions?.length)e.conditions=e.conditions.filter(x=>{if(typeof x==='string')return false;if(Number.isFinite(x.duration)){x.duration--;return x.duration>0;}return true;});"
+    if base.count(legacy_expiry) != 1:
+        raise SystemExit("Expected exactly one legacy round-end condition expiry block; inspect V10 before migrating.")
+    base = base.replace(legacy_expiry, "if(e.conditions?.length)sr29Tick(e,{phase:'round',cycle:b.round});")
+
+    # Long rests reduce Exhaustion once, not once in each stacked legacy wrapper;
+    # they do not silently erase every condition instance.
+    legacy_exhaustion_rest = "c.exhaustion=Math.max(0,c.exhaustion-1);"
+    if base.count(legacy_exhaustion_rest) != 3:
+        raise SystemExit("Expected one cleanse and two legacy Long Rest Exhaustion decrements; inspect before patching.")
+    base = base.replace(legacy_exhaustion_rest, "c.exhaustion=Math.max(0,c.exhaustion-1);", 1)
+    base = base.replace(legacy_exhaustion_rest, "/* V29: Exhaustion is reduced once by the final Long Rest adapter. */", 2)
+    long_rest_condition = "c.featureUses=c.featureMax;c.conditions=[];c.tempHP=0;c.deathSaves=0;"
+    if base.count(long_rest_condition) != 2:
+        raise SystemExit("Expected two legacy base Long Rest condition clears.")
+    base = base.replace(long_rest_condition, long_rest_condition.replace("c.conditions=[];", ""))
+    v7_long_rest_condition = "sr7RecalcSlots(c,true);c.conditions=[];c.concentration=null;"
+    if base.count(v7_long_rest_condition) != 1:
+        raise SystemExit("Expected one V7 Long Rest condition clear.")
+    base = base.replace(v7_long_rest_condition, v7_long_rest_condition.replace("c.conditions=[];", ""))
+
+    # Correct direct initiative enemy attack modifiers for Exhaustion.
+    enemy_attack_bonus = "r+(Number(e.attack)||0)"
+    if base.count(enemy_attack_bonus) != 2:
+        raise SystemExit("Expected two direct enemy attack totals in the initiative combat adapter.")
+    base = base.replace(enemy_attack_bonus, "r+(Number(e.attack)||0)-2*(Number(e.exhaustion)||0)")
+
+    # V10 initiative must skip Petrified actors as well as other incapacitating conditions.
+    enemy_skip = "['stunned','paralyzed','unconscious','incapacitated']"
+    if base.count(enemy_skip) != 1:
+        raise SystemExit("Expected one legacy initiative incapacitation list.")
+    base = base.replace(enemy_skip, "['stunned','paralyzed','petrified','unconscious','incapacitated']")
+
+    # V7 extra critical die is additional only when the melee attacker is within 5 ft;
+    # natural 20 already adds its extra die in the adjacent branch.
+    old_critical = "if(sr7HasCondition(c,'paralyzed')||sr7HasCondition(c,'unconscious'))damage+=rollDice(e.damage||'1d6');"
+    if base.count(old_critical) != 1:
+        raise SystemExit("Expected one V7 condition-based critical-damage expression.")
+    base = base.replace(old_critical, "if(d20!==20&&!e.ranged&&(Number(e.distance)||5)<=5&&sr29CriticalOnHit(c,{hit:true,melee:true,distance:Number(e.distance)||5}))damage+=rollDice(e.damage||'1d6');")
+
+    # V11 grid attack criticals also include the 2024 paralyzed/unconscious close-melee rule.
+    old_grid_critical = "if(roll.r===20||(automaticCritical&&hit))dmg+=rollDice(w.damage);"
+    if base.count(old_grid_critical) != 1:
+        raise SystemExit("Expected one V11 grid-attack critical-damage expression.")
+    base = base.replace(old_grid_critical, "if(roll.r===20||(automaticCritical&&hit)||sr29CriticalOnHit(e,{hit,melee:!ranged,distance:dist}))dmg+=rollDice(w.damage);")
+
     # Route both solo spell-damage call sites through the typed-damage helper.
     old_damage = "(e.hp=Math.max(0,e.hp-amount),amount)"
     damage_count = base.count(old_damage)
