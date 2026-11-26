@@ -93,6 +93,18 @@ try{
  const wrongTrigger=T.processRepeatSaves(dominatedTarget,'end-turn','dominated-end',[20]);
  const damageTrigger=T.processRepeatSaves(dominatedTarget,'damage','dominated-damage',[20]);
  assert('Damage-triggered repeat saves resolve only on damage and remove the affected condition on success',dominateAttached&&wrongTrigger.attempted===0&&damageTrigger.ended===1&&!T.has(dominatedTarget,'charmed'));
+ const concentrationCaster=actor({id:'concentration-caster',name:'Concentration Caster',concentration:{spell:'Dominate Person'},activeEffects:[{name:'Dominate Person',concentration:true}]});
+ const dominatedFirst=actor({id:'dominated-first',name:'Dominated First'}),dominatedSecond=actor({id:'dominated-second',name:'Dominated Second'});
+ T18.state={character:concentrationCaster,combat:{round:1,enemies:[dominatedFirst,dominatedSecond]},campaign:{},log:[]};
+ for(const target of [dominatedFirst,dominatedSecond]){
+   T.apply(target,'charmed',10,'Dominate Person');
+   T.gameplay.attachRepeatSave(target,'charmed','Dominate Person',concentrationCaster,'WIS',12,dominateRepeat,'concentration-caster');
+ }
+ const firstDominateRelease=T.processRepeatSaves(dominatedFirst,'damage','dominate-first-damage',[20]);
+ const concentrationRetained=concentrationCaster.concentration?.spell==='Dominate Person';
+ const secondDominateRelease=T.processRepeatSaves(dominatedSecond,'damage','dominate-second-damage',[20]);
+ assert('Ending one target of a multi-target concentration spell keeps concentration while another target remains',firstDominateRelease.ended===1&&concentrationRetained&&T.has(dominatedSecond,'charmed'));
+ assert('Ending the final target of a concentration spell clears the caster concentration and its matching concentration effect',secondDominateRelease.ended===1&&concentrationCaster.concentration===null&&!concentrationCaster.activeEffects.some(x=>x.name==='Dominate Person'));
  const damageHookTarget=actor({id:'damage-hook-target',name:'Damage Hook Target',classId:'Wizard',level:1});
  T18.state={character:damageHookTarget,combat:{round:1},campaign:{},log:[]};
  T.apply(damageHookTarget,'charmed',10,'Dominate Person');
