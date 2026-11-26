@@ -180,7 +180,7 @@ function sr29FrightSourceVisible(actor,options={}) {
   if(typeof options.frightenedSourceVisible==='boolean')return options.frightenedSourceVisible;
   const item=sr29Entries(actor).find(x=>x.name==='frightened');
   if(item&&typeof item.sourceVisible==='boolean')return item.sourceVisible;
-  return item?.sourceOutOfSight===true?false:true;
+  return item?.sourceOutOfSight===true?false:false;
 }
 function sr29AttackState(attacker,target,options={}) {
   const melee=!!options.melee,distance=Number.isFinite(Number(options.distance))?Number(options.distance):(melee?5:Infinity);
@@ -207,8 +207,8 @@ function sr29SkillMode(actor,skill,options={}) {
   if(sr29Has(actor,'poisoned'))disadvantage=true;
   if(sr29Has(actor,'frightened')&&sr29FrightSourceVisible(actor,options))disadvantage=true;
   const key=String(skill||'').toLowerCase();
-  if(sr29Has(actor,'blinded')&&(options.requiresSight===true||(!options.requiresSight&&key==='perception')))return 'auto-fail';
-  if(sr29Has(actor,'deafened')&&(options.requiresHearing===true||/hearing|listen|sound/.test(key)))return 'auto-fail';
+  if(sr29Has(actor,'blinded')&&options.requiresSight===true)return 'auto-fail';
+  if(sr29Has(actor,'deafened')&&(options.requiresHearing===true||/^(hearing|listen)$/.test(key)))return 'auto-fail';
   return disadvantage?'disadvantage':'normal';
 }
 function sr29CriticalOnHit(target,options={}) {
