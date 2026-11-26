@@ -63,6 +63,12 @@ The V29.4 audit distinguishes post-resolution reconciliation from actual movemen
 
 Accordingly, teleport classification is not counted as teleport gameplay, and the spell-completion hook is not counted as proof of complete forced-movement coverage. The next implementation slice must add a shared, collision-aware displacement transaction for supported tactical and abstract combat modes, route actual teleport and monster Push/Pull effects through it, then reconcile source-linked grapples after the position commit. Until that transaction exists, these cases remain explicitly Partial.
 
+## V29.5 tactical monster displacement
+
+The monster action resolver now applies described Push/Pull displacement in multiplayer tactical combat after the relevant attack hits or the target fails its saving throw. A shared displacement planner derives direction from the source and target positions, applies the described distance in 5-foot grid steps, and stops before missing, blocked, or occupied cells. Successful position commits immediately invoke abstract and tactical grapple reconciliation.
+
+Scope is deliberately bounded: this first transaction is for tactical multiplayer positions with grid-cell data. It does not yet implement teleport destinations, solo abstract-distance forced displacement, player-originated forced movement, or every monster feature wording. Those remain open until the respective position models and targeting rules are integrated and tested. The regression suite now checks Push distance, Pull direction, and stopping at blocked/occupied cells.
+
 ## Duration semantics
 
 A timed condition instance has its own round count. Reapplying a condition creates a new instance unless the caller explicitly supplies the same instance ID to refresh it. Permanent legacy conditions remain permanent. The turn-phase metadata prevents a condition applied during the current enemy phase from immediately losing a round in that same phase.
@@ -82,7 +88,7 @@ The condition dashboard remains **Partial** until the remaining acceptance crite
 1. Add dedicated character/combat/enemy status views; the condition panel now includes remote multiplayer party members during multiplayer combat.
 2. Audit every player-facing bonus-action and reaction feature path and make every harmful spell/feature path honor the Charmed source restriction. The canonical eligibility service and V18 monster Parry/damage-reduction reaction gates are implemented; player-side feature-specific reaction dispatch remains to be traced and verified.
 3. Route every ability check, saving throw, initiative roll, and attack path—including Director-proposed and multiplayer actions—through Exhaustion and condition modifiers.
-4. Complete V29 grapple integration beyond the current solo-combat adapter: multiplayer target save-choice and turn routing, monster-specific grapple resolution, exact equipment/appendage tracking, a shared collision-aware displacement transaction for direct teleport and monster Push/Pull effects, audit of direct position writes outside movement adapters, and live multiplayer timing. Solo Unarmed Strike initiation, action-based Escape, and abstract-distance drag-cost accounting are now connected. Automatic release for an Incapacitated grappler or a target moved beyond its stored reach remains implemented and covered.
+4. Complete V29 grapple integration beyond the current solo-combat adapter: multiplayer target save-choice and turn routing, monster-specific grapple resolution, exact equipment/appendage tracking, teleport destinations, solo abstract-distance forced displacement, player-originated forced movement, direct-position-write audit, and live multiplayer timing. Solo Unarmed Strike initiation, action-based Escape, and abstract-distance drag-cost accounting are now connected. Automatic release for an Incapacitated grappler or a target moved beyond its stored reach remains implemented and covered.
 5. Complete Frightened source visibility and movement restrictions against exact line of sight and target identity.
 6. Add condition-specific repeat-save procedures and full spell/monster-feature effect transactions instead of relying on inferred text or generic durations.
 7. Perform full save/import compatibility verification and human playtests across standalone, PWA, Android touch, and two-device multiplayer.
