@@ -107,6 +107,8 @@ The current game has more than one combat adapter, and not every old feature pat
 
 tests/solo_realms_v29_condition_engine_test.cjs covers registry presence, separate durations, legacy migration, immunity, derived conditions, Exhaustion, automatic save failure, action/bonus-action/reaction eligibility, monster Parry and damage-reduction reaction gates, attack Advantage/Disadvantage, critical-hit boundaries, sensory checks, source-specific Charmed/Frightened behavior, concentration loss, source-specific removal, grapple reach boundaries, incapacitated-grappler release, instance-specific release, and current-combat reconciliation.
 
+V29.10 persistence regression also exports, normalizes, and validates a grappled condition instance while checking that its source ID, reach, escape DC, appendage slot, and repeat-save contract survive the save/import pipeline.
+
 Run the complete repository suite with: bash tests/run_v18.sh
 
 ## Explicit remaining gaps
