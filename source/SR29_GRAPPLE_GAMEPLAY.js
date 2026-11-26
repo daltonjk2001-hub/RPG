@@ -17,11 +17,13 @@ function sr29SoloActiveGrapples(actor){
   return targets.flatMap(target=>sr29Entries(target).filter(item=>item.name==='grappled'&&String(item.grapplerId||item.sourceId||'')===id));
 }
 function sr29SoloFreeHands(actor){
-  const weapon=WEAPONS?.[actor?.weapon]||{};
-  const intrinsicallyTwoHanded=['Greatsword','Greataxe','Longbow','Crossbow'].includes(String(actor?.weapon||''));
-  const weaponHands=Number(weapon.hands||weapon.handedness||((intrinsicallyTwoHanded||weapon.twoHanded||weapon.properties?.includes?.('Two-Handed')||/two-handed/i.test(String(weapon.desc||'')))?2:1));
-  const shieldEquipped=!!(actor?.shieldEquipped||actor?.shield||actor?.offHandShield||actor?.equipment?.shield);
-  return Math.max(0,2-Math.min(2,Math.max(0,weaponHands||0))-(shieldEquipped?1:0));
+  const weaponName=String(actor?.weapon||''),weapon=WEAPONS?.[weaponName]||{};
+  const intrinsicallyTwoHanded=['Greatsword','Greataxe','Longbow','Crossbow'].includes(weaponName);
+  const unarmed=!weaponName||/^(none|unarmed|unarmed strike)$/i.test(weaponName);
+  const mainHands=unarmed?0:Number(weapon.hands||weapon.handedness||((intrinsicallyTwoHanded||weapon.twoHanded||weapon.properties?.includes?.('Two-Handed')||/two-handed/i.test(String(weapon.desc||'')))?2:1));
+  const offHand=actor?.offHandWeapon?1:0;
+  const shieldEquipped=!!(actor?.shieldEquipped||actor?.equippedShield||actor?.shield||actor?.offHandShield||actor?.equipment?.shield||actor?.inventory?.some?.(item=>item?.type==='shield'&&item?.equipped));
+  return Math.max(0,2-Math.min(2,Math.max(0,mainHands||0)+offHand+(shieldEquipped?1:0)));
 }
 function sr29SoloSaveBonus(target,ability){
   const key=String(ability||'').toUpperCase(),stats=target?.stats||target?.abilityScores||{};
