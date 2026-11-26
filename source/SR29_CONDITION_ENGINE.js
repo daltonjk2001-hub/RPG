@@ -297,14 +297,27 @@ if(typeof sr7AttackMode==='function'){
   };
 }
 if(typeof sr11RollAttack==='function'){
+  const sr29PriorRollAttack=sr11RollAttack;
   sr11RollAttack=function(base,actor,target,melee=false){
-    const distance=Number(target?.distance??actor?.distance??(melee?5:Infinity));
-    const mode=sr29AttackState(actor,target,{melee,distance});
-    const r1=die(20),r2=mode.mode==='normal'?r1:die(20);
-    const r=mode.mode==='advantage'?Math.max(r1,r2):mode.mode==='disadvantage'?Math.min(r1,r2):r1;
     const exhaustion=Math.max(0,Math.min(6,Math.floor(Number(actor?.exhaustion)||0)));
-    const totalBonus=Number(base||0)-2*exhaustion;
-    return {r,r1,r2,adv:mode.mode==='advantage',dis:mode.mode==='disadvantage',total:r+totalBonus,modifier:totalBonus};
+    const originalActorConditions=Array.isArray(actor?.conditions)?actor.conditions.slice():null;
+    const originalTargetConditions=Array.isArray(target?.conditions)?target.conditions.slice():null;
+    const actorHadConditions=Array.isArray(actor?.conditions),targetHadConditions=Array.isArray(target?.conditions);
+    const temporarilyAdd=(creature,name)=>{
+      if(!creature)return;
+      if(!Array.isArray(creature.conditions))creature.conditions=[];
+      if(!creature.conditions.some(x=>sr29Name(x)===name))creature.conditions.push(name);
+    };
+    try{
+      // Preserve all later combat layers (Dodge, Bardic Inspiration, cover/threat,
+      // outline bonuses and Improved Critical) while supplying the V29-only cases.
+      if(sr29Has(actor,'frightened')&&sr29FrightSourceVisible(actor,{}))temporarilyAdd(actor,'poisoned');
+      if(sr29Has(target,'petrified'))temporarilyAdd(target,'restrained');
+      return sr29PriorRollAttack(Number(base||0)-2*exhaustion,actor,target,melee);
+    }finally{
+      if(actorHadConditions)actor.conditions=originalActorConditions;else if(actor&&Object.prototype.hasOwnProperty.call(actor,'conditions'))delete actor.conditions;
+      if(targetHadConditions)target.conditions=originalTargetConditions;else if(target&&Object.prototype.hasOwnProperty.call(target,'conditions'))delete target.conditions;
+    }
   };
 }
 if(typeof sr25ResolveCreatureSavingThrow==='function'){
@@ -344,12 +357,18 @@ if(typeof sr11HeroAttack==='function'){
   };
 }
 if(typeof sr7CastSpell==='function'){
-  const sr29PriorCast=sr7CastSpell;
+  const sr29PriorCast7=sr7CastSpell;
   sr7CastSpell=function(...args){
     if(!sr29CanAct(state?.character,'action')){toast('You cannot cast while incapacitated.');return false;}
-    return sr29PriorCast.apply(this,args);
+    return sr29PriorCast7.apply(this,args);
   };
-  castSpell=sr7CastSpell;
+}
+if(typeof castSpell==='function'){
+  const sr29PriorCurrentCast=castSpell;
+  castSpell=function(...args){
+    if(!sr29CanAct(state?.character,'action')){toast('You cannot cast while incapacitated.');return false;}
+    return sr29PriorCurrentCast.apply(this,args);
+  };
 }
 if(typeof sr7Move==='function'){
   const sr29PriorMove=sr7Move;
