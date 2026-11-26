@@ -906,6 +906,12 @@ if(typeof sr14CastSpellComplete==='function'){
     const castTime=String(spell?.castingTime||'Action'),castKind=/bonus action/i.test(castTime)?'bonus-action':/reaction/i.test(castTime)?'reaction':'action';
     if(!sr29ActionEconomyGate(caster,castKind,!!state?.combat))return false;
     const displacement=spell?sr29SpellDisplacementSpec(spell):null,repeatSave=spell?sr29RepeatSaveSpecForSpell(spellName,spell):null;
+    const combat=state?.combat,target=combat?.mp?(typeof sr4Target==='function'?sr4Target():null):(typeof targetEnemy==='function'?targetEnemy():null);
+    const harmfulKinds=new Set(['saveDamage','damage','control','debuff','attack']);
+    if(effect&&harmfulKinds.has(effect.kind)&&target){
+      const harmfulTargets=effect.area&&typeof sr14TargetListComplete==='function'?sr14TargetListComplete(player,spell,effect,target,combat?.mp&&typeof sr12PlayerPos==='function'?sr12PlayerPos(player.id):combat?.heroPos):[target];
+      if((harmfulTargets||[]).some(victim=>victim&&sr29CannotHarm(caster,victim))){toast('The Charmed condition prevents you from harming its source.');return false;}
+    }
     const resourcesBefore={actionSpent:caster?.actionSpent,bonusActionSpent:caster?.bonusActionSpent};
     const castMode=args[4]||{},reservedSlot=spell&&Number(spell.level)>0&&!castMode.ritual?sr14GetCastSlot(caster,Number(spell.level)):null;
     const slotLevel=Number(reservedSlot?.level??reservedSlot),slotKind=String(reservedSlot?.kind||'regular');
@@ -913,7 +919,6 @@ if(typeof sr14CastSpellComplete==='function'){
     const slotCountBefore=Number(slotMapBefore?.[slotLevel])||0;
     // The scalar-slot compatibility path uses numeric zero as its valid-slot sentinel.
     const scalarSlotsBefore=reservedSlot===0?(Number(caster?.spellSlots)||0):0;
-    const combat=state?.combat,target=combat?.mp?(typeof sr4Target==='function'?sr4Target():null):(typeof targetEnemy==='function'?targetEnemy():null);
     const origin=combat?.mp&&typeof sr12PlayerPos==='function'?sr12PlayerPos(player.id):combat?.heroPos;
     const hadCharacterPosition=!!caster&&Object.prototype.hasOwnProperty.call(caster,'position');
     const previousCharacterPosition=hadCharacterPosition&&caster.position&&typeof caster.position==='object'?{...caster.position}:caster?.position;
@@ -1205,8 +1210,10 @@ if(typeof sr12HeroAttack==='function'){
   const sr29PriorHeroAttack=sr12HeroAttack;
   sr12HeroAttack=function(player,targetOverride=null,reaction=false,...args){
     const kind=reaction?'reaction':'action',character=player?.character;
+    const target=targetOverride||(typeof sr4Target==='function'?sr4Target():null);
+    if(sr29CannotHarm(character,target)){toast('The Charmed condition prevents you from harming its source.');return false;}
     if(!sr29ActionEconomyGate(character,kind,true))return false;
-    const target=targetOverride||(typeof sr4Target==='function'?sr4Target():null),weapon=String(character?.weapon||''),mastery=sr29WeaponMasteryFor(character,weapon);
+    const weapon=String(character?.weapon||''),mastery=sr29WeaponMasteryFor(character,weapon);
     const beforeLog=(state?.log||[]).length,beforeLogHead=(state?.log||[])[0]||null,origin=state?.combat?.mp?sr12PlayerPos(player?.id):null;
     const actionSpentBefore=character?.actionSpent,bonusActionSpentBefore=character?.bonusActionSpent;
     const result=sr29PriorHeroAttack.call(this,player,targetOverride,reaction,...args);
