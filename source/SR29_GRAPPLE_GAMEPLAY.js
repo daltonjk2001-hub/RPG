@@ -23,14 +23,19 @@ function sr29SoloFreeHands(actor){
   const shieldEquipped=!!(actor?.shieldEquipped||actor?.shield||actor?.offHandShield||actor?.equipment?.shield);
   return Math.max(0,2-Math.min(2,Math.max(0,weaponHands||0))-(shieldEquipped?1:0));
 }
-function sr29SoloTargetSave(target,ability){
+function sr29SoloTargetSave(target,ability,dc){
   const key=String(ability||'').toUpperCase();
-  const score=Number(target?.stats?.[key]??10);
-  const saveMap=target?.saves||target?.savingThrows||target?.statBlock?.saves||{};
+  const stats=target?.stats||target?.abilityScores||{STR:10,DEX:10,CON:10,INT:10,WIS:10,CHA:10};
+  const score=Number(stats[key]??10);
+  const saveMap=target?.saves||target?.savingThrows||target?.statBlock?.saves||target?.statBlock?.saving_throws||{};
   const saved=Number(saveMap[key]??saveMap[key.toLowerCase()]);
-  const bonus=Number.isFinite(saved)?saved:Math.floor((score-10)/2);
-  const roll=die(20),total=roll+bonus;
-  return {ability:key,roll,bonus,total,success:roll===20||(roll!==1&&total>=0)};
+  const trained=target===state.character&&CLASS_SAVES?.[target.classId]?.includes(key);
+  const bonus=Number.isFinite(saved)?saved:Math.floor((score-10)/2)+(trained?profBonus():0);
+  const roll=die(20),saveTarget=target?.stats?target:{...target,stats};
+  const resolved=typeof sr25ResolveCreatureSavingThrow==='function'
+    ?sr25ResolveCreatureSavingThrow(saveTarget,key,[roll],bonus,dc,{useLegendaryResistance:true})
+    :{success:roll+bonus>=dc,total:roll+bonus};
+  return {ability:key,roll,bonus,total:Number(resolved.total??(roll+bonus)),success:resolved.success===true,autoFail:resolved.autoFail===true};
 }
 function sr29SoloStartPlayerGrapple(){
   const b=state?.combat,c=state?.character,e=targetEnemy();
@@ -48,7 +53,8 @@ function sr29SoloStartPlayerGrapple(){
   const chosen=typeof prompt==='function'?prompt('The target chooses a saving throw: enter STR or DEX.','STR'): 'STR';
   const ability=String(chosen===null?'STR':chosen||'').trim().toUpperCase();
   if(!['STR','DEX'].includes(ability)){toast('Choose STR or DEX; the grapple attempt is not completed.');return false;}
-  const save=sr29SoloTargetSave(e,ability);
+  const escapeDC=sr29GrappleEscapeDC(c,{proficiencyBonus:profBonus()});
+  const save=sr29SoloTargetSave(e,ability,escapeDC);
   const result=sr29StartGrapple(c,e,{attackHit:true,grapplerSize,targetSize,freeHands,activeGrapples,distance,reach,proficiencyBonus:profBonus(),strengthScore:c.stats.STR,targetSave:save,source:'Unarmed Strike',handSlot:'main'});
   if(result.started)log(`${c.name} grapples ${e.name}; ${ability} save ${save.roll} + ${save.bonus} = ${save.total} vs DC ${result.escapeDC}. The target is Grappled.`,'goodlog');
   else if(result.reason==='target-saved')log(`${e.name} resists the grapple with a ${ability} save (${save.total} vs DC ${result.escapeDC}).`,'rolllog');
