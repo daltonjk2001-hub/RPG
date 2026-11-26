@@ -154,31 +154,67 @@ function sr29MpActiveGrapples(player){
   const actors=[...new Set([...(state?.combat?.enemies||[]),...(state?.campaign?.multiplayer?.players||[]).map(p=>p.character),state?.character].filter(Boolean))];
   return actors.flatMap(target=>sr29Entries(target).filter(item=>item.name==='grappled'&&String(item.grapplerId||item.sourceId||'')===id));
 }
-function sr29MpStartGrapple(player){
-  const b=state?.combat,c=player?.character,e=sr4Target();
-  if(!b?.mp||!player||!c||!e||e.hp<=0)return false;
+function sr29MpPlayerById(id){
+  return (state?.campaign?.multiplayer?.players||[]).find(item=>String(item?.id||'')===String(id||''))||null;
+}
+function sr29MpStartGrapple(player,targetId=null){
+  const b=state?.combat,c=player?.character;
+  const targetPlayer=targetId?sr29MpPlayerById(targetId):null;
+  const e=targetPlayer?.character||(targetId?null:sr4Target());
+  if(!b?.mp||!player||!c||!e||e.hp<=0||targetPlayer?.connected===false||targetPlayer?.id===player.id)return false;
   if(sr12TurnActor()?.id!==player.id){toast('It is not your initiative turn.');return false;}
   if(c.actionSpent){toast('Your Action is already spent.');return false;}
   if(!sr29CanAct(c,'action')){toast('Your condition prevents you from taking this action.');return false;}
-  const from=sr12PlayerPos(player.id),distance=sr12Distance(from,e.pos),reach=5;
+  const from=sr12PlayerPos(player.id),to=targetPlayer?sr12PlayerPos(targetPlayer.id):e.pos,distance=sr12Distance(from,to),reach=5;
   const grappler={...c,id:player.id,name:player.name||c.name};
   const grapplerSize=sr29MpSize(c),targetSize=sr29MpSize(e);
   const freeHands=c.freeHands===false?0:Number.isFinite(Number(c.freeHands))?Math.max(0,Number(c.freeHands)):sr29SoloFreeHands(c);
   const activeGrapples=sr29MpActiveGrapples(player);
   const eligibility=sr29GrappleEligibility(grappler,e,{grapplerSize,targetSize,freeHands,activeGrapples,distance,reach});
   if(!eligibility.legal){toast(({ 'target-too-large':'The target is too large to grapple.','no-free-hand':'You need a free hand.','out-of-reach':'Move within 5 feet first.'})[eligibility.reason]||'You cannot grapple that target.');return false;}
-  const bonus=mod(c.stats.STR)+profBonus(),attack=sr11RollAttack(bonus,c,e,true);
-  const hit=attack.r===20||(attack.r!==1&&attack.total>=Number(e.ac||10));
+  const bonus=mod(c.stats.STR)+profBonus();
+  const attack=sr11RollAttack(bonus,c,e,true);
+  const targetAC=targetPlayer?Number(e.ac)||sr4WithCharRead(targetPlayer,computeAC):Number(e.ac||10);
+  const hit=attack.r===20||(attack.r!==1&&attack.total>=targetAC);
   c.actionSpent=true;
-  log(`${player.name} makes an Unarmed Strike to grapple ${e.name}: d20 ${attack.r} + ${bonus} = ${attack.total} vs AC ${e.ac||10}. ${hit?'Hit.':'Miss.'}`,hit?'goodlog':'badlog');
-  if(hit){
+  log(player.name+' makes an Unarmed Strike to grapple '+(targetPlayer?targetPlayer.name:e.name)+': d20 '+attack.r+' + '+bonus+' = '+attack.total+' vs AC '+targetAC+'. '+(hit?'Hit.':'Miss.'),hit?'goodlog':'badlog');
+  if(hit&&targetPlayer){
+    const mp=b.mp,seq=(Number(mp.grappleChallengeSeq)||0)+1;mp.grappleChallengeSeq=seq;
+    const escapeDC=sr29GrappleEscapeDC(grappler,{proficiencyBonus:profBonus(),strengthScore:c.stats.STR});
+    mp.grappleChallenges=Array.isArray(mp.grappleChallenges)?mp.grappleChallenges:[];
+    mp.grappleChallenges=mp.grappleChallenges.filter(item=>item.targetId!==targetPlayer.id);
+    mp.grappleChallenges.push({id:'grapple-'+String(b.round||1)+'-'+String(player.id)+'-'+seq,attackerId:player.id,targetId:targetPlayer.id,attackerName:player.name||c.name,targetName:targetPlayer.name,escapeDC,reach,grapplerSize,targetSize,freeHands,distance,createdRound:Number(b.round)||1});
+    log(targetPlayer.name+' must immediately choose a Strength or Dexterity saving throw against DC '+escapeDC+'.','rolllog');
+  }else if(hit){
     const ability=sr29SoloChooseTargetSaveAbility(e),escapeDC=sr29GrappleEscapeDC(grappler,{proficiencyBonus:profBonus()}),targetSave=sr29SoloTargetSave(e,ability,escapeDC);
     const result=sr29StartGrapple(grappler,e,{attackHit:true,grapplerSize,targetSize,freeHands,activeGrapples,distance,reach,proficiencyBonus:profBonus(),strengthScore:c.stats.STR,targetSave,source:'Unarmed Strike',handSlot:'main'});
-    if(result.started)log(`${player.name} grapples ${e.name}; its ${ability} save is ${targetSave.total} vs DC ${result.escapeDC}.`,'goodlog');
-    else if(result.reason==='target-saved')log(`${e.name} resists the grapple with its ${ability} save (${targetSave.total} vs DC ${result.escapeDC}).`,'rolllog');
-    else log(`Grapple attempt did not apply: ${result.reason||'unknown reason'}.`,'muted');
+    if(result.started)log(player.name+' grapples '+e.name+'; its '+ability+' save is '+targetSave.total+' vs DC '+result.escapeDC+'.','goodlog');
+    else if(result.reason==='target-saved')log(e.name+' resists the grapple with its '+ability+' save ('+targetSave.total+' vs DC '+result.escapeDC+').','rolllog');
+    else log('Grapple attempt did not apply: '+(result.reason||'unknown reason')+'.','muted');
   }
   sr29ReconcileCombatGrapples(state);
+  return true;
+}
+function sr29MpResolveGrappleSave(player,msg={}){
+  const mp=state?.combat?.mp,challengeId=String(msg.challengeId||''),ability=String(msg.ability||'').toUpperCase();
+  if(!mp||!player||!['STR','DEX'].includes(ability))return false;
+  const challenges=Array.isArray(mp.grappleChallenges)?mp.grappleChallenges:[];
+  const challenge=challenges.find(item=>item.id===challengeId&&item.targetId===player.id);
+  if(!challenge||player.character?.hp<=0)return false;
+  const target=player.character,attacker=sr29MpPlayerById(challenge.attackerId);
+  if(!attacker?.character)return false;
+  const roll=die(20),bonus=sr4WithCharRead(player,()=>sr29SoloSaveBonus(target,ability));
+  const resolved=sr25ResolveCreatureSavingThrow(target,ability,[roll],bonus,challenge.escapeDC,{useLegendaryResistance:true});
+  const targetSave={ability,roll,bonus,total:Number(resolved.total??(roll+bonus)),success:resolved.success===true,autoFail:resolved.autoFail===true};
+  const grappler={...attacker.character,id:attacker.id,name:attacker.name||attacker.character.name};
+  const activeGrapples=sr29MpActiveGrapples(attacker);
+  const result=sr29StartGrapple(grappler,target,{attackHit:true,grapplerSize:challenge.grapplerSize,targetSize:challenge.targetSize,freeHands:challenge.freeHands,activeGrapples,distance:challenge.distance,reach:challenge.reach,proficiencyBonus:sr4WithCharRead(attacker,profBonus),strengthScore:attacker.character.stats.STR,targetSave,source:'Unarmed Strike',handSlot:'main'});
+  mp.grappleChallenges=challenges.filter(item=>item.id!==challengeId);
+  if(result.started)log(player.name+' fails the '+ability+' save ('+targetSave.total+' vs DC '+challenge.escapeDC+') and is Grappled by '+attacker.name+'.','badlog');
+  else if(result.reason==='target-saved')log(player.name+' succeeds on the '+ability+' save ('+targetSave.total+' vs DC '+challenge.escapeDC+') and resists '+attacker.name+'’s grapple.','goodlog');
+  else log('Grapple save could not be resolved: '+(result.reason||'unknown reason')+'.','muted');
+  sr29ReconcileCombatGrapples(state);
+  sr4Broadcast();save();render();
   return true;
 }
 function sr29MpEscapeGrapple(player,ability){
@@ -300,7 +336,9 @@ if(typeof sr12HeroAction==='function'){
   const sr29MpPriorHeroAction=sr12HeroAction;
   sr12HeroAction=function(player,action,spellName,targetId,data={}){
     if(state?.combat?.mp&&action==='grapple'){
-      let result=false;sr12WithHero(player,()=>{result=sr29MpStartGrapple(player);});
+      const pending=(state.combat.mp.grappleChallenges||[]).some(item=>item.attackerId===player?.id);
+      if(pending){toast('Wait for the target to resolve the grapple saving throw.');return false;}
+      let result=false;sr12WithHero(player,()=>{result=sr29MpStartGrapple(player,targetId||null);});
       if(result){sr4Broadcast();save();render();}return result;
     }
     if(state?.combat?.mp&&action==='escape-grapple'){
@@ -313,6 +351,7 @@ if(typeof sr12HeroAction==='function'){
 if(typeof sr12HandleCombat==='function'){
   const sr29MpPriorHandleCombat=sr12HandleCombat;
   sr12HandleCombat=function(player,msg){
+    if(msg?.action==='grapple-save')return sr29MpResolveGrappleSave(player,msg);
     if(msg?.action==='escape-grapple')return sr12HeroAction(player,'escape-grapple',null,null,{ability:msg.ability});
     return sr29MpPriorHandleCombat(player,msg);
   };
@@ -324,18 +363,32 @@ if(typeof sr12CombatPage==='function'){
     html=html.replace('>Grapple</button>','>Unarmed Strike · Grapple</button>');
     html=html.replace('<button class="btn small" data-action="mp-combat" data-move="escape-grapple">Escape grapple</button>',
       '<button class="btn small" data-action="sr29-mp-escape" data-ability="Athletics">Escape · Athletics</button><button class="btn small" data-action="sr29-mp-escape" data-ability="Acrobatics">Escape · Acrobatics</button>');
-    return html;
+    const me=SR4.myPlayerId,players=state.campaign?.multiplayer?.players||[];
+    const targets=players.filter(p=>p.id!==me&&p.connected&&p.character?.hp>0);
+    const mine=sr12CurrentPlayer()?.id===me;
+    const targetButtons=mine?targets.map(p=>'<button class="btn small" data-action="sr29-mp-grapple" data-target-id="'+sr29Html(p.id)+'" '+(sr12Distance(sr12PlayerPos(me),sr12PlayerPos(p.id))>5?'disabled':'')+'>Grapple '+sr29Html(p.name)+'</button>').join(''):'';
+    const challenges=(state.combat.mp.grappleChallenges||[]).filter(item=>item.targetId===me);
+    const savePrompts=challenges.map(item=>'<section class="card"><h3>Grapple saving throw</h3><p>'+sr29Html(item.attackerName)+' hit you with an Unarmed Strike. Choose Strength or Dexterity against DC '+Number(item.escapeDC)+'.</p><div class="item-actions"><button class="btn primary" data-action="sr29-mp-grapple-save" data-challenge-id="'+sr29Html(item.id)+'" data-ability="STR">Strength save</button><button class="btn primary" data-action="sr29-mp-grapple-save" data-challenge-id="'+sr29Html(item.id)+'" data-ability="DEX">Dexterity save</button></div></section>').join('');
+    return html+(targetButtons?'<section class="card"><h3>Grapple a hero</h3><p class="smalltext muted">Select a connected party member within 5 feet. They choose their own Strength or Dexterity saving throw.</p><div class="item-actions">'+targetButtons+'</div></section>':'')+savePrompts;
   };
 }
 document.addEventListener('click',function(event){
-  const button=event.target?.closest?.('button[data-action="sr29-mp-escape"]');
+  const button=event.target?.closest?.('button[data-action="sr29-mp-escape"],button[data-action="sr29-mp-grapple"],button[data-action="sr29-mp-grapple-save"]');
   if(!button||!state?.combat?.mp)return;
   event.preventDefault();event.stopImmediatePropagation();
-  const ability=button.dataset.ability==='Acrobatics'?'Acrobatics':'Athletics';
-  if(SR4.role==='guest')sr4Send({type:'COMBAT',action:'escape-grapple',ability});
-  else if(SR4.role==='host'){
-    const player=(state.campaign?.multiplayer?.players||[]).find(p=>p.id===SR4.myPlayerId);
-    if(player)sr12HeroAction(player,'escape-grapple',null,null,{ability});
+  const player=(state.campaign?.multiplayer?.players||[]).find(p=>p.id===SR4.myPlayerId);
+  if(button.dataset.action==='sr29-mp-escape'){
+    const ability=button.dataset.ability==='Acrobatics'?'Acrobatics':'Athletics';
+    if(SR4.role==='guest')sr4Send({type:'COMBAT',action:'escape-grapple',ability});
+    else if(player)sr12HeroAction(player,'escape-grapple',null,null,{ability});
+  }else if(button.dataset.action==='sr29-mp-grapple'){
+    const targetId=String(button.dataset.targetId||'');
+    if(SR4.role==='guest')sr4Send({type:'COMBAT',action:'grapple',targetId});
+    else if(player)sr12HeroAction(player,'grapple',null,targetId);
+  }else{
+    const msg={type:'COMBAT',action:'grapple-save',challengeId:String(button.dataset.challengeId||''),ability:button.dataset.ability};
+    if(SR4.role==='guest')sr4Send(msg);
+    else if(player)sr29MpResolveGrappleSave(player,msg);
   }
 },true);
 
@@ -411,5 +464,5 @@ if(typeof sr14CastSpellComplete==='function'){
 }
 
 if(globalThis.__SR29_TEST){
-  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
+  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerResolveGrappleSave:sr29MpResolveGrappleSave,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
 }
