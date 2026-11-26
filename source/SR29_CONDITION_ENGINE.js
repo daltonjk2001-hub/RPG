@@ -367,6 +367,54 @@ function sr29GrappleEligibility(grappler,target,options={}) {
   if(distance>reach)return {legal:false,reason:'out-of-reach'};
   return {legal:true,reason:null,grapplerSize,targetSize,freeHandsRemaining:freeHands-occupied};
 }
+function sr29GrappleEscapeDC(grappler,options={}) {
+  const score=Number(options.strengthScore??grappler?.stats?.STR??10);
+  const mod=Number(options.strengthModifier??Math.floor((score-10)/2));
+  const proficiency=Number(options.proficiencyBonus??grappler?.proficiencyBonus??0);
+  return 8+(Number.isFinite(mod)?mod:0)+(Number.isFinite(proficiency)?proficiency:0);
+}
+function sr29StartGrapple(grappler,target,options={}) {
+  if(options.attackHit!==true)return {started:false,reason:'grapple-attack-did-not-hit'};
+  const eligibility=sr29GrappleEligibility(grappler,target,options);
+  if(!eligibility.legal)return {started:false,...eligibility};
+  const grapplerId=String(grappler.id||grappler.name||'');
+  if(!grapplerId)return {started:false,reason:'missing-grappler-id'};
+  const reach=Number(options.reach);
+  const result=sr29Apply(target,'grappled','permanent',options.source||grappler.name||'Unarmed Strike',{
+    grapplerId,sourceId:grapplerId,grappleRange:reach
+  });
+  if(!result.applied)return {started:false,reason:result.reason||'condition-not-applied'};
+  result.instance.escapeDC=sr29GrappleEscapeDC(grappler,options);
+  result.instance.grapplerSize=eligibility.grapplerSize;
+  result.instance.targetSize=eligibility.targetSize;
+  result.instance.handSlot=options.handSlot===undefined?null:String(options.handSlot);
+  return {started:true,instance:result.instance,escapeDC:result.instance.escapeDC};
+}
+function sr29EscapeGrapple(target,options={}) {
+  const item=sr29Entries(target).find(x=>x.name==='grappled'&&
+    (options.instanceId===undefined||x.id===String(options.instanceId)));
+  if(!item)return {escaped:false,reason:'not-grappled'};
+  const ability=String(options.ability||'Athletics').trim().toLowerCase();
+  if(ability!=='athletics'&&ability!=='acrobatics')return {escaped:false,reason:'invalid-escape-check'};
+  const dc=Number(options.dc??item.escapeDC);
+  const roll=Number(options.roll),bonus=Number(options.bonus)||0;
+  if(!Number.isFinite(dc)||dc<1)return {escaped:false,reason:'missing-escape-dc'};
+  if(!Number.isInteger(roll)||roll<1||roll>20)return {escaped:false,reason:'invalid-roll',dc,ability};
+  const total=roll+bonus,success=total>=dc;
+  if(success)sr29ReleaseGrapple(target,{instanceId:item.id});
+  return {escaped:success,success,total,dc,ability,roll,instanceId:item.id};
+}
+function sr29GrappleMovementCost(grappler,target,distance,options={}) {
+  const feet=Number(distance);
+  if(!Number.isFinite(feet)||feet<0)return {valid:false,reason:'invalid-distance'};
+  const sizes=['tiny','small','medium','large','huge','gargantuan'];
+  const holder=sizes.indexOf(String(options.grapplerSize??grappler?.size??'').toLowerCase());
+  const held=sizes.indexOf(String(options.targetSize??target?.size??'').toLowerCase());
+  if(holder<0||held<0)return {valid:false,reason:'unknown-size'};
+  const exempt=held===0||held<=holder-2;
+  return {valid:true,distance:feet,multiplier:exempt?1:2,movementCost:feet*(exempt?1:2),
+    speedHalved:!exempt,exemptReason:exempt?(held===0?'tiny-target':'two-sizes-smaller'):null};
+}
 function sr29ReconcileCombatGrapples(snapshot=state) {
   if(!snapshot?.combat)return {count:0,released:[]};
   return sr29ReconcileGrapples(sr29CombatParticipants(snapshot));
@@ -849,6 +897,7 @@ globalThis.__SR29_TEST={
   currentPhase:()=>({phase:SR29_PHASE,cycle:SR29_COMBAT_CYCLE}),
   canUseAction:sr29CanAct,
   grappleEligibility:sr29GrappleEligibility,
+  startGrapple:sr29StartGrapple,grappleEscapeDC:sr29GrappleEscapeDC,escapeGrapple:sr29EscapeGrapple,grappleMovementCost:sr29GrappleMovementCost,
   releaseGrapple:sr29ReleaseGrapple,reconcileGrapples:sr29ReconcileGrapples,
   combatParticipants:sr29CombatParticipants,reconcileCombatGrapples:sr29ReconcileCombatGrapples
 };
