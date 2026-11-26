@@ -518,6 +518,15 @@ try{
  assert('Player spell displacement parser extracts Push and Pull direction and distance',pushSpell?.mode==='push'&&pushSpell.feet===10&&pullSpell?.mode==='pull'&&pullSpell.feet===15);
  const descOnlyDisplacement=T.gameplay.spellDisplacementSpec({desc:'The target is pushed 10 feet away from you.'});
  assert('Spell displacement reads both description and legacy desc fields',descOnlyDisplacement?.mode==='push'&&descOnlyDisplacement.feet===10);
+ const soloMasteryHero=actor({id:'solo-mastery-hero',name:'Solo Mastery Hero',classId:'Fighter',level:1,weapon:'Warhammer',weaponMasteries:['Warhammer']});
+ const soloMasteryTarget=actor({id:'solo-mastery-target',name:'Solo Mastery Target',size:'Medium',distance:5});
+ T18.state={character:soloMasteryHero,combat:{mp:null,enemies:[soloMasteryTarget]},campaign:{},log:[]};
+ T.apply(soloMasteryTarget,'grappled','permanent','Solo Mastery Hero',{grapplerId:'solo-mastery-hero',sourceId:'solo-mastery-hero',grappleRange:5,escapeDC:12});
+ const soloMasteryPush=T.gameplay.applyMastery(soloMasteryTarget,soloMasteryHero,'Warhammer',true,20,5);
+ const soloGrappleReleased=!T.has(soloMasteryTarget,'grappled');
+ const soloHugeTarget=actor({id:'solo-huge-target',name:'Solo Huge Target',size:'Huge',distance:5});
+ const soloHugePush=T.gameplay.applyMastery(soloHugeTarget,soloMasteryHero,'Warhammer',true,20,5);
+ assert('Solo Push mastery moves eligible targets, reconciles grapples, and rejects Huge targets',soloMasteryPush===true&&soloMasteryTarget.distance===15&&soloGrappleReleased&&soloHugePush===false&&soloHugeTarget.distance===5);
  const priorSpellMoveState=T18.state;
  const forcedSpellCaster=actor({id:'spell-caster',name:'Spell Caster'});
  const abstractDisplacementTarget=actor({id:'spell-target',name:'Spell Target',distance:10});
