@@ -367,6 +367,7 @@ try{
    return result.removed===3&&result.remaining===1&&snapshot.combat.mp.grappleChallenges[0].id==='live-challenge'&&
      result.reasons.some(x=>x.reason==='participant-disconnected')&&result.reasons.some(x=>x.reason==='participant-defeated')&&result.reasons.some(x=>x.reason==='challenge-expired');
  })());
+ assert('Solo voluntary movement is blocked while the player character is Grappled',html.includes("if(sr29Entries(c).some(item=>item.name==='grappled')){toast('You cannot move while Grappled.")&&html.includes('sr7Move=function(direction)'));
  const heldHero=actor({id:'held-hero'});T.apply(heldHero,'grappled','permanent','Monster',{grapplerId:'monster-1'});
  const freeHero=actor({id:'free-hero'});
  assert('Multiplayer Grappled heroes cannot use voluntary tactical movement',T.gameplay.multiplayerVoluntaryMovementEligibility({id:'held-hero',character:heldHero}).legal===false&&T.gameplay.multiplayerVoluntaryMovementEligibility({id:'free-hero',character:freeHero}).legal===true);
