@@ -432,6 +432,29 @@ try{
  assert('Multiplayer grapple initiation uses source-linked V29 conditions and the canonical target save resolver',html.includes('sr29StartGrapple(grappler,e')&&html.includes('sr29SoloTargetSave(e,ability,escapeDC)'));
  const explicitSkillCheck=T.canonicalAbilityCheck(actor({stats:{STR:10,DEX:10,CON:10,INT:10,WIS:10,CHA:10}}),'Athletics',14,{roll:10,bonusOverride:5});
  assert('Canonical ability checks preserve explicit monster skill bonuses',explicitSkillCheck.total===15&&explicitSkillCheck.success===true);
+
+ const priorShoveState=T18.state;
+ const shoveHero=actor({id:'solo-shover',name:'Solo Shover',level:1,stats:{STR:16,DEX:10,CON:10,INT:10,WIS:10,CHA:10}});
+ const shoveTarget=actor({id:'solo-shove-target',name:'Shove Target',distance:5,size:'medium',saves:{STR:0,DEX:0}});
+ T.apply(shoveTarget,'grappled','permanent','Solo Shover',{grapplerId:'solo-shover',grappleRange:5,escapeDC:12});
+ T18.state={character:shoveHero,combat:{mp:null,enemies:[shoveTarget]},log:[]};
+ const soloShovePush=T.gameplay.soloShove('push');
+ assert('Solo player Shove pushes a failed-save target 5 feet and reconciles the broken grapple',soloShovePush&&shoveTarget.distance===10&&!T.has(shoveTarget,'grappled'));
+ T18.state=priorShoveState;
+ const proneHero=actor({id:'solo-prone-shover',name:'Prone Shover',level:1,stats:{STR:16,DEX:10,CON:10,INT:10,WIS:10,CHA:10}});
+ const proneTarget=actor({id:'solo-prone-target',name:'Prone Target',distance:5,size:'medium',saves:{STR:0,DEX:0}});
+ T18.state={character:proneHero,combat:{mp:null,enemies:[proneTarget]},log:[]};
+ const soloShoveProne=T.gameplay.soloShove('prone');
+ assert('Solo player Shove can knock a failed-save target Prone',soloShoveProne&&T.has(proneTarget,'prone'));
+ T18.state=priorShoveState;
+ const resistHero=actor({id:'solo-resist-shover',name:'Resist Shover',level:1,stats:{STR:16,DEX:10,CON:10,INT:10,WIS:10,CHA:10}});
+ const resistantTarget=actor({id:'solo-resistant-target',name:'Resistant Target',distance:5,size:'medium',saves:{STR:30,DEX:30}});
+ T18.state={character:resistHero,combat:{mp:null,enemies:[resistantTarget]},log:[]};
+ const resistedShove=T.gameplay.soloShove('push');
+ assert('Solo player Shove leaves a target in place when its chosen save succeeds',resistedShove&&resistantTarget.distance===5&&!T.has(resistantTarget,'prone'));
+ T18.state=priorShoveState;
+ assert('Solo grapple panel exposes both 2024 Shove outcomes',html.includes('data-action="sr29-shove-push"')&&html.includes('data-action="sr29-shove-prone"')&&html.includes('function sr29SoloShove(mode='));
+
  const abstractGrappler=actor({id:'abstract-hero',name:'Abstract Hero'}),abstractTarget=actor({id:'abstract-foe',name:'Abstract Foe',distance:10});
  T.apply(abstractTarget,'grappled','permanent','Abstract Hero',{grapplerId:'abstract-hero',grappleRange:5,escapeDC:12});
  const abstractRelease=T.gameplay.reconcileAbstractGrapples({character:abstractGrappler,combat:{enemies:[abstractTarget]}});
