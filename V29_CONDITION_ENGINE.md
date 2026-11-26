@@ -34,7 +34,7 @@ The Exhaustion condition is handled separately as a cumulative level from 0 to 6
 
 ## Player-facing condition management
 
-The V29 adventure view now includes a Condition Management panel for the player character and active solo-combat enemies. It displays each active condition instance with its source and remaining round duration, supports applying timed or permanent conditions, records source creature IDs for source-specific effects, and removes one selected instance without erasing other applications. Grappled entries display the grappler and stored reach; the panel accepts a custom reach (default 5 feet) and exposes a Release grapple control. Exhaustion is displayed as a level and can be reduced one level at a time. The Frightened source line-of-sight flag is explicit; an unknown source is not assumed visible. The panel does not yet manage remote multiplayer participants or automatically infer every spell, feature, or monster-effect duration.
+The V29 adventure view now includes a Condition Management panel for the player character, active remote multiplayer party members during multiplayer combat, and active combat enemies. It displays each active condition instance with its source and remaining round duration, supports applying timed or permanent conditions, records source creature IDs for source-specific effects, and removes one selected instance without erasing other applications. Grappled entries display the grappler and stored reach; the panel accepts a custom reach (default 5 feet) and exposes a Release grapple control. Exhaustion is displayed as a level and can be reduced one level at a time. The Frightened source line-of-sight flag is explicit; an unknown source is not assumed visible. The panel resolves remote party members by stable multiplayer player ID and supports applying, inspecting, and removing their independent condition instances. Dedicated character/combat/enemy status views and automatic inference of every spell, feature, or monster-effect duration remain unfinished.
 
 ## Grapple lifecycle
 
@@ -60,7 +60,7 @@ Run the complete repository suite with: bash tests/run_v18.sh
 
 The condition dashboard remains **Partial** until the remaining acceptance criteria are met:
 
-1. Extend the current player/solo-enemy condition panel to remote multiplayer participants and dedicated character/combat/enemy status views.
+1. Add dedicated character/combat/enemy status views; the condition panel now includes remote multiplayer party members during multiplayer combat.
 2. Audit every player-facing bonus-action and reaction feature path and make every harmful spell/feature path honor the Charmed source restriction. The canonical eligibility service and V18 monster Parry/damage-reduction reaction gates are implemented; player-side feature-specific reaction dispatch remains to be traced and verified.
 3. Route every ability check, saving throw, initiative roll, and attack path—including Director-proposed and multiplayer actions—through Exhaustion and condition modifiers.
 4. Complete grapple drag/carry movement and extra movement cost, one-grapple-per-hand/appendage enforcement, player-side forced-movement/teleport integration, and live multiplayer timing tests. Automatic release for an Incapacitated grappler or a target moved beyond its stored reach is implemented and covered by regression tests.

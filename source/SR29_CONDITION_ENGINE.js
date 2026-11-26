@@ -354,6 +354,16 @@ function sr29Html(value) {
 function sr29UiTargets(snapshot=state) {
   const out=[];
   if(snapshot?.character)out.push({key:'player',label:'You · '+String(snapshot.character.name||'Player character'),actor:snapshot.character});
+  if(snapshot?.combat?.mp){
+    const localId=String(snapshot.character?.id||snapshot.character?.name||'');
+    for(const player of snapshot.campaign?.multiplayer?.players||[]){
+      const actor=player?.character;
+      if(!actor||actor===snapshot.character)continue;
+      const id=String(player.id||player.playerId||actor.id||actor.name||'');
+      if(!id||id===localId||out.some(item=>item.actor===actor||item.key==='player:'+id))continue;
+      out.push({key:'player:'+id,label:'Party · '+String(actor.name||player.name||'Player'),actor});
+    }
+  }
   for(const [index,enemy] of (snapshot?.combat?.enemies||[]).entries()) {
     if(!enemy||typeof enemy!=='object')continue;
     out.push({key:'enemy:'+index,label:'Enemy · '+String(enemy.name||('Enemy '+(index+1))),actor:enemy});
@@ -362,6 +372,11 @@ function sr29UiTargets(snapshot=state) {
 }
 function sr29UiTarget(snapshot,key) {
   if(key==='player')return snapshot?.character||null;
+  const partyMatch=String(key||'').match(/^player:(.+)$/);
+  if(partyMatch&&snapshot?.combat?.mp){
+    const player=(snapshot.campaign?.multiplayer?.players||[]).find(item=>String(item?.id||item?.playerId||item?.character?.id||item?.character?.name||'')===partyMatch[1]);
+    return player?.character||null;
+  }
   const match=String(key||'').match(/^enemy:(\d+)$/);
   if(!match)return null;
   return snapshot?.combat?.enemies?.[Number(match[1])]||null;

@@ -211,9 +211,17 @@ try{
  const uiHero=actor({id:'hero-ui',name:'Hero'}),uiGoblin=actor({id:'goblin-ui',name:'Goblin'});
  T.apply(uiHero,'poisoned',2,'Spider venom');
  T.apply(uiGoblin,'paralyzed',3,'Ghoul');
- const uiWorld={character:uiHero,combat:{enemies:[uiGoblin]}};
+ const uiAlly=actor({id:'remote-ally',name:'Mira'});
+ const uiWorld={character:uiHero,campaign:{multiplayer:{players:[{id:'local-player',character:uiHero},{id:'remote-player',name:'Mira',character:uiAlly}]}},combat:{mp:{},enemies:[uiGoblin]}};
  const conditionPanel=T.conditionPanel(uiWorld);
  assert('Condition dashboard resolves the selected solo enemy',T.resolveUiTarget(uiWorld,'enemy:0')===uiGoblin);
+ assert('Condition dashboard includes remote multiplayer party members without duplicating the local character',T.uiTargets(uiWorld).some(x=>x.key==='player:remote-player'&&x.actor===uiAlly)&&T.uiTargets(uiWorld).filter(x=>x.actor===uiHero).length===1);
+ assert('Condition dashboard resolves a remote multiplayer participant by stable player ID',T.resolveUiTarget(uiWorld,'player:remote-player')===uiAlly);
+ assert('Condition dashboard renders remote multiplayer participant status sections',T.conditionPanel(uiWorld).includes('Party · Mira'));
+ const remoteCondition=T.applyUiCondition(uiWorld,'player:remote-player','poisoned',2,false,'Wyvern venom');
+ assert('Condition dashboard applies a condition to a remote multiplayer participant',remoteCondition.applied&&T.has(uiAlly,'poisoned'));
+ const remoteRemoved=T.removeUiCondition(uiWorld,'player:remote-player','poisoned',T.entries(uiAlly)[0]?.id);
+ assert('Condition dashboard removes only the selected remote participant condition',remoteRemoved.removed===1&&!T.has(uiAlly,'poisoned'));
  assert('Condition dashboard renders for the player and solo combat enemies',conditionPanel.includes('sr29-condition-panel')&&conditionPanel.includes('You · Hero')&&conditionPanel.includes('Enemy · Goblin'));
  assert('Condition dashboard displays existing source and duration instances',conditionPanel.includes('Spider venom')&&conditionPanel.includes('2 rounds')&&conditionPanel.includes('Ghoul'));
  const uiApplied=T.applyUiCondition(uiWorld,'enemy:0','frightened',3,false,'Dragon fear','dragon-ui',true);
@@ -283,6 +291,7 @@ try{
  assert('Generated player grid attack uses the V29 automatic-critical rule for Paralyzed and Unconscious targets within 5 feet',html.includes("automaticCritical=sr29CriticalOnHit(e,{hit:true,distance:dist})"));
  assert('Generated build records monster Grappled source IDs and parsed reach',html.includes("grappleRange=Math.max(5,Number(range.ranged?range.normalRange:range.reach)||5)"));
  assert('Condition panel exposes a grapple reach control',html.includes('id="sr29-grapple-range"'));
+ assert('Generated build includes multiplayer condition dashboard target resolution',html.includes("const partyMatch=String(key||'').match(/^player:(.+)$/)")&&html.includes('Party · '));
  assert('Generated build contains canonical V18 reaction eligibility gates',html.includes('sr18CanUseReaction(target)')&&html.includes('sr18CanUseReaction(enemy)'));
  assert('Generated build gates solo and multiplayer monster actions through V29',html.includes('if(!sr18CanUseAction(enemy))'));
  assert('Generated build includes V29 tick, critical-hit and service-worker cache integration',integrity);
