@@ -638,7 +638,7 @@ if(typeof sr14SpellEffectComplete==='function'){
   sr14SpellEffectComplete=function(name,spell){
     if(spell&&!spell.description&&spell.desc)spell.description=String(spell.desc);
     if(String(name||'').toLowerCase()==='hold person'&&spell){
-      spell.description=spell.description||'The target must succeed on a Wisdom saving throw or have the Paralyzed condition for the duration.';
+      if(!spell.description||/paralyze a humanoid foe with binding magic/i.test(spell.description))spell.description='The target must succeed on a Wisdom saving throw or have the Paralyzed condition for the duration.';
       spell.condition='paralyzed';spell.save='WIS';spell.saveAbility='WIS';spell.duration=spell.duration||'1 minute';spell.concentration=true;
     }
     return sr29PriorSpellEffectComplete.call(this,name,spell);
