@@ -619,7 +619,9 @@ if(typeof sr9Move==='function'){
       toast('This move requires '+movementCost+' feet of movement; you have '+Math.max(0,allowance-before)+' remaining.');return false;
     }
     const result=sr29PriorSoloGridMove.apply(this,arguments);
-    if(result){
+    // The legacy grid mover signals success by mutating heroPos rather than returning true.
+    const moved=Number(combat.heroPos?.x)===to.x&&Number(combat.heroPos?.y)===to.y;
+    if(moved){
       c.movementSpent=before+movementCost;
       if(standCost)sr29Remove(c,'prone');
       if(dragTarget){
@@ -630,7 +632,7 @@ if(typeof sr9Move==='function'){
       }
       sr29ReconcileCombatGrapples();
     }
-    return result;
+    return result===undefined?moved:result;
   };
 }
 
