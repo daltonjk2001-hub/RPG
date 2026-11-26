@@ -52,6 +52,9 @@ try{
  const soloPlayerTeleport=T.gameplay.playerTeleportPlan({id:'solo',character:soloTeleportHero},30);
  const soloTeleportApplied=soloPlayerTeleport&&T.gameplay.applyPlayerTeleport({id:'solo',character:soloTeleportHero},soloPlayerTeleport);
  assert('Applying player teleport updates solo tactical position through the same movement transaction',soloTeleportApplied&&T18.state.combat.heroPos.x===soloPlayerTeleport.to.x&&T18.state.combat.heroPos.y===soloPlayerTeleport.to.y);
+ T18.state={character:soloTeleportHero,campaign:{},combat:{mp:null,heroPos:{x:1,y:3},enemies:[{id:'sparse-teleport-enemy',name:'Sparse Teleport Enemy',hp:20,pos:{x:6,y:3}}],map:{width:8,height:6,terrain:[]}},log:[]};
+ const sparseTeleportPlan=T.gameplay.playerTeleportPlan({id:'solo',character:soloTeleportHero},30);
+ assert('Player teleport treats absent cells in sparse terrain maps as open floor',!!sparseTeleportPlan&&sparseTeleportPlan.travelFeet<=30);
  const mistyCaster=actor({id:'misty-caster',name:'Misty Caster',classId:'Wizard',level:3,classLevels:{Wizard:3},spells:['Misty Step'],preparedSpells:['Misty Step'],spellSlotsByLevel:{2:2},actionSpent:false,bonusActionSpent:false});
  const mistyEnemy=actor({id:'misty-enemy',name:'Misty Enemy',hp:20,pos:{x:6,y:3}});
  T18.state={character:mistyCaster,campaign:{day:1,region:'Teleport Test',location:'Teleport Test',visited:['Teleport Test'],companions:[],npcs:[],sideQuests:[],story:{},flags:{},mainQuest:{kind:'test',title:'Teleport Test',goal:'Validate Misty Step'}},combat:{mp:null,heroPos:{x:1,y:3},target:0,enemies:[mistyEnemy],map:{width:8,height:6,terrain:teleportTerrain}},log:[]};
