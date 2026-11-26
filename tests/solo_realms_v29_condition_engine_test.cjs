@@ -129,8 +129,14 @@ try{
  const persistenceSnapshot=T18.snapshot('V29 grapple metadata round-trip');
  const normalizedPersistence=T18.normalizeImport(persistenceSnapshot);
  const validatedPersistence=T18.validateSave(normalizedPersistence);
+ const originalGrapple=persistedHero.conditions?.find(item=>item.name==='grappled');
+ const snapshotGrapple=persistenceSnapshot.state?.character?.conditions?.find(item=>item.name==='grappled');
+ const normalizedGrapple=normalizedPersistence.character?.conditions?.find(item=>item.name==='grappled');
  const restoredGrapple=validatedPersistence.state?.character?.conditions?.find(item=>item.name==='grappled');
- assert('Grapple source, reach, escape DC, appendage slot, and repeat-save metadata survive save/import normalization and validation',validatedPersistence.ok&&restoredGrapple?.grapplerId==='persistence-monster'&&restoredGrapple.grappleRange===10&&restoredGrapple.escapeDC===15&&restoredGrapple.handSlot==='monster-appendage-2'&&restoredGrapple.repeatSave?.dc===14&&restoredGrapple.repeatSave?.sourceId==='persistence-monster',JSON.stringify({valid:validatedPersistence.ok,reason:validatedPersistence.reason,restoredGrapple}));
+ assert('Live grapple instance retains escape DC, appendage slot, and repeat-save metadata before export',originalGrapple?.escapeDC===15&&originalGrapple.handSlot==='monster-appendage-2'&&originalGrapple.repeatSave?.dc===14);
+ assert('V18 snapshot export preserves V29 grapple metadata',snapshotGrapple?.escapeDC===15&&snapshotGrapple.handSlot==='monster-appendage-2'&&snapshotGrapple.repeatSave?.dc===14);
+ assert('Import normalization preserves V29 grapple metadata',normalizedGrapple?.escapeDC===15&&normalizedGrapple.handSlot==='monster-appendage-2'&&normalizedGrapple.repeatSave?.dc===14);
+ assert('Save validation preserves grapple source, reach, escape DC, appendage slot, and repeat-save metadata',validatedPersistence.ok&&restoredGrapple?.grapplerId==='persistence-monster'&&restoredGrapple.grappleRange===10&&restoredGrapple.escapeDC===15&&restoredGrapple.handSlot==='monster-appendage-2'&&restoredGrapple.repeatSave?.dc===14&&restoredGrapple.repeatSave?.sourceId==='persistence-monster',JSON.stringify({valid:validatedPersistence.ok,reason:validatedPersistence.reason,originalGrapple,snapshotGrapple,normalizedGrapple,restoredGrapple}));
  T18.state=priorPersistenceState;
  const damageHookTarget=actor({id:'damage-hook-target',name:'Damage Hook Target',classId:'Wizard',level:1});
  T18.state={character:damageHookTarget,combat:{round:1},campaign:{},log:[]};
