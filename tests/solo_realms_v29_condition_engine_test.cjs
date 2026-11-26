@@ -456,6 +456,26 @@ try{
  assert('Solo player Shove leaves a target in place when its chosen save succeeds',resistedShove&&resistantTarget.distance===5&&!T.has(resistantTarget,'prone'));
  T18.state=priorShoveState;
  context.afterPlayerAction=priorSoloActionHooks.afterPlayerAction;context.render=priorSoloActionHooks.render;context.save=priorSoloActionHooks.save;
+
+ const pushSpell=T.gameplay.parseForcedDisplacement('On a failed save, the target is pushed up to 10 feet away.');
+ const pullSpell=T.gameplay.parseForcedDisplacement('The creature is pulled 15 feet toward the caster.');
+ assert('Player spell displacement parser extracts Push and Pull direction and distance',pushSpell?.mode==='push'&&pushSpell.feet===10&&pullSpell?.mode==='pull'&&pullSpell.feet===15);
+ const spellSaveTarget=actor({name:'Thunderwave Target'});
+ assert('Player spell displacement recognizes failed target-save results without treating successful saves as failures',T.gameplay.spellTargetFailedSave(spellSaveTarget,[{msg:'Thunderwave Target makes CON save 11 vs DC 13: failure.'}])&&!T.gameplay.spellTargetFailedSave(spellSaveTarget,[{msg:'Thunderwave Target makes CON save 18 vs DC 13: success.'}]));
+ const movementOnlySpell=T18.inferSpell('Gust of Wind',{description:'The target must succeed on a Strength saving throw or be pushed 15 feet away.',save:true,saveAbility:'STR'},{kind:'control',condition:'restrained',save:'STR'});
+ assert('Movement-only control spells do not receive an invented Restrained condition',movementOnlySpell.kind==='control'&&!movementOnlySpell.condition);
+ const priorSpellState=T18.state;
+ const spellHero=actor({id:'spell-caster',name:'Spell Caster'}),spellTarget=actor({id:'spell-target',name:'Spell Target',distance:5});
+ T.apply(spellTarget,'grappled','permanent','Spell Caster',{grapplerId:'spell-caster',grappleRange:5,escapeDC:12});
+ T18.state={character:spellHero,combat:{mp:null,enemies:[spellTarget]},log:[]};
+ const spellPush=T.gameplay.playerSpellDisplace(spellTarget,spellHero,'push',10);
+ assert('Player spell Push updates solo abstract distance and releases a grapple beyond reach',spellPush&&spellTarget.distance===15&&!T.has(spellTarget,'grappled'));
+ const pullHero=actor({id:'spell-puller',name:'Spell Puller'}),pulledTarget=actor({id:'pulled-target',name:'Pulled Target',distance:5});
+ T18.state={character:pullHero,combat:{mp:null,enemies:[pulledTarget]},log:[]};
+ const spellPull=T.gameplay.playerSpellDisplace(pulledTarget,pullHero,'pull',10);
+ assert('Player spell Pull updates solo abstract distance without producing a negative separation',spellPull&&pulledTarget.distance===0);
+ T18.state=priorSpellState;
+
  assert('Solo grapple panel exposes both 2024 Shove outcomes',html.includes('data-action="sr29-shove-push"')&&html.includes('data-action="sr29-shove-prone"')&&html.includes('function sr29SoloShove(mode='));
 
  const abstractGrappler=actor({id:'abstract-hero',name:'Abstract Hero'}),abstractTarget=actor({id:'abstract-foe',name:'Abstract Foe',distance:10});
