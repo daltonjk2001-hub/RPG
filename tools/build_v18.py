@@ -114,6 +114,13 @@ def build_runtime() -> str:
         raise SystemExit("Expected two direct enemy attack totals in the initiative combat adapter.")
     base = base.replace(enemy_attack_bonus, "r+(Number(e.attack)||0)-2*(Number(e.exhaustion)||0)")
 
+    # Unconscious implies Prone, but that derived state is not itself the Rogue
+    # Sneak Attack trigger. Use actual attack Advantage (or an adjacent ally).
+    sneak_prone = "||sr11Has(e,'prone')||c.hidden"
+    if base.count(sneak_prone) != 2:
+        raise SystemExit("Expected two legacy Rogue Sneak Attack prone shortcuts.")
+    base = base.replace(sneak_prone, "||roll.adv||c.hidden")
+
     # V10 initiative must skip Petrified actors as well as other incapacitating conditions.
     enemy_skip = "['stunned','paralyzed','unconscious','incapacitated']"
     if base.count(enemy_skip) != 1:
