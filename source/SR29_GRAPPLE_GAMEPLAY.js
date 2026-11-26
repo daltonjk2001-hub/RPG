@@ -957,7 +957,9 @@ if(typeof sr12HeroAttack==='function'){
     if(!sr29ActionEconomyGate(character,kind,true))return false;
     const target=targetOverride||(typeof sr4Target==='function'?sr4Target():null),weapon=String(character?.weapon||''),mastery=sr29WeaponMasteryFor(character,weapon);
     const beforeLog=(state?.log||[]).length,beforeLogHead=(state?.log||[])[0]||null,origin=state?.combat?.mp?sr12PlayerPos(player?.id):null;
+    const actionSpentBefore=character?.actionSpent,bonusActionSpentBefore=character?.bonusActionSpent;
     const result=sr29PriorHeroAttack.call(this,player,targetOverride,reaction,...args);
+    if(reaction&&result&&character){character.actionSpent=actionSpentBefore;character.bonusActionSpent=bonusActionSpentBefore;character.reactionAvailable=false;}
     if(result&&state?.combat?.mp&&mastery==='Push'&&target&&origin){
       const prefix=`${player?.name||character?.name||''} attacks ${target.name}:`,logs=state.log||[],headIndex=beforeLogHead?logs.indexOf(beforeLogHead):logs.length;
       const newEntries=headIndex>=0?logs.slice(0,headIndex):logs.slice(0,Math.max(0,logs.length-beforeLog));
