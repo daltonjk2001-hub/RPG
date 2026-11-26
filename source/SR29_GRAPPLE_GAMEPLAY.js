@@ -863,8 +863,19 @@ if(typeof sr14RunFeature==='function'){
 if(typeof sr12ClassPower==='function'){
   const sr29PriorClassPower=sr12ClassPower;
   sr12ClassPower=function(player,...args){
-    const c=player?.character;
-    if(!sr29ActionEconomyGate(c,'bonus-action',!!state?.combat))return false;
+    const c=player?.character,cls=c?.classId;
+    if(!state?.combat)return sr29PriorClassPower.call(this,player,...args);
+    if(cls==='Wizard'){toast('Arcane Recovery is used during a Short Rest, not in combat.');return false;}
+    const freeActionSurge=cls==='Fighter',actionPower=cls==='Cleric'||cls==='Warlock';
+    if(!sr29ActionEconomyGate(c,freeActionSurge||actionPower?'action':'bonus-action',!freeActionSurge))return false;
+    if(freeActionSurge||actionPower){
+      const previousBonus=c.bonusActionSpent;
+      c.bonusActionSpent=false;
+      const result=sr29PriorClassPower.call(this,player,...args);
+      c.bonusActionSpent=previousBonus;
+      if(result&&cls==='Cleric')c.actionSpent=true;
+      return result;
+    }
     return sr29PriorClassPower.call(this,player,...args);
   };
 }
