@@ -56,7 +56,7 @@ try{
  T18.state={character:mistyCaster,campaign:{},combat:{mp:null,heroPos:{x:1,y:3},target:0,enemies:[mistyEnemy],map:{width:8,height:6,terrain:teleportTerrain}},log:[]};
  const mistyCast=T.gameplay.castSpell({id:'solo',name:'Misty Caster',character:mistyCaster},'Misty Step');
  const mistyDestination=T18.state.combat.heroPos;
- assert('Casting Misty Step uses a visible unoccupied destination within 30 feet, spends its slot/action, and does not leave the legacy zero-coordinate position',mistyCast&&T18.state.combat.heroPos.x>=0&&T18.state.combat.heroPos.y>=0&&T18.state.combat.heroPos.x!==1||mistyCast&&T18.state.combat.heroPos.y!==3,JSON.stringify({mistyCast,mistyDestination,legacyPosition:mistyCaster.position,slots:mistyCaster.spellSlotsByLevel,actionSpent:mistyCaster.actionSpent}));
+ assert('Casting Misty Step uses a visible unoccupied destination within 30 feet, spends its slot/action, and does not leave the legacy zero-coordinate position',mistyCast&&Math.max(Math.abs(mistyDestination.x-1),Math.abs(mistyDestination.y-3))*5<=30&&(mistyDestination.x!==1||mistyDestination.y!==3)&&!(mistyDestination.x===mistyEnemy.pos.x&&mistyDestination.y===mistyEnemy.pos.y)&&!(mistyDestination.x===2&&mistyDestination.y===3)&&!Object.prototype.hasOwnProperty.call(mistyCaster,'position')&&Number(mistyCaster.spellSlotsByLevel[2])===0&&mistyCaster.actionSpent===true,JSON.stringify({mistyCast,mistyDestination,legacyPosition:mistyCaster.position,slots:mistyCaster.spellSlotsByLevel,actionSpent:mistyCaster.actionSpent}));
  const priorState=T18.state;
  const soloMonster={id:'solo-displacer',name:'Solo Displacer',distance:10,hp:20};
  T18.state={character:actor(),log:[],combat:{mp:null,enemies:[soloMonster],heroPos:{x:1,y:3}}};
