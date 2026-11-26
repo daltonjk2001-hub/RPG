@@ -157,6 +157,28 @@ function sr29MpActiveGrapples(player){
 function sr29MpPlayerById(id){
   return (state?.campaign?.multiplayer?.players||[]).find(item=>String(item?.id||'')===String(id||''))||null;
 }
+function sr29MpPruneGrappleChallenges(snapshot=state){
+  const mp=snapshot?.combat?.mp;
+  if(!mp)return {removed:0,remaining:0,reasons:[]};
+  const players=snapshot?.campaign?.multiplayer?.players||[];
+  const round=Number(snapshot?.combat?.round)||0;
+  const pending=Array.isArray(mp.grappleChallenges)?mp.grappleChallenges:[];
+  const retained=[],reasons=[];
+  for(const challenge of pending){
+    const attacker=players.find(item=>String(item?.id||'')===String(challenge?.attackerId||''));
+    const target=players.find(item=>String(item?.id||'')===String(challenge?.targetId||''));
+    let reason='';
+    if(!challenge?.id||!attacker||!target)reason='participant-unavailable';
+    else if(attacker.connected===false||target.connected===false)reason='participant-disconnected';
+    else if(Number(attacker.character?.hp)<=0||Number(target.character?.hp)<=0)reason='participant-defeated';
+    else if(round>0&&Number.isFinite(Number(challenge.createdRound))&&round>Number(challenge.createdRound))reason='challenge-expired';
+    if(reason)reasons.push({id:String(challenge?.id||''),reason});
+    else retained.push(challenge);
+  }
+  mp.grappleChallenges=retained;
+  if(reasons.length)log(reasons.length+' pending grapple save challenge(s) cancelled: '+reasons.map(item=>item.reason).join(', ')+'.','muted');
+  return {removed:reasons.length,remaining:retained.length,reasons};
+}
 function sr29MpStartGrapple(player,targetId=null){
   const b=state?.combat,c=player?.character;
   const targetPlayer=targetId?sr29MpPlayerById(targetId):null;
@@ -198,6 +220,7 @@ function sr29MpStartGrapple(player,targetId=null){
 function sr29MpResolveGrappleSave(player,msg={}){
   const mp=state?.combat?.mp,challengeId=String(msg.challengeId||''),ability=String(msg.ability||'').toUpperCase();
   if(!mp||!player||!['STR','DEX'].includes(ability))return false;
+  sr29MpPruneGrappleChallenges();
   const challenges=Array.isArray(mp.grappleChallenges)?mp.grappleChallenges:[];
   const challenge=challenges.find(item=>item.id===challengeId&&item.targetId===player.id);
   if(!challenge||player.character?.hp<=0)return false;
@@ -335,6 +358,7 @@ if(typeof sr18ResolveMonsterAction==='function'&&typeof sr29Apply==='function'){
 if(typeof sr12HeroAction==='function'){
   const sr29MpPriorHeroAction=sr12HeroAction;
   sr12HeroAction=function(player,action,spellName,targetId,data={}){
+    sr29MpPruneGrappleChallenges();
     if(state?.combat?.mp&&(state.combat.mp.grappleChallenges||[]).some(item=>item.attackerId===player?.id)){
       toast('Wait for the target to resolve the grapple saving throw.');return false;
     }
@@ -362,6 +386,7 @@ if(typeof sr12HandleCombat==='function'){
 if(typeof sr12CombatPage==='function'){
   const sr29MpPriorCombatPage=sr12CombatPage;
   sr12CombatPage=function(){
+    sr29MpPruneGrappleChallenges();
     let html=sr29MpPriorCombatPage();
     html=html.replace('>Grapple</button>','>Unarmed Strike · Grapple</button>');
     html=html.replace('<button class="btn small" data-action="mp-combat" data-move="escape-grapple">Escape grapple</button>',
@@ -467,5 +492,5 @@ if(typeof sr14CastSpellComplete==='function'){
 }
 
 if(globalThis.__SR29_TEST){
-  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerResolveGrappleSave:sr29MpResolveGrappleSave,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
+  globalThis.__SR29_TEST.gameplay={version:SR29_GRAPPLE_GAMEPLAY_VERSION,freeHands:sr29SoloFreeHands,activeGrapples:sr29SoloActiveGrapples,chooseTargetSave:sr29SoloChooseTargetSaveAbility,multiplayerStartGrapple:sr29MpStartGrapple,multiplayerResolveGrappleSave:sr29MpResolveGrappleSave,multiplayerPruneGrappleChallenges:sr29MpPruneGrappleChallenges,multiplayerEscapeGrapple:sr29MpEscapeGrapple,reconcileAbstractGrapples:sr29ReconcileAbstractGrapples,appendageCapacity:sr29CreatureGrappleAppendageCapacity,nextAppendageSlot:sr29NextMonsterAppendageSlot};
 }
