@@ -109,7 +109,8 @@ try{
  assert('Ending the final target of a concentration spell clears the caster concentration and its matching concentration effect',secondDominateRelease.ended===1&&concentrationCaster.concentration===null&&!concentrationCaster.activeEffects.some(x=>x.name==='Dominate Person'));
  const monsterRepeatTarget=actor({id:'monster-repeat-target',name:'Monster Repeat Target',classId:'Fighter',level:1,hp:100,maxHp:100});
  const repeatMonster={id:'repeat-monster-id',name:'Gloom Stalker',attack:0,actions:[]};
- const repeatMonsterAction={name:'Dreadful Glare',description:'The target must succeed on a DC 13 Wisdom saving throw or become Frightened. At the end of each of its turns, the target repeats the saving throw, ending the effect on itself on a success.'};
+ const repeatMonsterAction={name:'Dreadful Glare',description:'The target must succeed on a DC 13 Wisdom saving throw or be frightened. At the end of each of its turns, it repeats the saving throw, ending the effect on itself on a success.'};
+ assert('Monster repeat-save test description resolves the Frightened condition',T18.condition(repeatMonsterAction.description)==='frightened',T18.condition(repeatMonsterAction.description));
  const repeatMonsterPlayer={id:'solo',name:'Monster Repeat Target',character:monsterRepeatTarget};
  const priorMonsterRandom=math.random;math.random=()=>0;
  T18.state={character:monsterRepeatTarget,combat:{mp:null,enemies:[repeatMonster],round:1,heroPos:{x:1,y:3}},campaign:{},log:[]};
@@ -118,7 +119,7 @@ try{
  const monsterRepeatInstance=T.entries(monsterRepeatTarget).find(item=>item.name==='frightened');
  const monsterRepeatAttached=monsterRepeatInstance?.repeatSave?.trigger==='end-turn'&&monsterRepeatInstance.repeatSave.ability==='WIS'&&monsterRepeatInstance.repeatSave.dc===13&&monsterRepeatInstance.repeatSave.sourceId==='repeat-monster-id';
  const monsterRepeatSuccess=T.processRepeatSaves(monsterRepeatTarget,'end-turn','monster-repeat-target-turn',[20]);
- assert('Monster save-based conditions attach a source-linked end-of-turn repeat save and end on a later success',monsterRepeatActionResult===true&&monsterRepeatAttached&&monsterRepeatSuccess.ended===1&&!T.has(monsterRepeatTarget,'frightened'),JSON.stringify({monsterRepeatActionResult,monsterRepeatInstance,monsterRepeatSuccess,log:T18.state.log}));
+ assert('Monster save-based conditions attach a source-linked end-of-turn repeat save and end on a later success',monsterRepeatActionResult===true&&monsterRepeatAttached&&monsterRepeatSuccess.ended===1&&!T.has(monsterRepeatTarget,'frightened'),JSON.stringify({monsterRepeatActionResult,monsterRepeatInstance,monsterRepeatSuccess,conditions:monsterRepeatTarget.conditions,log:T18.state.log}));
  const damageHookTarget=actor({id:'damage-hook-target',name:'Damage Hook Target',classId:'Wizard',level:1});
  T18.state={character:damageHookTarget,combat:{round:1},campaign:{},log:[]};
  T.apply(damageHookTarget,'charmed',10,'Dominate Person');
