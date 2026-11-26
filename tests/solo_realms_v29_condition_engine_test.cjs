@@ -339,11 +339,13 @@ try{
   assert('Generated build includes the live V29.1 grapple gameplay adapter',html.includes("const SR29_GRAPPLE_GAMEPLAY_VERSION='29.1.0';"));
   assert('Solo combat exposes the Unarmed Strike grapple action',html.includes('data-action="sr29-grapple"')&&html.includes('Unarmed Strike · Grapple'));
   assert('Solo combat exposes the action-based grapple escape control',html.includes('data-action="sr29-escape-grapple"')&&html.includes('Escape Grapple · Action'));
-  assert('Live grapple flow performs a target STR/DEX saving throw after a hit',html.includes('The target chooses a saving throw')&&html.includes('targetSave:save')&&html.includes('sr25ResolveCreatureSavingThrow(saveTarget,key,[roll],bonus,dc'));
+  assert('Live grapple flow resolves the Director-controlled target’s stronger STR/DEX save after a hit',html.includes('sr29SoloChooseTargetSaveAbility(e)')&&html.includes('targetSave:save')&&html.includes('sr25ResolveCreatureSavingThrow(saveTarget,key,[roll],bonus,dc'));
   assert('Live grapple flow uses canonical escape checks and source-linked conditions',html.includes('sr29EscapeGrapple(c,{instanceId:grapple.id')&&html.includes('sr29StartGrapple(c,e'));
   assert('Solo grapple movement charges doubled drag cost and keeps the held target adjacent',html.includes('cost.movementCost')&&html.includes('enemy.distance=5'));
   assert('Free-hand calculation accounts for one-handed weapons and equipped shields',T.gameplay?.freeHands?.({weapon:'Dagger'})===1&&T.gameplay.freeHands({weapon:'Dagger',shieldEquipped:true})===0);
   assert('Free-hand calculation recognizes two-handed weapons',T.gameplay.freeHands({weapon:'Greatsword'})===0&&T.gameplay.freeHands({weapon:'Longbow'})===0);
+ assert('Solo monster targets choose the stronger legal grapple save',T.gameplay.chooseTargetSave(actor({stats:{STR:10,DEX:16,CON:10,INT:10,WIS:10,CHA:10}}))==='DEX');
+ assert('Restrained targets account for Dexterity-save disadvantage when choosing',T.gameplay.chooseTargetSave(actor({stats:{STR:10,DEX:16,CON:10,INT:10,WIS:10,CHA:10},conditions:['restrained']}))==='STR');
 }catch(error){assert('V29 condition suite completes without uncaught runtime errors',false,error?.stack||String(error));}
 for(const check of checks)console.log((check.pass?'PASS ':'FAIL ')+check.name+(check.detail?' — '+check.detail:''));
 const passed=checks.filter(x=>x.pass).length;
