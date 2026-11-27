@@ -106,3 +106,11 @@ This dashboard maps the D&D reference PDF's Parts I–III and Appendices A–B t
 - Added an explicit active-actor comparison after a tie reorder. When the active hero changes, the host clears the cached turn key and re-enters the authoritative actor processor so the new hero receives their own turn reset. Reordering later tied heroes leaves the current hero's resources untouched.
 - Added two regression assertions for active-actor-change detection and preserving the active turn when only later tied heroes are reordered.
 - Full device-level verification remains outstanding; automated tests do not substitute for two-device turn handoff/reconnect testing.
+
+
+## V29.28 solo turn resource refresh
+
+- The solo V10 ordered-turn controller reset movement, Action, and Reaction when the hero's next turn began, but omitted the Bonus Action and the once-per-turn Sneak Attack marker.
+- Added both resets to the canonical solo hero-turn initializer. This prevents a spent Bonus Action from remaining unavailable across later rounds and allows Sneak Attack to be used again on a later turn.
+- Expanded the existing V10 initiative regression to begin with the Bonus Action and Sneak Attack already spent, then verify both refresh alongside movement, Action, and Reaction.
+- This corrects the solo turn-start ledger only; exhaustive class-feature-specific timing and all action/bonus-action/reaction edge cases remain Partial.
