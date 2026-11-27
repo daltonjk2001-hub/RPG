@@ -61,9 +61,29 @@ function sr29SoloDeathSave(){
   if(typeof save==='function')save();
   return true;
 }
+function sr29MultiplayerAdvanceStableTime(hours){
+  const players=Array.isArray(state?.campaign?.multiplayer?.players)?state.campaign.multiplayer.players:[];
+  let recovered=0;
+  for(const player of players){
+    const c=player?.character;
+    if(!c?.stable||Number(c.hp)>0||c.mpDead)continue;
+    const required=Math.max(1,Math.min(4,Number(c.stableRecoveryHours)||1));
+    c.stableElapsedHours=Math.max(0,Number(c.stableElapsedHours)||0)+hours;
+    if(c.stableElapsedHours<required)continue;
+    c.hp=1;
+    if(typeof sr131ClearDowned==='function')sr131ClearDowned(c);
+    else{c.mpDowned=false;c.stable=false;c.deathSuccess=0;c.deathFailure=0;delete c.stableRecoveryHours;delete c.stableElapsedHours;sr29SoloRemoveUnconscious(c);}
+    log(`${player.name||c.name||'A hero'} regains 1 HP and consciousness after being stable.`,'goodlog');
+    recovered++;
+  }
+  if(recovered){if(typeof save==='function')save();if(typeof sr4Broadcast==='function')sr4Broadcast();}
+  return recovered>0;
+}
 function sr29SoloAdvanceStableTime(hours){
   const c=state?.character,elapsedHours=Math.max(0,Number(hours)||0);
-  if(!c||state?.combat?.mp||state?.campaign?.multiplayer?.players?.length>1||!c.stable||Number(c.hp)>0||c.mpDead||elapsedHours<=0)return false;
+  if(!c||elapsedHours<=0)return false;
+  if(state?.combat?.mp||state?.campaign?.multiplayer?.active)return sr29MultiplayerAdvanceStableTime(elapsedHours);
+  if(!c.stable||Number(c.hp)>0||c.mpDead)return false;
   const required=Math.max(1,Math.min(4,Number(c.stableRecoveryHours)||1));
   c.stableElapsedHours=Math.max(0,Number(c.stableElapsedHours)||0)+elapsedHours;
   if(c.stableElapsedHours<required){if(typeof save==='function')save();return false;}
@@ -71,6 +91,35 @@ function sr29SoloAdvanceStableTime(hours){
   log('After time spent stable, you regain 1 HP and consciousness.','goodlog');
   if(typeof save==='function')save();
   return true;
+}
+if(typeof sr131ClearDowned==='function'){
+  const sr29PriorClearDowned=sr131ClearDowned;
+  sr131ClearDowned=function(c,...args){
+    const result=sr29PriorClearDowned.call(this,c,...args);
+    if(c&&Number(c.hp)>0){delete c.stableRecoveryHours;delete c.stableElapsedHours;}
+    return result;
+  };
+}
+if(typeof sr12DeathSave==='function'){
+  const sr29PriorMultiplayerDeathSave=sr12DeathSave;
+  sr12DeathSave=function(player,...args){
+    const c=player?.character,wasStable=!!c?.stable;
+    const result=sr29PriorMultiplayerDeathSave.call(this,player,...args);
+    if(c&&c.stable&&!wasStable&&!c.mpDead&&Number(c.hp)<=0){
+      c.stableRecoveryHours=Math.max(1,Math.min(4,die(4)));c.stableElapsedHours=0;
+      if(typeof save==='function')save();if(typeof sr4Broadcast==='function')sr4Broadcast();
+    }else if(c&&!c.stable){delete c.stableRecoveryHours;delete c.stableElapsedHours;}
+    return result;
+  };
+}
+if(typeof sr12DamageHero==='function'){
+  const sr29PriorMultiplayerDamageHero=sr12DamageHero;
+  sr12DamageHero=function(player,...args){
+    const c=player?.character,wasStable=!!c?.stable;
+    const result=sr29PriorMultiplayerDamageHero.call(this,player,...args);
+    if(c&&wasStable&&!c.stable){delete c.stableRecoveryHours;delete c.stableElapsedHours;}
+    return result;
+  };
 }
 if(typeof sr18AdvanceWorld==='function'){
   const sr29PriorAdvanceWorld=sr18AdvanceWorld;
@@ -155,5 +204,6 @@ globalThis.__SR29_DEATH_TEST={
   clearDowned:sr29SoloClearDowned,damageAtZero:sr29SoloDamageAtZero,hasUnconscious:sr29SoloHasUnconscious,
   heal:typeof heal==='function'?heal:null,damagePlayer:typeof damagePlayer==='function'?damagePlayer:null,
   soloMonsterAttack:typeof sr10EnemyAttack==='function'?sr10EnemyAttack:null,advanceStableTime:sr29SoloAdvanceStableTime,
-  advanceWorld:typeof sr18AdvanceWorld==='function'?sr18AdvanceWorld:null
+  advanceWorld:typeof sr18AdvanceWorld==='function'?sr18AdvanceWorld:null,
+  multiplayerDeathSave:typeof sr12DeathSave==='function'?sr12DeathSave:null
 };
