@@ -480,8 +480,8 @@ def build_runtime() -> str:
         "V25 campaign rules and d20 contract": "const SR25_VERSION = '25.0.0';",
         "V29 canonical condition engine": "const SR29_VERSION = '29.0.0';",
         "V29.1 live grapple gameplay adapter": "const SR29_GRAPPLE_GAMEPLAY_VERSION='29.1.0';",
-        "V29.61 completion-time slot accounting": "const SR29_DEATH_SAVES_VERSION='29.61.0';",
-        "V29.61 completion-time slot accounting": "const SR29_DEATH_SAVES_VERSION='29.61.0';",
+        "V29.62 normalize spell-slot progression before long casting": "const SR29_DEATH_SAVES_VERSION='29.62.0';",
+        "V29.62 normalize spell-slot progression before long casting": "const SR29_DEATH_SAVES_VERSION='29.62.0';",
         "2024 Dragonborn species is supported by the ancestry schema": "ANCESTRIES.Dragonborn={",
     }
     missing = [label for label, marker in required_contracts.items() if marker not in combined]

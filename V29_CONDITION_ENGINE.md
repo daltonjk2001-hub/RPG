@@ -347,3 +347,10 @@ Still incomplete: Reincarnate's complete species-specific trait automation and p
 - Pending casts still retain the selected slot level and regular/Pact Magic type. The final slot transaction now snapshots the live slot count immediately before the underlying resolver runs, rather than comparing against a count captured when the cast began.
 - If the resolver has already spent one selected slot, the long-cast completion step records that payment and does not spend again. If the resolver leaves the count unchanged, the completion step commits one slot from the saved regular or pact pool.
 - End-to-end Raise Dead, Reincarnate, Resurrection and True Resurrection regressions now compare the live before/after slot count and require an exact one-slot decrease, independent of character normalization.
+
+
+## V29.62 — Normalize spell-slot progression before long casting
+
+- The long-cast preflight now runs the existing character-resource normalization before selecting and recording a slot. This migrates older or test-created slot layouts once, so subsequent render/save cycles preserve spent slots instead of refreshing an unversioned map.
+- Reincarnate's regression now declares the rare-oil component as consumed, matching the spell's material rule.
+- All four one-hour resurrection-cast regressions now verify both an exact one-slot decrease and that the final spell-slot map still contains the decreased value after the completion save/render cycle.

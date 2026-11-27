@@ -1,7 +1,7 @@
-/* SOLO REALMS V29.61 — Completion-time slot accounting for long casts.
-   V29.60 structured spell-slot payment at long-cast completion.
+/* SOLO REALMS V29.62 — Normalize spell-slot progression before long casting.
+   V29.61 completion-time slot accounting for long casts.
    Death saves occur at the downed hero's turn start; three successes stabilize at 0 HP. */
-const SR29_DEATH_SAVES_VERSION='29.61.0';
+const SR29_DEATH_SAVES_VERSION='29.62.0';
 function sr29SoloRemoveUnconscious(c){
   if(!c)return;
   c.unconscious=false;
@@ -963,6 +963,9 @@ function sr29StartLongCast(playerOrNull,name,allyId=null,args=[]){
   const player=playerOrNull||{id:typeof SR4!=='undefined'?(SR4.myPlayerId||'solo'):'solo',name:state?.character?.name||'Hero',character:state?.character};
   const caster=player?.character,spell=SRD52_SPELLS?.[name],requiredMinutes=sr29LongCastMinutes(spell);
   if(!caster||!spell||requiredMinutes<1)return false;
+  // Normalize older character saves before recording the slot reservation. This prevents
+  // a later render from migrating an unversioned slot map and restoring the spent slot.
+  if(typeof sr14EnsureCharacter==='function')sr14EnsureCharacter(caster);
   if(state?.combat){toast('A spell with a long casting time cannot be started during combat.');return false;}
   if(!sr14SpellKnown(caster,name)){toast('Learn the spell before casting it.');return false;}
   if(!sr14ClassCanCast(caster,spell)){toast('Your current class levels cannot cast this spell.');return false;}
