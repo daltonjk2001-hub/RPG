@@ -114,5 +114,6 @@ if(typeof heal==='function'){
 globalThis.__SR29_DEATH_TEST={
   version:SR29_DEATH_SAVES_VERSION,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
   clearDowned:sr29SoloClearDowned,damageAtZero:sr29SoloDamageAtZero,hasUnconscious:sr29SoloHasUnconscious,
-  heal:typeof heal==='function'?heal:null,damagePlayer:typeof damagePlayer==='function'?damagePlayer:null
+  heal:typeof heal==='function'?heal:null,damagePlayer:typeof damagePlayer==='function'?damagePlayer:null,
+  soloMonsterAttack:typeof sr10EnemyAttack==='function'?sr10EnemyAttack:null
 };
