@@ -1,7 +1,7 @@
-/* SOLO REALMS V29.56 — Resurrection material-component consumption.
-   V29.55 Dragonborn character-creation lineage selection; V29.54 lineage resistance integration.
+/* SOLO REALMS V29.57 — True Resurrection restoration effects.
+   V29.56 resurrection material-component consumption; V29.55 Dragonborn lineage selection.
    Death saves occur at the downed hero's turn start; three successes stabilize at 0 HP. */
-const SR29_DEATH_SAVES_VERSION='29.56.0';
+const SR29_DEATH_SAVES_VERSION='29.57.0';
 function sr29SoloRemoveUnconscious(c){
   if(!c)return;
   c.unconscious=false;
@@ -674,6 +674,72 @@ if(typeof sr12CastSpell==='function'){
     return sr29PriorMultiplayerCastForResurrectionTax.call(this,player,...args);
   };
 }
+function sr29TrueResurrectionBodyMissing(character){
+  return character?.bodyExists===false||character?.originalBodyExists===false||
+    character?.bodyDestroyed===true||character?.originalBodyDestroyed===true||
+    character?.bodyIntegrity?.bodyExists===false;
+}
+function sr29TrueResurrectionClearsAilments(character){
+  if(!character||typeof character!=='object')return {ok:false,cleared:[]};
+  const cleared=[];
+  const conditionIsRemoved=value=>{
+    const parts=[typeof value==='string'?value:value?.name,value?.type,value?.kind,value?.category]
+      .filter(x=>typeof x==='string').map(x=>x.toLowerCase().replace(/[\s_]+/g,'-'));
+    return parts.some(x=>['poison','poisoned','curse','cursed','magical-contagion','magical-disease'].includes(x));
+  };
+  if(Array.isArray(character.conditions)){
+    const before=character.conditions.length;
+    character.conditions=character.conditions.filter(value=>!conditionIsRemoved(value));
+    if(character.conditions.length!==before)cleared.push('conditions');
+  }
+  for(const key of ['poisons','activePoisons','poisonEffects','magicalContagions','activeMagicalContagions','magicalDiseases','curses','activeCurses','curseEffects']){
+    const value=character[key];
+    if(Array.isArray(value)&&value.length){character[key]=[];cleared.push(key);}
+    else if(value&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).length){character[key]={};cleared.push(key);}
+  }
+  for(const key of ['poisoned','isPoisoned','cursed','isCursed']){
+    if(character[key]===true){character[key]=false;cleared.push(key);}
+  }
+  for(const key of ['poisonedBy','curseSource','activeCurse']){
+    if(Object.prototype.hasOwnProperty.call(character,key)){delete character[key];cleared.push(key);}
+  }
+  if(Array.isArray(character.afflictions)){
+    const before=character.afflictions.length;
+    character.afflictions=character.afflictions.filter(value=>!conditionIsRemoved(value));
+    if(character.afflictions.length!==before)cleared.push('afflictions');
+  }
+  return {ok:true,cleared};
+}
+function sr29ApplyTrueResurrectionEffects(character,options={}){
+  if(!character||typeof character!=='object')return {ok:false,reason:'A character record is required.'};
+  const wasUndead=sr29WasUndeadAtDeath(character)||character.undead===true||character.isUndead===true||
+    [character.creatureType,character.creature_type,character.type].some(value=>String(value||'').toLowerCase()==='undead');
+  const needsNewBody=sr29TrueResurrectionBodyMissing(character);
+  const spokenName=String(options?.spokenName??character.name??'').trim();
+  if(needsNewBody&&!spokenName)return {ok:false,reason:'The creature’s name must be spoken to create a replacement body.'};
+  const ailments=sr29TrueResurrectionClearsAilments(character);
+  let restoredType=null;
+  if(wasUndead){
+    restoredType=String(character.preUndeadCreatureType||character.originalCreatureType||character.creatureTypeBeforeUndead||
+      (character.ancestry?'Humanoid':'')).trim()||null;
+    for(const key of ['creatureType','creature_type','type']){
+      if(String(character[key]||'').toLowerCase()==='undead'){
+        if(restoredType)character[key]=restoredType;else delete character[key];
+      }
+    }
+    character.undead=false;character.isUndead=false;character.restoredFromUndead=true;
+  }
+  let newBody=null;
+  if(needsNewBody){
+    character.bodyExists=true;
+    character.newBodyCreated=true;
+    newBody={kind:'new',createdAt:new Date().toISOString(),spokenName,
+      placement:{withinFeet:10,requiresUnoccupiedSpace:true,space:options?.resurrectionSpace??null,
+        status:options?.resurrectionSpace?'space-supplied-needs-world-validation':'pending-world-placement'}};
+    character.resurrectionBody=newBody;
+  }
+  return {ok:true,wasUndead,restoredType,ailmentsCleared:ailments.cleared,newBodyCreated:needsNewBody,newBody};
+}
 if(typeof sr14CastSpellComplete==='function'){
   const sr29PriorCastBeforeRevivalRules=sr14CastSpellComplete;
   sr14CastSpellComplete=function(playerOrNull,name,allyId=null,...args){
@@ -695,6 +761,10 @@ if(typeof sr14CastSpellComplete==='function'){
     if(effect?.kind==='revive'){
       const eligibility=sr29RevivalEligibility(target,name);
       if(!eligibility.ok){toast(eligibility.reason);return false;}
+      if(name==='True Resurrection'&&sr29TrueResurrectionBodyMissing(target)){
+        const castOptions=args[1]&&typeof args[1]==='object'?args[1]:{};
+        if(!String(castOptions.spokenName??target?.name??'').trim()){toast('Speak the creature’s name to create a replacement body.');return false;}
+      }
     }else if(effect?.kind==='heal'&&(target?.mpDead===true||target?.dead===true)){
       toast('Healing cannot restore a creature that has died.');
       return false;
@@ -704,6 +774,12 @@ if(typeof sr14CastSpellComplete==='function'){
     if(result&&target&&wasDowned&&Number(target.hp)>0){
       if(name==='Resurrection'&&deathElapsedMs>=SR29_RESURRECTION_CASTER_TAX_MS)sr29SetResurrectionCasterTax(caster,target);
       if(name==='Resurrection'||name==='True Resurrection')target.hp=Number(target.maxHp)||target.hp;
+      if(name==='True Resurrection'){
+        const castOptions=args[1]&&typeof args[1]==='object'?args[1]:{};
+        const restoration=sr29ApplyTrueResurrectionEffects(target,{spokenName:castOptions.spokenName??target.name,resurrectionSpace:castOptions.resurrectionSpace});
+        if(!restoration.ok)log('True Resurrection restored the target, but an additional restoration effect could not be completed: '+restoration.reason,'badlog');
+        else log(`True Resurrection restores ${target.name||'the target'} to full health${restoration.wasUndead?' in a non-Undead form':''}${restoration.newBodyCreated?' with a newly created body':''}; poison, magical contagions, and curses are lifted.`,'goodlog');
+      }
       sr29ClearRevivedState(target);
       sr29ClearRevivalDeathMetadata(target,name);
       if(name==='Reincarnate'){
@@ -826,7 +902,7 @@ if(typeof createCharacter==='function'){
 }
 
 globalThis.__SR29_DEATH_TEST={
-  version:SR29_DEATH_SAVES_VERSION,consumeMaterialComponent:sr29ConsumeMaterialComponent,materialComponentCost:sr29MaterialComponentCost,creatorMarkup:typeof renderCreator==='function'?renderCreator:null,injectDragonbornLineageField:sr29InjectDragonbornLineageField,isValidDraconicAncestry:sr29DraconicAncestryIsValid,reincarnateSpecies:SR29_REINCARNATE_SPECIES,reincarnateSpeciesFromRoll:sr29ReincarnateSpeciesFromRoll,applyReincarnateSpecies:sr29ApplyReincarnateSpecies,recordDeathSnapshot:sr29RecordDeathSnapshot,isOldAgeDeath:sr29IsOldAgeDeath,wasUndeadAtDeath:sr29WasUndeadAtDeath,isHumanoidAtDeath:sr29IsHumanoidAtDeath,missingBodyParts:sr29MissingBodyParts,hasMissingVitalParts:sr29HasMissingVitalParts,clearRevivalDeathMetadata:sr29ClearRevivalDeathMetadata,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestPenaltyRecovery:sr29ApplyLongRestPenaltyRecovery,hasResurrectionCasterTax:sr29HasResurrectionCasterTax,setResurrectionCasterTax:sr29SetResurrectionCasterTax,setDraconicAncestry:sr29SetDraconicAncestry,damageMultiplier:typeof sr14DamageMultiplier==='function'?sr14DamageMultiplier:null,dragonbornBreath:sr29DragonbornBreath,dragonbornBreathDamageDice:sr29DragonbornBreathDamageDice,dragonbornProficiencyBonus:sr29DragonbornProficiencyBonus,clearResurrectionCasterTax:sr29ClearResurrectionCasterTax,applyResurrectionTaxD20Result:sr29ApplyResurrectionTaxD20Result,rejectCastDuringResurrectionTax:sr29RejectCastDuringResurrectionTax,canonicalAbilityCheck:typeof sr29CanonicalAbilityCheck==='function'?sr29CanonicalAbilityCheck:null,attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
+  version:SR29_DEATH_SAVES_VERSION,applyTrueResurrectionEffects:sr29ApplyTrueResurrectionEffects,trueResurrectionBodyMissing:sr29TrueResurrectionBodyMissing,consumeMaterialComponent:sr29ConsumeMaterialComponent,materialComponentCost:sr29MaterialComponentCost,creatorMarkup:typeof renderCreator==='function'?renderCreator:null,injectDragonbornLineageField:sr29InjectDragonbornLineageField,isValidDraconicAncestry:sr29DraconicAncestryIsValid,reincarnateSpecies:SR29_REINCARNATE_SPECIES,reincarnateSpeciesFromRoll:sr29ReincarnateSpeciesFromRoll,applyReincarnateSpecies:sr29ApplyReincarnateSpecies,recordDeathSnapshot:sr29RecordDeathSnapshot,isOldAgeDeath:sr29IsOldAgeDeath,wasUndeadAtDeath:sr29WasUndeadAtDeath,isHumanoidAtDeath:sr29IsHumanoidAtDeath,missingBodyParts:sr29MissingBodyParts,hasMissingVitalParts:sr29HasMissingVitalParts,clearRevivalDeathMetadata:sr29ClearRevivalDeathMetadata,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestPenaltyRecovery:sr29ApplyLongRestPenaltyRecovery,hasResurrectionCasterTax:sr29HasResurrectionCasterTax,setResurrectionCasterTax:sr29SetResurrectionCasterTax,setDraconicAncestry:sr29SetDraconicAncestry,damageMultiplier:typeof sr14DamageMultiplier==='function'?sr14DamageMultiplier:null,dragonbornBreath:sr29DragonbornBreath,dragonbornBreathDamageDice:sr29DragonbornBreathDamageDice,dragonbornProficiencyBonus:sr29DragonbornProficiencyBonus,clearResurrectionCasterTax:sr29ClearResurrectionCasterTax,applyResurrectionTaxD20Result:sr29ApplyResurrectionTaxD20Result,rejectCastDuringResurrectionTax:sr29RejectCastDuringResurrectionTax,canonicalAbilityCheck:typeof sr29CanonicalAbilityCheck==='function'?sr29CanonicalAbilityCheck:null,attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
   clearDowned:sr29SoloClearDowned,damageAtZero:sr29SoloDamageAtZero,hasUnconscious:sr29SoloHasUnconscious,
   heal:typeof heal==='function'?heal:null,damagePlayer:typeof damagePlayer==='function'?damagePlayer:null,
   soloMonsterAttack:typeof sr10EnemyAttack==='function'?sr10EnemyAttack:null,soloHeroAttack:typeof sr11HeroAttack==='function'?sr29TestSoloHeroAttack:null,advanceStableTime:sr29SoloAdvanceStableTime,

@@ -307,3 +307,12 @@ Still incomplete: Reincarnate's complete species-specific trait automation and p
 - Casting requires one qualifying inventory item whose recorded value meets the full minimum; a consumed component loses exactly one item, while a reusable component remains in inventory.
 - Regressions cover a 300 gp consumed diamond, a reusable priced pearl, an under-valued diamond rejection, and a description-only price/consumption fallback.
 - The app still does not provide a complete priced-material catalog for all resurrection spells, nor does this implement hour-long casting progression or interruption. Death/recovery remains **Partial**.
+
+
+## V29.57 — True Resurrection restoration effects
+
+- Successful True Resurrection now restores the target to maximum hit points, removes poison and Poisoned state, clears tracked magical contagions, and lifts tracked curses. It deliberately preserves unrelated conditions and nonmagical diseases.
+- A target recorded as Undead at death is restored to its recorded pre-Undead creature type when available; player ancestries use Humanoid as the fallback creature type. Undead flags are cleared and the restoration is recorded.
+- When the original body is explicitly recorded as absent/destroyed, the spell creates a replacement-body record, requires the creature's name to be spoken, and records the 10-foot / unoccupied-space placement rule. Because the current noncombat world has no spatial placement interface, the exact world-space placement remains a visible pending step rather than an invented coordinate.
+- Regressions cover selective ailment removal, non-Undead restoration, absent-body creation/name requirement, and an end-to-end remote True Resurrection cast with a 25,000 gp consumed diamond.
+- True Resurrection and overall death/recovery remain **Partial** until replacement-body world placement and actual long-casting progress/interruption are implemented, plus alternate revival routes and live co-op validation.
