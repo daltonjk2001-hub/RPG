@@ -256,7 +256,7 @@ def build_runtime() -> str:
         raise SystemExit("Expected one solo initiative downed-turn branch.")
     base = base.replace(
         solo_downed_turn,
-        "if(state.character.hp<=0){sr29SoloDeathSave();if(!state.combat)return;if(state.character.hp>0){sr10RenderTurn();return;}const skipped=b.turnIndex+1;",
+        "if(state.character.hp<=0){sr29SoloDeathSave();if(!state.combat){render();return;}if(state.character.hp>0){sr10RenderTurn();return;}const skipped=b.turnIndex+1;",
     )
     solo_down_return = "if(!state.combat)return;if(state.character.hp<=0)return;const next=b.turnIndex+1;"
     if base.count(solo_down_return) != 1:
