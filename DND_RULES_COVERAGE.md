@@ -162,3 +162,10 @@ This dashboard maps the D&D reference PDF's Parts I–III and Appendices A–B t
 - Ready now requires an unused Action and an available Reaction, consumes the Action, marks the readied attack, and preserves (rather than refreshes) the Reaction.
 - Added three regression assertions covering valid Ready, spent Action, and spent Reaction cases.
 - The current Ready trigger model remains simplified (it waits for the next qualifying enemy strike); full player-defined trigger/action resolution remains open.
+
+
+## V29.34 Potion of Healing action cost
+
+- Verified against SRD 5.2.1: drinking or administering a Potion of Healing is a Bonus Action.
+- The legacy multiplayer potion path previously consumed the Action. It now checks and consumes the Bonus Action, so a character can drink/administer a potion after using their Action but cannot do so after spending their Bonus Action.
+- Added two regression assertions for both cases. The central Action ledger no longer classifies potions as Action-costing commands.
