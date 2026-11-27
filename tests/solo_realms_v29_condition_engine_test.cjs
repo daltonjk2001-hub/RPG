@@ -22,6 +22,16 @@ context.globalThis=context;
 vm.runInNewContext(scripts[0],context,{timeout:60000,filename:'Solo_Realms_V29_Condition_Engine'});
 const T=context.__SR29_TEST,T25=context.__SR25_TEST,T21=context.__SR21_TEST,T18=context.__SR18_TEST,RV=context.__SR29_DEATH_TEST;
 if(!T||!T25||T.version!=='29.0.0')throw new Error('V29 condition engine or typed-save integration is missing.');
+const dragonbornTargetProbe=actor({id:'dragonborn-area-probe',name:'Dragonborn Area Probe',hp:20,maxHp:20,pos:{x:3,y:1},stats:{STR:10,DEX:10,CON:10,INT:10,WIS:10,CHA:10}});
+const dragonbornCasterProbe=actor({id:'dragonborn-caster-probe',name:'Dragonborn Caster Probe',ancestry:'Dragonborn',stats:{STR:10,DEX:10,CON:14,INT:10,WIS:10,CHA:10}});
+T18.state={character:dragonbornCasterProbe,campaign:{},combat:{heroPos:{x:1,y:1},enemies:[dragonbornTargetProbe],map:{width:8,height:6,terrain:[]}},log:[]};
+for(const shape of ['cone','line']){
+ const sp={area:true,areaShape:shape,range:'Self',description:shape==='cone'?'15-foot cone':'30-foot line 5 feet wide'};
+ const effect={kind:'saveDamage',area:true,shape,size:shape==='cone'?15:30,save:'DEX',type:'fire'};
+ let result=null,error=null;
+ try{result=T18.targetList({id:'dragonborn-caster-probe',character:dragonbornCasterProbe},sp,effect,dragonbornTargetProbe,{x:1,y:1});}catch(e){error=String(e.stack||e);}
+ console.log('DRAGONBORN_AREA '+shape+' '+JSON.stringify({result:result?.map(x=>x.name),error,area:T18.area(sp,sp.description)}));
+}
 const checks=[];
 console.log('REINCARNATE_SCHEMA '+JSON.stringify({names:T18.ancestryNames,records:T18.ancestryData}));
 for(const pattern of ['const ANCESTRIES','ANCESTRIES[data.ancestry]','ancestry.bonus','ancestry.trait','c.ancestry','state.character.ancestry','character.ancestry','raceTrait','ancestryTrait','racialTraits']){
