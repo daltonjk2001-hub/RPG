@@ -258,11 +258,12 @@ function sr29ClearRevivedState(character){
 if(typeof sr14CastSpellComplete==='function'){
   const sr29PriorCastBeforeRevivalRules=sr14CastSpellComplete;
   sr14CastSpellComplete=function(playerOrNull,name,allyId=null,...args){
-    const isMP=!!state?.combat?.mp;
     const player=playerOrNull||{id:typeof SR4!=='undefined'?(SR4.myPlayerId||'solo'):'solo',name:state?.character?.name||'Hero',character:state?.character};
-    const targetPlayer=isMP&&allyId
-      ?(state?.campaign?.multiplayer?.players||[]).find(p=>String(p?.id)===String(allyId))
-      :player;
+    // Resolve explicit ally IDs from the campaign roster even if an earlier action
+    // has already ended or transitioned the current combat's multiplayer context.
+    const roster=Array.isArray(state?.campaign?.multiplayer?.players)?state.campaign.multiplayer.players:[];
+    const selectedAlly=allyId?roster.find(p=>String(p?.id)===String(allyId)):null;
+    const targetPlayer=selectedAlly||player;
     const target=targetPlayer?.character;
     const spell=typeof SRD52_SPELLS==='object'?SRD52_SPELLS[name]:null;
     const effect=spell&&typeof sr14SpellEffectComplete==='function'?sr14SpellEffectComplete(name,spell):null;
