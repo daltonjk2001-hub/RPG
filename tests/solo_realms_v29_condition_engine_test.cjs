@@ -91,9 +91,9 @@ try{
  assert('Raise Dead also rejects an explicitly missing integral organ',RV.hasMissingVitalParts(explicitlyMissingVital)&&!RV.revivalEligibility(explicitlyMissingVital,'Raise Dead',revivalClock).ok);
  const snapshotHuman=actor({ancestry:'Human',creatureType:'Humanoid',diedOfOldAge:true});
  const snapshotUndead=actor({ancestry:'Human',creatureType:'Undead'});
- D.recordDeathSnapshot(snapshotHuman);D.recordDeathSnapshot(snapshotUndead);
- assert('Death recording snapshots Humanoid type and an explicit old-age cause without guessing age from years lived',snapshotHuman.creatureTypeAtDeath==='Humanoid'&&snapshotHuman.causeOfDeath==='old-age'&&D.isOldAgeDeath(snapshotHuman));
- assert('Death recording preserves explicit Undead type at the time of death rather than inferring it from ancestry',snapshotUndead.creatureTypeAtDeath==='Undead'&&snapshotUndead.undeadAtDeath===true&&D.wasUndeadAtDeath(snapshotUndead));
+ RV.recordDeathSnapshot(snapshotHuman);RV.recordDeathSnapshot(snapshotUndead);
+ assert('Death recording snapshots Humanoid type and an explicit old-age cause without guessing age from years lived',snapshotHuman.creatureTypeAtDeath==='Humanoid'&&snapshotHuman.causeOfDeath==='old-age'&&RV.isOldAgeDeath(snapshotHuman));
+ assert('Death recording preserves explicit Undead type at the time of death rather than inferring it from ancestry',snapshotUndead.creatureTypeAtDeath==='Undead'&&snapshotUndead.undeadAtDeath===true&&RV.wasUndeadAtDeath(snapshotUndead));
  assert('An unconscious or stable creature at 0 HP is not classified as a dead resurrection target',!RV.revivalEligibility(actor({hp:0,mpDead:false,dead:false,deathAt:revivalClock-1000}),'Revivify',revivalClock).ok);
  assert('A missing or future death timestamp cannot satisfy revival eligibility',!RV.revivalEligibility(actor({hp:0,mpDead:true}),'Revivify',revivalClock).ok&&!RV.revivalEligibility(revivalProbe(revivalClock+1),'Revivify',revivalClock).ok);
 
