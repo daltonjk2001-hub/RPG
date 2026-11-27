@@ -4612,9 +4612,9 @@ function sr13RunTests(){
     ok('V13.2 creature size names map to 2024 size categories',sr131TargetSize({size:'Tiny'})===0&&sr131TargetSize({size:'Large'})===3&&sr131TargetSize({size:'Gargantuan'})===5);
     const savedState=state,oldRand=Math.random;let testHero={id:'death-test',name:'Death Test',connected:true,character:{name:'Death Test',hp:0,maxHp:20,mpDowned:true,deathSuccess:0,deathFailure:0,conditions:[{name:'unconscious',duration:999}],stats:{STR:10,DEX:10,CON:10}}};state=sr4Clone(state);state.campaign=state.campaign||{};state.campaign.multiplayer={players:[testHero]};state.combat={enemies:[],mp:{heroPositions:{'death-test':{x:1,y:1}},turnOrder:[],index:0},map:{terrain:[]}};Math.random=()=>0.999;sr12DeathSave(testHero);ok('V13.2 natural-20 death save restores 1 HP and removes unconscious state',testHero.character.hp===1&&!testHero.character.mpDowned&&!sr11Has(testHero.character,'unconscious'));
     testHero.character.hp=0;testHero.character.mpDowned=true;testHero.character.deathFailure=0;testHero.character.deathSuccess=0;testHero.character.conditions=[{name:'unconscious',duration:999}];Math.random=()=>0;sr12DeathSave(testHero);ok('V13.2 natural-1 death save causes two failures',testHero.character.deathFailure===2&&!testHero.character.mpDead);
-    testHero.character.deathFailure=0;testHero.character.mpDead=false;testHero.character.hp=0;testHero.character.mpDowned=true;const killer={lastAttackCritical:true};const v29MpDamage=globalThis.__SR29_DEATH_TEST?.multiplayerDamageHero;console.log('V13.2 DEBUG damage before',{hp:testHero.character.hp,maxHp:testHero.character.maxHp,failures:testHero.character.deathFailure,mpDead:testHero.character.mpDead,guard:testHero.character.guard,rageRounds:testHero.character.rageRounds,rageResist:testHero.character.rageResist});console.log('V13.2 DEBUG damage adapter',!!v29MpDamage,typeof sr12DamageHero,v29MpDamage===sr12DamageHero);(v29MpDamage||sr12DamageHero)(testHero,2,'physical',killer);console.log('V13.2 DEBUG damage result',{hp:testHero.character.hp,downed:testHero.character.mpDowned,dead:testHero.character.mpDead,failures:testHero.character.deathFailure,stable:testHero.character.stable,log:state.log?.slice(-3)});ok('V13.2 critical damage to a downed hero causes two death-save failures',testHero.character.deathFailure===2);
+    testHero.character.deathFailure=0;testHero.character.mpDead=false;testHero.character.hp=0;testHero.character.mpDowned=true;const killer={lastAttackCritical:true};sr12DamageHero(testHero,2,'physical',killer);ok('V13.2 critical damage to a downed hero causes two death-save failures',testHero.character.deathFailure===2);
     const fallbackTarget=sr12EnemyTarget({pos:{x:2,y:2}});ok('V13.2 enemy selects a downed hero only when no standing heroes remain',fallbackTarget?.id==='death-test');
-    testHero.character.mpDead=false;testHero.character.mpDowned=true;testHero.character.hp=0;testHero.character.deathFailure=0;testHero.character.deathSuccess=0;testHero.character.conditions=[{name:'unconscious',duration:999}];state.character=testHero.character;const killer2={name:'Guard',attack:10,damage:'1d6',hp:10,maxHp:10,ac:12,pos:{x:2,y:1},conditions:[]};state.combat={enemies:[killer2],target:0,round:1,map:{terrain:[]},mp:{heroPositions:{'death-test':{x:1,y:1}},turnOrder:[],index:0}};Math.random=()=>0.5;sr12EnemyTurn(killer2);ok('V13.2 melee attack against an unconscious target has Advantage and is a critical hit',testHero.character.deathFailure===2&&killer2.lastAttackCritical===true);
+    testHero.character.mpDead=false;testHero.character.mpDowned=true;testHero.character.hp=0;testHero.character.deathFailure=0;testHero.character.deathSuccess=0;testHero.character.conditions=[{name:'unconscious',duration:999}];state.character=testHero.character;const killer2={name:'Guard',attack:10,damage:'1d6',hp:10,maxHp:10,ac:12,pos:{x:2,y:1},conditions:[]};state.combat={enemies:[killer2],target:0,round:1,map:{terrain:[]},mp:{heroPositions:{'death-test':{x:1,y:1}},turnOrder:[],index:0}};Math.random=()=>0.5;sr12EnemyTurn(killer2);ok('V13.2 melee attack against an unconscious target has Advantage and is a critical hit',testHero.character.deathFailure===2&&state.log.some(x=>/attacks with advantage/.test(x.msg))&&state.log.some(x=>/Critical hit/.test(x.msg))&&!killer2.lastAttackCritical);
     const stood={id:'stand-test',name:'Stand Test',connected:true,character:{name:'Stand Test',hp:20,maxHp:20,movement:30,movementSpent:0,conditions:[{name:'prone',duration:999}],stats:{STR:10,DEX:10,CON:10}}};state.campaign.multiplayer.players=[stood];state.character=stood.character;state.combat={enemies:[],target:0,round:1,map:{terrain:[]},mp:{heroPositions:{'stand-test':{x:1,y:1}},turnOrder:[],index:0}};const oldRender=render;render=function(){};const stoodMoved=sr12MoveHero(stood,2,1);render=oldRender;ok('V13.2 standing from prone consumes half speed before movement',stoodMoved&&stood.character.movementSpent===20&&!sr11Has(stood.character,'prone'));
     Math.random=oldRand;state=savedState;
   }catch(e){ok('V13 initiative suite runs without runtime errors',false,String(e?.stack||e));}
@@ -4786,9 +4786,12 @@ sr12DeathSave=function(player){
 // Damage to a creature already at 0 HP causes a failed death save; a critical hit causes two.
 sr12DamageHero=function(player,amount,damageType='physical',source=null){
   const c=player.character;
-  const incoming=Math.max(0,Number(amount)||0);
+  let incoming=Math.max(0,Number(amount)||0);
   if(c.mpDead)return 0;
   if(c.hp<=0&&(c.mpDowned||c.stable)){
+    if(c.rageRounds>0&&c.rageResist&&['physical','bludgeoning','piercing','slashing'].includes(damageType))incoming=Math.ceil(incoming/2);
+    if(Number(c.guard)>0){incoming=Math.max(0,incoming-Number(c.guard));c.guard=0;}
+    if(incoming<=0)return 0;
     c.mpDowned=true;c.stable=false;
     if(incoming>=Number(c.maxHp||Infinity)){c.mpDead=true;c.deathFailure=3;log(`${player.name} suffers massive damage and dies instantly.`,'badlog');return 0;}
     const failures=source?.lastAttackCritical?2:1;c.deathFailure=(Number(c.deathFailure)||0)+failures;
@@ -4803,7 +4806,7 @@ sr12DamageHero=function(player,amount,damageType='physical',source=null){
 sr12EnemyTurn=function(enemy){
   const base=sr12DamageHero;enemy.lastAttackCritical=false;enemy._sr13LastNatural20=false;enemy._sr13MeleeAgainstUnconscious=false;
   sr12DamageHero=function(player,amount,damageType='physical',source=null){
-    if(source===enemy&&enemy._sr13MeleeAgainstUnconscious&&!enemy._sr13LastNatural20){enemy.lastAttackCritical=true;amount=Math.max(0,Number(amount)||0)*2;}
+    if(source===enemy&&enemy._sr13MeleeAgainstUnconscious&&!enemy._sr13LastNatural20){enemy.lastAttackCritical=true;}
     return base(player,amount,damageType,source);
   };
   try{
