@@ -1132,6 +1132,11 @@ try{
   const completedStableRecovery=D.advanceStableTime(1);
   assert('A stable solo hero regains 1 HP and consciousness after the rolled interval',completedStableRecovery===true&&deathHero.hp===1&&!deathHero.stable&&!deathHero.unconscious&&!T18.state.combat.downed);
 
+  const damagedStableHero=actor({id:'damaged-stable-hero',name:'Damaged Stable Hero',hp:0,maxHp:20,stable:true,unconscious:true,deathFailure:0,stableRecoveryHours:3,stableElapsedHours:2,conditions:[{name:'unconscious',duration:999}]});
+  T18.state={character:damagedStableHero,campaign:{companions:[],day:1},combat:{mp:null,downed:true,round:1,enemies:[]},log:[]};
+  const stableDamage=D.damageAtZero(1);
+  assert('Damage to a stable solo hero cancels its timed recovery before resuming death saves',stableDamage.failures===1&&!damagedStableHero.stable&&damagedStableHero.deathFailure===1&&damagedStableHero.stableRecoveryHours===undefined&&damagedStableHero.stableElapsedHours===undefined);
+
   const watchStableHero=actor({id:'watch-stable-hero',name:'Watch Stable Hero',hp:0,maxHp:20,stable:true,unconscious:true,stableRecoveryHours:2,stableElapsedHours:0,conditions:[{name:'unconscious',duration:999}]});
   T18.state={character:watchStableHero,campaign:{day:1,companions:[]},combat:null,log:[]};
   D.advanceWorld('action',0);
