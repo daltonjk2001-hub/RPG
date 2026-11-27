@@ -49,7 +49,8 @@ try{
  const healingDeadTarget=T.gameplay.castSpell(revivalCasterPlayer,'Healing Word','revival-target',true);
  assert('Ordinary healing cannot revive a character whose multiplayer death flag is set',healingDeadTarget===false&&revivalTarget.hp===0&&revivalTarget.mpDead===true&&revivalCaster.spellSlotsByLevel[1]===1&&revivalCaster.bonusActionSpent===false);
  T18.state={character:actor(),campaign:{},combat:null,log:[]};
-\n assert('Registry contains all 15 SRD conditions',T.names.length===15&&['blinded','charmed','deafened','exhaustion','frightened','grappled','incapacitated','invisible','paralyzed','petrified','poisoned','prone','restrained','stunned','unconscious'].every(n=>T.names.includes(n)));
+
+ assert('Registry contains all 15 SRD conditions',T.names.length===15&&['blinded','charmed','deafened','exhaustion','frightened','grappled','incapacitated','invisible','paralyzed','petrified','poisoned','prone','restrained','stunned','unconscious'].every(n=>T.names.includes(n)));
 
  assert('Monster displacement planner pushes the requested 10 feet',T18.displacementPlan({x:2,y:2},{x:0,y:2},'push',10,()=>true)?.to.x===4);
  assert('Monster displacement planner pulls toward the source',T18.displacementPlan({x:3,y:2},{x:0,y:2},'pull',5,()=>true)?.to.x===2);
