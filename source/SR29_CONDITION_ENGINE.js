@@ -284,6 +284,7 @@ function sr29AttackState(attacker,target,options={}) {
   const melee=!!options.melee,distance=Number.isFinite(Number(options.distance))?Number(options.distance):(melee?5:Infinity);
   let advantage=false,disadvantage=false;
   const add=(a,d)=>{advantage=advantage||a;disadvantage=disadvantage||d;};
+  add(false,attacker?.resurrectionCasterTax===true);
   add(false,sr29Has(attacker,'blinded')||sr29Has(attacker,'poisoned')||sr29Has(attacker,'prone')||sr29Has(attacker,'restrained'));
   if(sr29Has(attacker,'frightened')&&sr29FrightSourceVisible(attacker,options))add(false,true);
   add((sr29Has(attacker,'invisible')||attacker?.invisible===true||attacker?.hidden===true)&&!(options.targetCanSeeInvisible===true||sr29CanSeeInvisible(target)),false);
@@ -297,7 +298,7 @@ function sr29AttackState(attacker,target,options={}) {
   return {mode:advantage?'advantage':disadvantage?'disadvantage':'normal',advantage,disadvantage,cancelled:false};
 }
 function sr29SkillMode(actor,skill,options={}) {
-  let disadvantage=false;
+  let disadvantage=actor?.resurrectionCasterTax===true;
   if(sr29Has(actor,'poisoned'))disadvantage=true;
   if(sr29Has(actor,'frightened')&&sr29FrightSourceVisible(actor,options))disadvantage=true;
   const key=String(skill||'').toLowerCase();
