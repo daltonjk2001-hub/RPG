@@ -1109,6 +1109,15 @@ try{
   const massiveDeath=D.damageAtZero(20);
   assert('Massive damage at 0 HP causes instant death and records a revival timestamp',massiveDeath.dead&&massiveDeath.massive&&massiveDeathHero.mpDead&&Number(massiveDeathHero.deathAt)>0&&T18.state.combat===null);
   assert('Solo initiative now rolls death saves at the downed hero turn and continues processing the initiative order',html.includes('sr29SoloDeathSave();if(!state.combat)return;if(state.character.hp>0){sr10RenderTurn();return;')&&!html.includes('if(!state.combat)return;if(state.character.hp<=0)return;const next=b.turnIndex+1;'));
+
+  const healedDeathHero=actor({id:'healed-death-hero',name:'Healed Death Hero',hp:0,maxHp:20,stable:true,unconscious:true,deathSuccess:3,deathFailure:1,conditions:[{name:'unconscious',duration:999}]});
+  T18.state={character:healedDeathHero,campaign:{companions:[],day:1},combat:{mp:null,downed:true,round:1,enemies:[]},log:[]};
+  const soloHealAmount=context.heal(5);
+  assert('Healing above 0 HP clears solo stable, unconscious and death-save state',soloHealAmount===5&&healedDeathHero.hp===5&&!healedDeathHero.stable&&!healedDeathHero.unconscious&&healedDeathHero.deathSuccess===0&&healedDeathHero.deathFailure===0&&!T18.state.combat.downed);
+  const newlyDownedHero=actor({id:'newly-downed-hero',name:'Newly Downed Hero',hp:4,maxHp:20});
+  T18.state={character:newlyDownedHero,campaign:{companions:[],day:1},combat:{mp:null,downed:false,round:1,enemies:[]},log:[]};
+  const appliedDamage=context.damagePlayer(9);
+  assert('Damage that reduces a solo hero to 0 HP enters the downed state for the next initiative turn',newlyDownedHero.hp===0&&appliedDamage===9&&T18.state.combat.downed===true&&newlyDownedHero.unconscious===true&&D.hasUnconscious(newlyDownedHero));
   assert('Multiplayer massive-damage death records the timestamp needed by Revivify',html.includes('c.deathFailure=3;c.deathAt=Date.now();log(`${player.name} suffers massive damage and dies instantly.`'));
 
 
