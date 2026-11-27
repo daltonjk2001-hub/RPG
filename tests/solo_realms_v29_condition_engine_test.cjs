@@ -1105,6 +1105,7 @@ try{
   const priorDeathRandom=math.random;math.random=()=>0.5;
   let stableRoll=false;try{stableRoll=D.deathSave();}finally{math.random=priorDeathRandom;}
   assert('Three solo death-save successes stabilize at 0 HP and remain unconscious',stableRoll&&deathHero.hp===0&&deathHero.stable===true&&deathHero.deathSuccess===3&&D.hasUnconscious(deathHero)&&T18.state.combat.downed===true,JSON.stringify({hp:deathHero.hp,stable:deathHero.stable,success:deathHero.deathSuccess,conditions:deathHero.conditions}));
+  assert('Stabilization rolls and stores a 1d4-hour recovery interval',Number.isInteger(deathHero.stableRecoveryHours)&&deathHero.stableRecoveryHours>=1&&deathHero.stableRecoveryHours<=4&&deathHero.stableElapsedHours===0);
   deathHero.stable=false;deathHero.deathSuccess=0;deathHero.deathFailure=0;deathHero.mpDead=false;T18.state.combat.downed=true;
   const priorNat20Random=math.random;math.random=()=>0.9999;
   try{D.deathSave();}finally{math.random=priorNat20Random;}
@@ -1113,7 +1114,7 @@ try{
   const priorNat1Random=math.random;math.random=()=>0;
   try{D.deathSave();}finally{math.random=priorNat1Random;}
   assert('Natural 1 on a solo death save adds two failures',deathHero.deathFailure===2&&!deathHero.mpDead);
-  deathHero.deathFailure=0;deathHero.deathSuccess=0;deathHero.hp=0;deathHero.stable=true;deathHero.unconscious=true;T18.state.combat.downed=true;
+  deathHero.deathFailure=0;deathHero.deathSuccess=0;deathHero.hp=0;deathHero.stable=true;deathHero.unconscious=true;deathHero.stableRecoveryHours=3;deathHero.stableElapsedHours=0;T18.state.combat.downed=true;
   const stableBefore=T18.state.log.length;const stableNoRoll=D.deathSave();
   assert('A stable solo hero skips further death saves until damaged or healed',stableNoRoll===false&&deathHero.deathSuccess===0&&T18.state.log.length===stableBefore);
 
