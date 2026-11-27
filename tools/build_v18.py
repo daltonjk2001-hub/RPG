@@ -265,7 +265,7 @@ def build_runtime() -> str:
     solo_monster_critical = "if(r===20)dmg+=rollDice(e.damage||'1d4');"
     if base.count(solo_monster_critical) != 1:
         raise SystemExit("Expected one V10 monster natural-20 damage expression.")
-    base = base.replace(solo_monster_critical, "if(critical)dmg+=rollDice(e.damage||'1d4');")
+    base = base.replace(solo_monster_critical, "const criticalDice=sr18CriticalExtraDice(e.damage||'1d4');if(critical&&criticalDice)dmg+=rollDice(criticalDice);")
 
     # Route the solo initiative loop through the canonical turn-start death-save procedure.
     solo_downed_turn = "if(state.character.hp<=0){downed();if(!state.combat)return;const skipped=b.turnIndex+1;"
