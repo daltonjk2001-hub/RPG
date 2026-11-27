@@ -1221,13 +1221,14 @@ try{
   mpStableHero.hp=1;D.clearMultiplayerDowned(mpStableHero);
   assert('Multiplayer healing cleanup removes stable recovery metadata',!mpStableHero.stable&&mpStableHero.stableRecoveryHours===undefined&&mpStableHero.stableElapsedHours===undefined);
 
-  const mpDownedCriticalHero=actor({id:'mp-downed-critical-hero',name:'MP Downed Critical Hero',hp:0,maxHp:20,mpDowned:true,mpDead:false,stable:false,unconscious:true,deathSuccess:0,deathFailure:0,conditions:[{name:'unconscious',duration:999}]});
+  const mpDownedCriticalHero=actor({id:'mp-downed-critical-hero',name:'MP Downed Critical Hero',hp:0,maxHp:20,tempHP:100,mpDowned:true,mpDead:false,stable:false,unconscious:true,deathSuccess:0,deathFailure:0,conditions:[{name:'unconscious',duration:999}]});
   const mpDownedCriticalPlayer={id:'mp-downed-critical-hero',name:'MP Downed Critical Hero',connected:true,character:mpDownedCriticalHero};
-  const mpDownedCriticalEnemy={id:'mp-downed-critical-enemy',name:'MP Downed Critical Monster',attack:100,damage:'1d6',pos:{x:2,y:1}};
+  const mpDownedCriticalEnemy={id:'mp-downed-critical-enemy',name:'MP Downed Critical Monster',attack:100,damage:'1d6+3',pos:{x:2,y:1}};
   T18.state={character:mpDownedCriticalHero,campaign:{multiplayer:{active:true,players:[mpDownedCriticalPlayer]},companions:[]},combat:{mp:{heroPositions:{'mp-downed-critical-hero':{x:1,y:1}},turnOrder:[{kind:'enemy',id:'mp-downed-critical-enemy',index:0}],index:0},enemies:[mpDownedCriticalEnemy],map:{width:8,height:6,terrain:[]},round:1},log:[]};
   const priorMpDownedCriticalRandom=math.random;math.random=()=>0.5;
   try{D.multiplayerEnemyTurn(mpDownedCriticalEnemy);}finally{math.random=priorMpDownedCriticalRandom;}
-  assert('A multiplayer monster critical hit against the only downed hero causes two failed death saves',mpDownedCriticalHero.hp===0&&mpDownedCriticalHero.deathFailure===2&&!mpDownedCriticalHero.mpDead&&!mpDownedCriticalEnemy._sr29AttackCriticalPending&&T18.state.log.some(x=>/Critical hit/.test(x.msg)),JSON.stringify({hp:mpDownedCriticalHero.hp,failures:mpDownedCriticalHero.deathFailure,dead:mpDownedCriticalHero.mpDead,log:T18.state.log}));
+  assert('A multiplayer monster critical hit against the only downed hero causes two failed death saves and doubles only damage dice',mpDownedCriticalHero.hp===0&&mpDownedCriticalHero.tempHP===89&&mpDownedCriticalHero.deathFailure===2&&!mpDownedCriticalHero.mpDead&&!mpDownedCriticalEnemy._sr29AttackCriticalPending&&T18.state.log.some(x=>/Critical hit/.test(x.msg)),JSON.stringify({hp:mpDownedCriticalHero.hp,tempHP:mpDownedCriticalHero.tempHP,failures:mpDownedCriticalHero.deathFailure,dead:mpDownedCriticalHero.mpDead,log:T18.state.log}));
+  assert('Multiplayer monster attack criticals use the canonical condition rule and dice-only critical bonus',html.includes('critical=roll.r===20||(hit&&sr29CriticalOnHit(c,{hit,distance}))')&&html.includes('sr18CriticalExtraDice(enemy.damage||\'1d4\')'));
 
 
 
