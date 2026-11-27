@@ -1323,14 +1323,26 @@ for(const term of revivalAuditTerms){
  }
  console.log('REVIVAL_AUDIT '+term+' '+JSON.stringify({count:hits.length,hits}));
 }
-const revivalCodePatterns=['function sr14CastSpellComplete','sr14CastSpellComplete=function','effect.kind===\\'revive\\'','sp.kind===\\'revive\\'','kind===\\'revive\\'','\\'Revivify\\':','\\'Raise Dead\\':','\\'Resurrection\\':','\\'True Resurrection\\':','function sr5CastSpell','sr5CastSpell=function'];
+const revivalCodePatterns=[
+ "function sr14CastSpellComplete",
+ "sr14CastSpellComplete=function",
+ "effect.kind==='revive'",
+ "sp.kind==='revive'",
+ "kind==='revive'",
+ "'Revivify':",
+ "'Raise Dead':",
+ "'Resurrection':",
+ "'True Resurrection':",
+ "function sr5CastSpell",
+ "sr5CastSpell=function"
+];
 for(const pattern of revivalCodePatterns){
  const hits=[];let from=0,index=-1;
  while((index=html.indexOf(pattern,from))>=0&&hits.length<8){
-  hits.push({line:html.slice(0,index).split('\\n').length,excerpt:html.slice(Math.max(0,index-350),Math.min(html.length,index+2600)).replace(/\\s+/g,' ').slice(0,3000)});
+  hits.push({line:html.slice(0,index).split("\n").length,excerpt:html.slice(Math.max(0,index-350),Math.min(html.length,index+2600)).replace(/\s+/g," ").slice(0,3000)});
   from=index+pattern.length;
  }
- console.log('REVIVAL_CODE '+pattern+' '+JSON.stringify({count:hits.length,hits}));
+ console.log("REVIVAL_CODE "+pattern+" "+JSON.stringify({count:hits.length,hits}));
 }
 for(const check of checks)console.log((check.pass?'PASS ':'FAIL ')+check.name+(check.detail?' — '+check.detail:''));
 const passed=checks.filter(x=>x.pass).length;
