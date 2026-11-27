@@ -370,3 +370,12 @@ Still incomplete: Reincarnate's complete species-specific trait automation and p
 - The reproducible V18 builder now changes that legacy initializer to rebuild only when the stored marker is below V2. V7 V3 slot maps and their spent counts are left intact; older saves still migrate forward.
 - The V29.63 long-cast preflight continues to normalize the actual local or remote caster's slot pool before reservation. The four end-to-end tests already assert the V3 marker at cast start and the exact one-slot decrease after completion/save/render.
 - This is a root-level resource-persistence fix, not a test-only workaround. Death/recovery remains **Partial** for the separately listed world-placement, turn-by-turn activity, alternative revival and live device checks.
+
+
+## V29.65 — Turn-by-turn Magic actions for minute-plus casting
+
+- The official 2024 rule requires a Magic action on every caster turn for a spell with a casting time of at least one minute, plus ongoing Concentration. Breaking Concentration fails the spell without expending its slot; the caster must start over.
+- Pending casts now track exact required and elapsed seconds alongside the campaign minute clock. Out of combat, the existing ten-minute focused-casting control remains available. In combat, the initial casting action and each subsequent caster turn advances exactly six seconds and consumes that turn's Action.
+- Solo and multiplayer combat pages expose a dedicated Magic-action continuation control only on the active caster's turn. Other heroes and enemies may act normally. If the caster takes another action or ends their turn without continuing, the activity is interrupted; damage-triggered Constitution saves and incapacitation checks continue to interrupt it.
+- At completion, the spell resolver temporarily receives an available Action for validation, then the spent Action is restored. Spell-slot and consumed-material expenditure remain deferred until successful completion.
+- Regression coverage verifies a six-second multiplayer Magic action, Action expenditure, no premature slot use, active-turn enforcement, and the combat continuation control. A full 600-turn and live multi-device playtest remain outstanding, so death/recovery remains **Partial**.

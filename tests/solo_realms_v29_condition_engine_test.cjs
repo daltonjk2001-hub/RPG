@@ -1335,7 +1335,21 @@ try{
   assert('Monster critical bonus dice preserve flat attack damage modifiers',T18.criticalExtraDice('2d6+4')==='2d6'&&T18.criticalExtraDice('1d8 + 1d6 + 3')==='1d8+1d6'&&T18.criticalExtraDice('1d10-2')==='1d10');
 
   const D=context.__SR29_DEATH_TEST;
-  assert('V29.64 V7 V3 slot counts survive legacy save/render migration during long casts',!!D&&D.version==='29.64.0'&&typeof D.deathSave==='function');
+  assert('V29.65 turn-by-turn Magic actions and V7 V3 slot persistence are installed',!!D&&D.version==='29.65.0'&&typeof D.deathSave==='function');
+ const turnCastCaster=actor({id:'turn-cast-caster',name:'Turn Cast Cleric',classId:'Cleric',level:9,classLevels:{Cleric:9},spellSlotsByLevel:{5:1},spellSlotProgressionVersion:3,actionSpent:false});
+ const turnCastPlayer={id:'turn-cast-caster',name:'Turn Cast Cleric',connected:true,character:turnCastCaster};
+ const turnCastTarget=actor({id:'turn-cast-target',name:'Turn Cast Target',hp:0,maxHp:30,mpDead:true,dead:true,deathAt:Date.now()-24*60*60*1000});
+ T18.state={character:turnCastCaster,campaign:{day:1,region:'Turn Cast Test',location:'Turn Cast Test',sr29:{pendingLongCast:{id:'turn-cast-test',spellName:'Raise Dead',requiredMinutes:1,requiredSeconds:60,elapsedMinutes:0,elapsedSeconds:0,casterId:turnCastPlayer.id,casterName:turnCastPlayer.name,casterIsMain:false,startedInCombat:true,targetId:turnCastTarget.id,slotLevel:5,slotKind:'regular',slotCountBefore:1,castMode:{}}},multiplayer:{active:true,players:[turnCastPlayer,{id:turnCastTarget.id,name:turnCastTarget.name,connected:true,character:turnCastTarget}]}},combat:{round:1,mp:{turnOrder:[{kind:'hero',id:turnCastPlayer.id}],index:0},enemies:[{id:'turn-enemy',name:'Turn Enemy',hp:12,maxHp:12,ac:12,pos:{x:4,y:4}}]},log:[]};
+ T18.setActivePlayerId(turnCastPlayer.id);
+ const turnCastTick=RV.continueLongCastCombatTurn(turnCastPlayer,{advanceTurn:false});
+ assert('A long cast spends one Magic action and advances exactly six in-game seconds on the caster’s multiplayer turn',turnCastTick?.ok===true&&turnCastTick.magicAction===true&&turnCastTick.elapsedSeconds===6&&RV.pendingLongCast()?.elapsedSeconds===6&&turnCastCaster.actionSpent===true&&turnCastCaster.spellSlotsByLevel[5]===1&&turnCastTarget.hp===0,JSON.stringify({turnCastTick,pending:RV.pendingLongCast(),slots:turnCastCaster.spellSlotsByLevel}));
+ turnCastCaster.actionSpent=false;T18.state.combat.mp.turnOrder=[{kind:'enemy',index:0,id:'turn-enemy'}];
+ const wrongTurnCast=RV.continueLongCastCombatTurn(turnCastPlayer,{advanceTurn:false});
+ assert('A long cast cannot progress when the caster does not have the active initiative turn',wrongTurnCast?.ok===false&&RV.pendingLongCast()?.elapsedSeconds===6&&turnCastCaster.spellSlotsByLevel[5]===1);
+ T18.state.combat.mp.turnOrder=[{kind:'hero',id:turnCastPlayer.id}];
+ const turnCastPanel=RV.combatLongCastPanel();
+ assert('The combat screen exposes the six-second Magic action only on the active caster’s turn',turnCastPanel.includes('data-action="mp-combat"')&&turnCastPanel.includes('data-move="long-cast-continue"')&&turnCastPanel.includes('6 seconds'));
+ T18.state.combat=null;T18.state.campaign.sr29.pendingLongCast=null;
  const noDoubleSpendCaster=actor({spellSlotsByLevel:{5:1},pactSlotsByLevel:{3:2}});
  const regularSlotPending={slotLevel:5,slotKind:'regular',slotCountBefore:1,legacySpellSlotsBefore:3};
  const regularSlotPayment=RV.commitLongCastSpellSlot(regularSlotPending,noDoubleSpendCaster);

@@ -1,7 +1,7 @@
-/* SOLO REALMS V29.64 — Preserve V7 slot expenditure through the legacy save initializer.
-   V29.63 V7 regular and Pact Magic slot migration for long casts.
+/* SOLO REALMS V29.65 — Turn-by-turn Magic actions for minute-plus spellcasting.
+   V29.64 preserves V7 V3 slot expenditure through legacy save/render migration.
    Death saves occur at the downed hero's turn start; three successes stabilize at 0 HP. */
-const SR29_DEATH_SAVES_VERSION='29.64.0';
+const SR29_DEATH_SAVES_VERSION='29.65.0';
 function sr29SoloRemoveUnconscious(c){
   if(!c)return;
   c.unconscious=false;
@@ -918,7 +918,15 @@ function sr29LongCastState(){
   campaign.sr29=campaign.sr29&&typeof campaign.sr29==='object'?campaign.sr29:{};
   return campaign.sr29;
 }
-function sr29LongCastPending(){return sr29LongCastState()?.pendingLongCast||null;}
+function sr29LongCastPending(){
+  const pending=sr29LongCastState()?.pendingLongCast||null;
+  if(pending){
+    if(!Number.isFinite(Number(pending.requiredSeconds)))pending.requiredSeconds=Math.max(1,Number(pending.requiredMinutes)||1)*60;
+    if(!Number.isFinite(Number(pending.elapsedSeconds)))pending.elapsedSeconds=Math.max(0,Number(pending.elapsedMinutes)||0)*60;
+    pending.elapsedMinutes=Number(pending.elapsedSeconds)/60;
+  }
+  return pending;
+}
 function sr29LongCastClock(){
   const campaign=state?.campaign;if(!campaign)return null;
   const world=typeof sr18EnsureWorld==='function'?sr18EnsureWorld():null;
@@ -929,18 +937,23 @@ function sr29LongCastClock(){
   clock.watch=Math.max(1,Math.min(6,Math.floor(Number(clock.watch)||1)));
   if(!Number.isFinite(Number(clock.minuteOfDay)))clock.minuteOfDay=(clock.watch-1)*240;
   clock.minuteOfDay=Math.max(0,Math.min(1439,Math.floor(Number(clock.minuteOfDay)||0)));
+  clock.secondOfMinute=Math.max(0,Math.min(59,Math.floor(Number(clock.secondOfMinute)||0)));
   clock.watch=Math.floor(clock.minuteOfDay/240)+1;
   return clock;
 }
-function sr29LongCastAdvanceCampaignMinutes(minutes){
+function sr29LongCastAdvanceCampaignSeconds(seconds){
   const clock=sr29LongCastClock();if(!clock)return null;
-  const amount=Math.max(0,Math.floor(Number(minutes)||0));
-  const total=clock.minuteOfDay+amount;
-  const days=Math.floor(total/1440);
-  clock.day+=days;clock.minuteOfDay=total%1440;clock.watch=Math.floor(clock.minuteOfDay/240)+1;
+  const amount=Math.max(0,Math.floor(Number(seconds)||0));
+  const total=clock.minuteOfDay*60+clock.secondOfMinute+amount;
+  const days=Math.floor(total/86400),withinDay=total%86400;
+  clock.day+=days;clock.minuteOfDay=Math.floor(withinDay/60);clock.secondOfMinute=withinDay%60;
+  clock.watch=Math.floor(clock.minuteOfDay/240)+1;
   state.campaign.day=Math.max(Number(state.campaign.day)||1,clock.day);
   if(typeof sr18AdvanceWorld==='function')sr18AdvanceWorld('spellcasting',0);
-  return {day:clock.day,minuteOfDay:clock.minuteOfDay,watch:clock.watch,advancedMinutes:amount};
+  return {day:clock.day,minuteOfDay:clock.minuteOfDay,secondOfMinute:clock.secondOfMinute,watch:clock.watch,advancedSeconds:amount,advancedMinutes:Math.floor(amount/60)};
+}
+function sr29LongCastAdvanceCampaignMinutes(minutes){
+  return sr29LongCastAdvanceCampaignSeconds(Math.max(0,Math.floor(Number(minutes)||0))*60);
 }
 function sr29LongCastRosterPlayer(id){
   return (state?.campaign?.multiplayer?.players||[]).find(player=>String(player?.id)===String(id))||null;
@@ -969,7 +982,14 @@ function sr29StartLongCast(playerOrNull,name,allyId=null,args=[]){
   if(typeof sr14EnsureCharacter==='function')sr14EnsureCharacter(caster);
   if(typeof sr7RecalcSlots==='function'&&Number(caster.spellSlotProgressionVersion)!==3)
     sr7RecalcSlots(caster,false);
-  if(state?.combat){toast('A spell with a long casting time cannot be started during combat.');return false;}
+  const inCombat=!!state?.combat;
+  if(inCombat){
+    if(state.combat?.mp){
+      const active=typeof sr12TurnActor==='function'?sr12TurnActor():null;
+      if(active?.kind!=='hero'||String(active.id)!==String(player.id)){toast('You can begin a long cast only on your own turn.');return false;}
+    }else if(caster!==state.character){toast('Only the active solo hero can begin a long cast.');return false;}
+    if(!sr29ActionEconomyGate(caster,'action',true))return false;
+  }
   if(!sr14SpellKnown(caster,name)){toast('Learn the spell before casting it.');return false;}
   if(!sr14ClassCanCast(caster,spell)){toast('Your current class levels cannot cast this spell.');return false;}
   if(!sr14SpellPrepared(caster,name)){toast('Prepare this spell before casting it.');return false;}
@@ -1006,18 +1026,23 @@ function sr29StartLongCast(playerOrNull,name,allyId=null,args=[]){
   const targetId=allyId?String(targetPlayer?.id||allyId):null;
   const clock=sr29LongCastClock();
   const pending={
-    id:`long-cast-${Date.now()}-${++SR29_LONG_CAST_SEQUENCE}`,spellName:String(name),requiredMinutes,elapsedMinutes:0,
-    casterId:String(player.id||'solo'),casterName:String(player.name||caster.name||'Caster'),casterIsMain:caster===state.character,
+    id:`long-cast-${Date.now()}-${++SR29_LONG_CAST_SEQUENCE}`,spellName:String(name),requiredMinutes,requiredSeconds:requiredMinutes*60,elapsedMinutes:0,elapsedSeconds:0,
+    casterId:String(player.id||'solo'),casterName:String(player.name||caster.name||'Caster'),casterIsMain:!inCombat&&!state.combat?.mp&&caster===state.character,startedInCombat:inCombat,
     targetId,fromMP:!!args[0],castMode:{...castOptions},slotLevel:chosenSlotLevel,slotKind:chosenSlotKind,
     slotCountBefore:chosenSlotCountBefore,legacySpellSlotsBefore,startedAt:new Date().toISOString(),
     startedDay:Number(clock?.day)||Number(state.campaign.day)||1,startedMinuteOfDay:Number(clock?.minuteOfDay)||0
   };
   sr29LongCastState().pendingLongCast=pending;
-  state.view='spells';
+  if(!inCombat)state.view='spells';
   log(`${pending.casterName} begins casting ${pending.spellName}. The spell requires ${requiredMinutes} minutes of uninterrupted focus; no spell slot or material has been spent yet.`,'rolllog');
-  toast(`${name}: long cast started. Continue in 10-minute blocks.`);
+  if(inCombat){
+    const firstTurn=sr29ContinueLongCastCombatTurn(player);
+    if(!firstTurn?.ok){sr29InterruptPendingLongCast('The caster could not complete the first Magic action.');return false;}
+    return {started:true,spellName:name,requiredMinutes,elapsedMinutes:pending.elapsedMinutes,elapsedSeconds:pending.elapsedSeconds,remainingMinutes:Math.max(0,requiredMinutes-pending.elapsedMinutes),combatTurn:true};
+  }
+  toast(`${name}: long cast started. Continue in 10-minute blocks outside combat.`);
   sr29LongCastSaveAndRender();
-  return {started:true,spellName:name,requiredMinutes,elapsedMinutes:0,remainingMinutes:requiredMinutes};
+  return {started:true,spellName:name,requiredMinutes,elapsedMinutes:0,elapsedSeconds:0,remainingMinutes:requiredMinutes};
 }
 function sr29InterruptPendingLongCast(reason='You stop casting before the spell is complete.'){
   const store=sr29LongCastState(),pending=store?.pendingLongCast;if(!pending)return false;
@@ -1058,24 +1083,33 @@ function sr29CommitLongCastSpellSlot(pending,caster){
   }
   return {ok:false,spent:false,reason:'The selected spell slot could not be committed.'};
 }
-function sr29AdvancePendingLongCast(minutes=10){
+function sr29AdvancePendingLongCast(minutes=10,options={}){
   const pending=sr29LongCastPending();if(!pending)return {ok:false,reason:'No long cast is in progress.'};
   const caster=sr29LongCastCaster(pending);
   if(!caster||Number(caster.hp)<=0||sr29LongCastIncapacitated(caster)){
     sr29InterruptPendingLongCast('The caster can no longer maintain concentration.');
     return {ok:false,interrupted:true};
   }
-  const step=Math.max(1,Math.min(60,Math.floor(Number(minutes)||10),pending.requiredMinutes-pending.elapsedMinutes));
-  const world=sr29LongCastAdvanceCampaignMinutes(step);
-  pending.elapsedMinutes+=step;
-  const remaining=Math.max(0,pending.requiredMinutes-pending.elapsedMinutes);
-  log(`${pending.spellName}: ${pending.elapsedMinutes}/${pending.requiredMinutes} minutes of focused casting complete.`,'rolllog');
-  if(remaining>0){sr29LongCastSaveAndRender();return {ok:true,completed:false,elapsedMinutes:pending.elapsedMinutes,remainingMinutes:remaining,world};}
+  const requiredSeconds=Math.max(1,Number(pending.requiredSeconds)||Number(pending.requiredMinutes)*60);
+  const elapsedSeconds=Math.max(0,Number(pending.elapsedSeconds)||0);
+  const requestedSeconds=options&&Number.isFinite(Number(options.seconds))?Math.max(1,Math.floor(Number(options.seconds))):Math.max(1,Math.min(3600,Math.floor(Number(minutes)||10)*60));
+  const stepSeconds=Math.min(requestedSeconds,requiredSeconds-elapsedSeconds);
+  if(stepSeconds<=0)return {ok:false,reason:'The long cast has no remaining time to advance.'};
+  const world=sr29LongCastAdvanceCampaignSeconds(stepSeconds);
+  pending.elapsedSeconds=elapsedSeconds+stepSeconds;
+  pending.elapsedMinutes=pending.elapsedSeconds/60;
+  const remainingSeconds=Math.max(0,requiredSeconds-pending.elapsedSeconds);
+  const remainingMinutes=remainingSeconds/60;
+  log(`${pending.spellName}: ${pending.elapsedMinutes.toFixed(2)}/${pending.requiredMinutes} minutes of focused casting complete.`,'rolllog');
+  if(remainingSeconds>0){sr29LongCastSaveAndRender();return {ok:true,completed:false,elapsedMinutes:pending.elapsedMinutes,elapsedSeconds:pending.elapsedSeconds,remainingMinutes,remainingSeconds,world};}
   const player={id:pending.casterId,name:pending.casterName,character:caster};
   const completionMap=pending.slotKind==='pact'?caster?.pactSlotsByLevel:caster?.spellSlotsByLevel;
   pending.completionSlotCountBefore=completionMap&&typeof completionMap==='object'?Number(completionMap[pending.slotLevel])||0:null;
   pending.completionLegacySpellSlotsBefore=Number.isFinite(Number(caster?.spellSlots))?Number(caster.spellSlots):null;
-  const result=sr29CastBeforeLongCasting.call(null,player,pending.spellName,pending.targetId,pending.fromMP,pending.castMode);
+  if(state?.combat)caster.actionSpent=false;
+  let result=false;
+  try{result=sr29CastBeforeLongCasting.call(null,player,pending.spellName,pending.targetId,pending.fromMP,pending.castMode);}
+  finally{if(state?.combat)caster.actionSpent=true;}
   const slotPayment=result?sr29CommitLongCastSpellSlot(pending,caster):{ok:false,spent:false,reason:'Spell resolution failed.'};
   const completed=!!result&&slotPayment.ok;
   const store=sr29LongCastState();if(store)store.pendingLongCast=null;
@@ -1085,8 +1119,33 @@ function sr29AdvancePendingLongCast(minutes=10){
   }else{
     log(`${pending.spellName} did not complete: ${slotPayment.reason||'spell resolution failed'}.`,'badlog');
   }
-  state.view='spells';sr29LongCastSaveAndRender();
-  return {ok:completed,completed:true,result:completed,slotPayment,spellName:pending.spellName,elapsedMinutes:pending.elapsedMinutes,world};
+  if(!state?.combat)state.view='spells';
+  if(state?.combat)caster.actionSpent=true;
+  sr29LongCastSaveAndRender();
+  return {ok:completed,completed:true,result:completed,slotPayment,spellName:pending.spellName,elapsedMinutes:pending.elapsedMinutes,elapsedSeconds:pending.elapsedSeconds,world};
+}
+function sr29ContinueLongCastCombatTurn(player=null,options={}){
+  const pending=sr29LongCastPending();if(!pending)return {ok:false,reason:'No long cast is in progress.'};
+  if(!state?.combat)return {ok:false,reason:'There is no active combat turn.'};
+  const caster=sr29LongCastCaster(pending);
+  if(!caster||Number(caster.hp)<=0||sr29LongCastIncapacitated(caster)){sr29InterruptPendingLongCast('The caster can no longer maintain concentration.');return {ok:false,interrupted:true};}
+  if(state.combat.mp){
+    const active=typeof sr12TurnActor==='function'?sr12TurnActor():null;
+    const playerId=String(player?.id||'');
+    if(active?.kind!=='hero'||String(active.id)!==String(pending.casterId)||playerId!==String(pending.casterId)){toast('The caster must take the Magic action on their own turn.');return {ok:false,reason:'Not the caster’s turn.'};}
+  }else if(caster!==state.character){toast('Only the active solo hero can continue this cast.');return {ok:false,reason:'Not the active solo caster.'};}
+  if(!sr29ActionEconomyGate(caster,'action',true))return {ok:false,reason:'The caster has already used their Action this turn.'};
+  const advanced=sr29AdvancePendingLongCast(0,{seconds:6});
+  if(!advanced.ok)return advanced;
+  caster.actionSpent=true;
+  pending.lastMagicActionAt=new Date().toISOString();
+  log(`${pending.casterName} takes the Magic action to continue ${pending.spellName}.`,'rolllog');
+  if(options?.advanceTurn!==false){
+    if(state.combat?.mp&&typeof sr12AdvanceCombat==='function')sr12AdvanceCombat();
+    else if(!state.combat?.mp&&typeof afterPlayerAction==='function')afterPlayerAction();
+  }
+  sr29LongCastSaveAndRender();
+  return {...advanced,magicAction:true,turnEnded:options?.advanceTurn!==false};
 }
 function sr29LongCastConcentrationCheck(character,damage){
   const pending=sr29LongCastPending();if(!pending)return {active:false};
@@ -1115,6 +1174,41 @@ if(typeof sr14CastSpellComplete==='function'){
   };
   if(globalThis.__SR29_TEST?.gameplay)globalThis.__SR29_TEST.gameplay.castSpell=sr14CastSpellComplete;
 }
+if(typeof sr12HeroAction==='function'){
+  const sr29PriorHeroActionForLongCast=sr12HeroAction;
+  sr12HeroAction=function(player,action,...args){
+    const pending=sr29LongCastPending(),active=typeof sr12TurnActor==='function'?sr12TurnActor():null;
+    if(action==='long-cast-continue')return sr29ContinueLongCastCombatTurn(player);
+    if(pending&&state?.combat?.mp&&String(player?.id)===String(pending.casterId)&&active?.kind==='hero'&&String(active.id)===String(pending.casterId)){
+      sr29InterruptPendingLongCast(`The caster takes another action (${String(action)}) instead of the required Magic action.`);
+    }
+    return sr29PriorHeroActionForLongCast.call(this,player,action,...args);
+  };
+}
+if(typeof sr12HandleCombat==='function'){
+  const sr29PriorHandleCombatForLongCast=sr12HandleCombat;
+  sr12HandleCombat=function(player,message){
+    if(message?.action==='long-cast-continue')return sr12HeroAction(player,'long-cast-continue');
+    return sr29PriorHandleCombatForLongCast.call(this,player,message);
+  };
+}
+function sr29CombatLongCastPanel(){
+  const pending=sr29LongCastPending();if(!pending||!state?.combat)return '';
+  const caster=sr29LongCastCaster(pending),active=state.combat.mp&&typeof sr12TurnActor==='function'?sr12TurnActor():null,isMp=!!state.combat.mp;
+  const mine=isMp?active?.kind==='hero'&&String(active.id)===String(pending.casterId)&&String(SR4?.myPlayerId||'')===String(pending.casterId):!!caster&&caster===state.character;
+  const action=mine?(isMp?'<button class="btn primary" data-action="mp-combat" data-move="long-cast-continue">Magic action · Continue casting (6 seconds)</button>':'<button class="btn primary" data-action="long-cast-continue" data-sr29-long-cast="combat-continue">Magic action · Continue casting (6 seconds)</button>'):'';
+  const status=mine?'It is the caster’s turn. Take the Magic action to maintain the spell.':`Waiting for ${esc(pending.casterName)} to take the Magic action on their turn.`;
+  const elapsed=Math.floor(Number(pending.elapsedSeconds)||0),required=Math.max(1,Number(pending.requiredSeconds)||Number(pending.requiredMinutes)*60),percent=Math.max(0,Math.min(100,100*elapsed/required));
+  return `<section class="card" id="sr29-combat-long-cast"><div class="eyebrow">V29 · Concentration</div><h3>${esc(pending.spellName)} · Long casting</h3><p class="smalltext muted">${status} The spell requires a Magic action on every caster turn and ongoing Concentration. Another action, incapacitation, or a failed Concentration save interrupts the spell; its slot and material remain unspent.</p><div class="item-row"><span>In-game casting time</span><strong>${Math.floor(elapsed/60)}m ${elapsed%60}s / ${pending.requiredMinutes}m</strong></div><div class="bar"><i style="width:${percent}%"></i></div><div class="item-actions">${action}</div></section>`;
+}
+if(typeof combatPage==='function'){
+  const sr29PriorCombatPageForLongCast=combatPage;
+  combatPage=function(...args){return sr29CombatLongCastPanel()+sr29PriorCombatPageForLongCast.apply(this,args);};
+}
+if(typeof sr12CombatPage==='function'){
+  const sr29PriorMpCombatPageForLongCast=sr12CombatPage;
+  sr12CombatPage=function(...args){return sr29CombatLongCastPanel()+sr29PriorMpCombatPageForLongCast.apply(this,args);};
+}
 function sr29LongCastPanel(){
   const pending=sr29LongCastPending();if(!pending)return '';
   const remaining=Math.max(0,pending.requiredMinutes-pending.elapsedMinutes),next=Math.min(10,remaining);
@@ -1129,6 +1223,7 @@ if(typeof app!=='undefined'&&app&&typeof app.addEventListener==='function'){
   app.addEventListener('click',function(event){
     const button=event?.target?.closest?.('button');if(!button)return;
     const longCastAction=button.dataset?.sr29LongCast;
+    if(longCastAction==='combat-continue'){event.preventDefault();event.stopImmediatePropagation?.();sr29ContinueLongCastCombatTurn();return;}
     if(longCastAction==='advance'){event.preventDefault();event.stopImmediatePropagation?.();sr29AdvancePendingLongCast(10);return;}
     if(longCastAction==='cancel'){event.preventDefault();event.stopImmediatePropagation?.();sr29InterruptPendingLongCast('The caster abandons the spell.');return;}
     const pending=sr29LongCastPending(),action=String(button.dataset?.action||'');
@@ -1166,7 +1261,7 @@ if(typeof sr12DamageHero==='function'){
 }
 
 globalThis.__SR29_DEATH_TEST={
-  version:SR29_DEATH_SAVES_VERSION,longCastMinutes:sr29LongCastMinutes,startLongCast:sr29StartLongCast,commitLongCastSpellSlot:sr29CommitLongCastSpellSlot,advancePendingLongCast:sr29AdvancePendingLongCast,interruptPendingLongCast:sr29InterruptPendingLongCast,longCastConcentrationCheck:sr29LongCastConcentrationCheck,pendingLongCast:sr29LongCastPending,campaignClock:sr29LongCastClock,applyTrueResurrectionEffects:sr29ApplyTrueResurrectionEffects,trueResurrectionBodyMissing:sr29TrueResurrectionBodyMissing,consumeMaterialComponent:sr29ConsumeMaterialComponent,materialComponentCost:sr29MaterialComponentCost,creatorMarkup:typeof renderCreator==='function'?renderCreator:null,injectDragonbornLineageField:sr29InjectDragonbornLineageField,isValidDraconicAncestry:sr29DraconicAncestryIsValid,reincarnateSpecies:SR29_REINCARNATE_SPECIES,reincarnateSpeciesFromRoll:sr29ReincarnateSpeciesFromRoll,applyReincarnateSpecies:sr29ApplyReincarnateSpecies,recordDeathSnapshot:sr29RecordDeathSnapshot,isOldAgeDeath:sr29IsOldAgeDeath,wasUndeadAtDeath:sr29WasUndeadAtDeath,isHumanoidAtDeath:sr29IsHumanoidAtDeath,missingBodyParts:sr29MissingBodyParts,hasMissingVitalParts:sr29HasMissingVitalParts,clearRevivalDeathMetadata:sr29ClearRevivalDeathMetadata,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestPenaltyRecovery:sr29ApplyLongRestPenaltyRecovery,hasResurrectionCasterTax:sr29HasResurrectionCasterTax,setResurrectionCasterTax:sr29SetResurrectionCasterTax,setDraconicAncestry:sr29SetDraconicAncestry,damageMultiplier:typeof sr14DamageMultiplier==='function'?sr14DamageMultiplier:null,dragonbornBreath:sr29DragonbornBreath,dragonbornBreathDamageDice:sr29DragonbornBreathDamageDice,dragonbornProficiencyBonus:sr29DragonbornProficiencyBonus,clearResurrectionCasterTax:sr29ClearResurrectionCasterTax,applyResurrectionTaxD20Result:sr29ApplyResurrectionTaxD20Result,rejectCastDuringResurrectionTax:sr29RejectCastDuringResurrectionTax,canonicalAbilityCheck:typeof sr29CanonicalAbilityCheck==='function'?sr29CanonicalAbilityCheck:null,attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
+  version:SR29_DEATH_SAVES_VERSION,longCastMinutes:sr29LongCastMinutes,startLongCast:sr29StartLongCast,commitLongCastSpellSlot:sr29CommitLongCastSpellSlot,advancePendingLongCast:sr29AdvancePendingLongCast,continueLongCastCombatTurn:sr29ContinueLongCastCombatTurn,combatLongCastPanel:sr29CombatLongCastPanel,interruptPendingLongCast:sr29InterruptPendingLongCast,longCastConcentrationCheck:sr29LongCastConcentrationCheck,pendingLongCast:sr29LongCastPending,campaignClock:sr29LongCastClock,applyTrueResurrectionEffects:sr29ApplyTrueResurrectionEffects,trueResurrectionBodyMissing:sr29TrueResurrectionBodyMissing,consumeMaterialComponent:sr29ConsumeMaterialComponent,materialComponentCost:sr29MaterialComponentCost,creatorMarkup:typeof renderCreator==='function'?renderCreator:null,injectDragonbornLineageField:sr29InjectDragonbornLineageField,isValidDraconicAncestry:sr29DraconicAncestryIsValid,reincarnateSpecies:SR29_REINCARNATE_SPECIES,reincarnateSpeciesFromRoll:sr29ReincarnateSpeciesFromRoll,applyReincarnateSpecies:sr29ApplyReincarnateSpecies,recordDeathSnapshot:sr29RecordDeathSnapshot,isOldAgeDeath:sr29IsOldAgeDeath,wasUndeadAtDeath:sr29WasUndeadAtDeath,isHumanoidAtDeath:sr29IsHumanoidAtDeath,missingBodyParts:sr29MissingBodyParts,hasMissingVitalParts:sr29HasMissingVitalParts,clearRevivalDeathMetadata:sr29ClearRevivalDeathMetadata,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestPenaltyRecovery:sr29ApplyLongRestPenaltyRecovery,hasResurrectionCasterTax:sr29HasResurrectionCasterTax,setResurrectionCasterTax:sr29SetResurrectionCasterTax,setDraconicAncestry:sr29SetDraconicAncestry,damageMultiplier:typeof sr14DamageMultiplier==='function'?sr14DamageMultiplier:null,dragonbornBreath:sr29DragonbornBreath,dragonbornBreathDamageDice:sr29DragonbornBreathDamageDice,dragonbornProficiencyBonus:sr29DragonbornProficiencyBonus,clearResurrectionCasterTax:sr29ClearResurrectionCasterTax,applyResurrectionTaxD20Result:sr29ApplyResurrectionTaxD20Result,rejectCastDuringResurrectionTax:sr29RejectCastDuringResurrectionTax,canonicalAbilityCheck:typeof sr29CanonicalAbilityCheck==='function'?sr29CanonicalAbilityCheck:null,attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
   clearDowned:sr29SoloClearDowned,damageAtZero:sr29SoloDamageAtZero,hasUnconscious:sr29SoloHasUnconscious,
   heal:typeof heal==='function'?heal:null,damagePlayer:typeof damagePlayer==='function'?damagePlayer:null,
   soloMonsterAttack:typeof sr10EnemyAttack==='function'?sr10EnemyAttack:null,soloHeroAttack:typeof sr11HeroAttack==='function'?sr29TestSoloHeroAttack:null,advanceStableTime:sr29SoloAdvanceStableTime,
