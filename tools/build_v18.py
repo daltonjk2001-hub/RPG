@@ -203,14 +203,6 @@ def build_runtime() -> str:
         "const roll=sr11RollAttack(base+(pack?2:0),enemy,c,true),cover=sr11Cover(target.pos,enemy.pos),ac=sr4WithCharRead(player,computeAC)+(c.buffRounds>0?2:0)+cover,hit=sr25AttackSuccess(roll,ac),critical=roll.r===20||(hit&&sr29CriticalOnHit(c,{hit,distance}));enemy._sr29LastAttackAdvantage=roll.adv===true;enemy._sr29LastAttackCritical=critical;",
     )
 
-    v13_down_critical_multiplier = "if(source===enemy&&enemy._sr13MeleeAgainstUnconscious&&!enemy._sr13LastNatural20){enemy.lastAttackCritical=true;amount=Math.max(0,Number(amount)||0)*2;}"
-    if base.count(v13_down_critical_multiplier) != 1:
-        raise SystemExit("Expected one V13.2 unconscious melee damage multiplier.")
-    base = base.replace(
-        v13_down_critical_multiplier,
-        "if(source===enemy&&enemy._sr13MeleeAgainstUnconscious&&!enemy._sr13LastNatural20){enemy.lastAttackCritical=true;}",
-    )
-
     attack_checks = [
         ("roll.r===20||(roll.r!==1&&roll.total>=ac)", "sr25AttackSuccess(roll,ac)", 3),
         ("roll.r===20||(roll.r!==1&&roll.total>=e.ac)", "sr25AttackSuccess(roll,e.ac)", 2),
