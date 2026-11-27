@@ -63,12 +63,12 @@ function sr29SoloDeathSave(){
 }
 function sr29MultiplayerAdvanceStableTime(hours){
   const players=Array.isArray(state?.campaign?.multiplayer?.players)?state.campaign.multiplayer.players:[];
-  let recovered=0;
+  let recovered=0,advanced=0;
   for(const player of players){
     const c=player?.character;
     if(!c?.stable||Number(c.hp)>0||c.mpDead)continue;
     const required=Math.max(1,Math.min(4,Number(c.stableRecoveryHours)||1));
-    c.stableElapsedHours=Math.max(0,Number(c.stableElapsedHours)||0)+hours;
+    c.stableElapsedHours=Math.max(0,Number(c.stableElapsedHours)||0)+hours;advanced++;
     if(c.stableElapsedHours<required)continue;
     c.hp=1;
     if(typeof sr131ClearDowned==='function')sr131ClearDowned(c);
@@ -76,7 +76,7 @@ function sr29MultiplayerAdvanceStableTime(hours){
     log(`${player.name||c.name||'A hero'} regains 1 HP and consciousness after being stable.`,'goodlog');
     recovered++;
   }
-  if(recovered){if(typeof save==='function')save();if(typeof sr4Broadcast==='function')sr4Broadcast();}
+  if(advanced){if(typeof save==='function')save();if(typeof sr4Broadcast==='function')sr4Broadcast();}
   return recovered>0;
 }
 function sr29SoloAdvanceStableTime(hours){
