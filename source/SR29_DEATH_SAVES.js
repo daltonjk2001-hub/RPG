@@ -151,6 +151,7 @@ if(typeof longRest==='function'){
 function sr29SoloDamageAtZero(amount,source=null,meta={}){
   const c=state?.character,b=state?.combat,incoming=Math.max(0,Number(amount)||0);
   if(!c||!b||b.mp||Number(c.hp)>0||!b.downed||incoming<=0||c.mpDead)return {applied:false,failures:0,dead:false};
+  delete c.stableRecoveryHours;delete c.stableElapsedHours;
   if(incoming>=Math.max(1,Number(c.maxHp)||Infinity)){
     c.deathFailure=3;c.mpDead=true;c.deathAt=Date.now();c.stable=false;
     sr29SoloEndFromDeath('Massive damage at 0 HP causes instant death.');
