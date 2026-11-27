@@ -175,3 +175,12 @@ A pending player-versus-player grapple save prompt is only a provisional challen
 - Added 12 regression assertions for custom equipment slots, unequipped inventory shields, equipped shields, hand-crossbow handling, appendage capability flags, and non-grasping anatomy.
 
 Verification is pending for the new commit. These changes do not replace the outstanding live multiplayer/device tests or the broader rules-coverage work.
+
+
+## V29.37 — Monster automatic critical-hit parity
+
+- Monster attack-vs-AC resolution now applies the canonical Paralyzed/Unconscious automatic-critical rule when a hit occurs within 5 feet, in addition to natural-20 critical hits.
+- The range check now distinguishes unknown tactical distance from a measured zero-foot distance; missing coordinates no longer silently qualify as being within 5 feet for the automatic-critical rule.
+- The combat log identifies these results as critical hits, and the extra damage dice are rolled using the attack's damage expression without doubling flat modifiers.
+- Added end-to-end regression coverage for a monster melee hit against a Paralyzed target at 5 feet and a monster ranged hit against an Unconscious target at 10 feet.
+- The broader damage pipeline and death-save lifecycle remain Partial; this closes one identified monster-side critical-hit integration gap only.
