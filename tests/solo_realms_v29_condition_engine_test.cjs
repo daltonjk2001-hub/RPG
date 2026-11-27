@@ -517,6 +517,19 @@ try{
 
  const socialTarget=actor();T.apply(socialTarget,'charmed',2,'charm',{sourceId:'bard'});
  assert('Charmer gains Advantage on social interaction checks',T.socialCheckAdvantage({id:'bard'},socialTarget));
+ const priorSocialState=T18.state;
+ const charmedSocialCaster=actor({id:'bard',name:'Bard',classId:'Bard',level:1,proficiencies:['Persuasion']});
+ const charmedSocialGuard=actor({id:'charmed-social-guard',name:'Guard'});
+ T.apply(charmedSocialGuard,'charmed','permanent','Charm Person',{sourceId:'bard'});
+ T18.state={character:charmedSocialCaster,campaign:{day:1,region:'Social Condition Test',location:'Social Condition Test',visited:[],companions:[],npcs:[charmedSocialGuard],sideQuests:[],story:{},flags:{},mainQuest:{kind:'test',title:'Social Condition Test',goal:'Validate Charmed social Advantage'}},log:[]};
+ const charmedSocialOutcome=T21.resolve('Persuade the guard to open the gate',{mode:'social',target:'Guard',skill:'Persuasion',dc:12,roll:5,secondRoll:18});
+ assert('Charmed source receives Advantage on a real NPC social check, not just through the helper',charmedSocialOutcome?.advantage===true&&charmedSocialOutcome.die===18&&charmedSocialOutcome.success===true,JSON.stringify(charmedSocialOutcome));
+ const unrelatedSocialGuard=actor({id:'unrelated-social-guard',name:'Guard'});
+ T.apply(unrelatedSocialGuard,'charmed','permanent','Charm Person',{sourceId:'another-caster'});
+ T18.state.campaign.npcs=[unrelatedSocialGuard];
+ const unrelatedSocialOutcome=T21.resolve('Persuade the guard to open the gate',{mode:'social',target:'Guard',skill:'Persuasion',dc:12,roll:5,secondRoll:18});
+ assert('Charmed Advantage is not granted when someone else is the charmer',unrelatedSocialOutcome?.advantage!==true&&unrelatedSocialOutcome.die===5,JSON.stringify(unrelatedSocialOutcome));
+ T18.state=priorSocialState;
  assert('Any attack roll that hits a Paralyzed target within 5 feet is a critical hit',T.criticalOnHit(target,{hit:true,melee:false,distance:5}));
  assert('Hits from beyond 5 feet do not receive the automatic critical',!T.criticalOnHit(target,{hit:true,melee:false,distance:30}));
  const concentration=actor({concentration:{spell:'Hold Person'},activeEffects:[{name:'Hold Person',concentration:true}]});
