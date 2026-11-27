@@ -1091,6 +1091,7 @@ try{
   const priorSoloCriticalRandom=math.random;math.random=()=>0.5;
   try{D.soloMonsterAttack(soloCriticalEnemy);}finally{math.random=priorSoloCriticalRandom;}
   assert('V11 solo initiative monster attacks gain Advantage and automatic critical damage against a Paralyzed target within 5 feet',soloCriticalHero.hp===22&&T18.state.log.some(x=>/Critical hit/.test(x.msg)),JSON.stringify({hp:soloCriticalHero.hp,log:T18.state.log}));
+  assert('A critical marker is consumed after damaging a conscious solo hero',!soloCriticalEnemy._sr29AttackCriticalPending);
   assert('V11 solo initiative monster attacks use the canonical condition attack and critical resolvers',html.includes('sr29CriticalOnHit(c,{hit,distance:dist})')&&html.includes('sr18CriticalExtraDice(e.damage||'));
 
   const soloFlatCriticalHero=actor({id:'solo-flat-critical-hero',name:'Solo Flat Critical Hero',hp:30,maxHp:30,armor:'Traveler’s clothes'});
