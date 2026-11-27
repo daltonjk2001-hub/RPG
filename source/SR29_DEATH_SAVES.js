@@ -8,7 +8,7 @@ function sr29SoloRemoveUnconscious(c){
 }
 function sr29SoloClearDowned(c=state?.character){
   if(!c||Number(c.hp)<=0)return false;
-  c.stable=false;c.mpDowned=false;c.mpDead=false;c.deathSuccess=0;c.deathFailure=0;c.deathSaves=0;
+  c.stable=false;c.mpDowned=false;c.deathSuccess=0;c.deathFailure=0;c.deathSaves=0;
   sr29SoloRemoveUnconscious(c);
   if(state?.combat&&!state.combat.mp)state.combat.downed=false;
   return true;
@@ -103,9 +103,10 @@ if(typeof damagePlayer==='function'){
 if(typeof heal==='function'){
   const sr29SoloPriorHeal=heal;
   heal=function(amount,...args){
-    const c=state?.character,before=Number(c?.hp)||0;
+    const c=state?.character,b=state?.combat,before=Number(c?.hp)||0;
+    if(c?.mpDead&&b&&!b.mp)return 0;
     const result=sr29SoloPriorHeal.call(this,amount,...args);
-    if(c&&before<=0&&Number(c.hp)>0)sr29SoloClearDowned(c);
+    if(c&&b&&!b.mp&&!c.mpDead&&before<=0&&Number(c.hp)>0)sr29SoloClearDowned(c);
     return result;
   };
 }
