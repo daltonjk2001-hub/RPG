@@ -1122,6 +1122,13 @@ try{
   assert('Stable solo recovery waits for the rolled 1d4-hour interval',earlyStableRecovery===false&&deathHero.hp===0&&deathHero.stable===true&&Number(deathHero.stableElapsedHours)===Math.max(0,recoveryHours-1));
   const completedStableRecovery=D.advanceStableTime(1);
   assert('A stable solo hero regains 1 HP and consciousness after the rolled interval',completedStableRecovery===true&&deathHero.hp===1&&!deathHero.stable&&!deathHero.unconscious&&!T18.state.combat.downed);
+
+  const watchStableHero=actor({id:'watch-stable-hero',name:'Watch Stable Hero',hp:0,maxHp:20,stable:true,unconscious:true,stableRecoveryHours:2,stableElapsedHours:0,conditions:[{name:'unconscious',duration:999}]});
+  T18.state={character:watchStableHero,campaign:{day:1,companions:[]},combat:null,log:[]};
+  D.advanceWorld('action',0);
+  const noWatchRecovery=watchStableHero.hp===0&&watchStableHero.stable===true;
+  D.advanceWorld('travel',0);
+  assert('Only elapsed world watches advance stable recovery; a four-hour watch restores 1 HP when due',noWatchRecovery&&watchStableHero.hp===1&&!watchStableHero.stable&&!watchStableHero.unconscious,JSON.stringify({hp:watchStableHero.hp,stable:watchStableHero.stable,worldClock:T18.state.campaign.sr18?.clock}));
   deathHero.stable=false;deathHero.deathFailure=1;deathHero.mpDead=false;deathHero.deathAt=null;deathHero.hp=0;T18.state.combat.downed=true;
   const ordinaryDownedDamage=D.damageAtZero(1);
   assert('Damage to a solo hero at 0 HP adds one failed death save',ordinaryDownedDamage.failures===1&&!ordinaryDownedDamage.dead&&deathHero.deathFailure===2);
