@@ -357,7 +357,7 @@ def build_runtime() -> str:
         raise SystemExit("Expected one multiplayer enemy damage application.")
     base = base.replace(
         mp_enemy_damage,
-        "if(hit){let damage=rollDice(enemy.damage||'1d4');if(critical)damage+=rollDice(enemy.damage||'1d4');enemy._sr29AttackCriticalPending=critical;sr12DamageHero(player,damage,'physical',enemy);}",
+        "if(hit){let damage=rollDice(enemy.damage||'1d4');const criticalDice=sr18CriticalExtraDice(enemy.damage||'1d4');if(critical&&criticalDice)damage+=rollDice(criticalDice);enemy._sr29AttackCriticalPending=critical;sr12DamageHero(player,damage,'physical',enemy);}",
     )
 
     # Route the solo initiative loop through the canonical turn-start death-save procedure.
