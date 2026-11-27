@@ -236,6 +236,31 @@ def build_runtime() -> str:
         "const r=sr11RollAttack(sr12SpellAttack(c)+(c.spellAttackBonus||0),c,e,false),distance=origin&&e.pos?sr12Distance(origin,e.pos):null,hit=sr25AttackSuccess(r,e.ac),critical=r.r===20||(hit&&distance!==null&&sr29CriticalOnHit(e,{hit,distance}));e._sr29LastSpellAttackRoll=r.r;e._sr29LastSpellAttackCritical=critical;if(!hit){log(`${name} misses ${e.name}.`,'rolllog');continue;}if(critical){const criticalDice=sr18CriticalExtraDice(formula);if(criticalDice)amount+=sr14RollSpellDamage(criticalDice);log(`${name} critically hits ${e.name} on d20 ${r.r}.`,'rolllog');}",
     )
 
+    # Multiplayer monster opportunity attacks use the same dice-only critical
+    # bonus as ordinary monster turns. The target is moving, so only natural 20
+    # can make this opportunity attack critical.
+    mp_opportunity_attack = "const roll=sr11RollAttack(Number(e.attack)||0,e,c,true),cover=sr11Cover(from,e.pos),ac=sr4WithCharRead(player,computeAC)+cover,hit=sr25AttackSuccess(roll,ac);"
+    if base.count(mp_opportunity_attack) != 1:
+        raise SystemExit("Expected one multiplayer monster opportunity-attack resolver.")
+    base = base.replace(
+        mp_opportunity_attack,
+        "const roll=sr11RollAttack(Number(e.attack)||0,e,c,true),cover=sr11Cover(from,e.pos),ac=sr4WithCharRead(player,computeAC)+cover,hit=sr25AttackSuccess(roll,ac),critical=roll.r===20;e.lastAttackCritical=critical;e._sr29LastAttackAdvantage=roll.adv===true;e._sr29LastAttackCritical=critical;",
+    )
+    mp_opportunity_log = "log(`${e.name} makes an Opportunity Attack before ${player.name} leaves reach: d20 ${roll.r} + ${Number(e.attack)||0} = ${roll.total} vs AC ${ac}${cover?' (cover)':''}. ${hit?'Hit':'Miss'}.`,hit?'badlog':'rolllog');"
+    if base.count(mp_opportunity_log) != 1:
+        raise SystemExit("Expected one multiplayer monster opportunity-attack log.")
+    base = base.replace(
+        mp_opportunity_log,
+        "log(`${e.name} makes an Opportunity Attack before ${player.name} leaves reach: d20 ${roll.r} + ${Number(e.attack)||0} = ${roll.total} vs AC ${ac}${cover?' (cover)':''}. ${critical?'Critical hit':hit?'Hit':'Miss'}.`,hit?'badlog':'rolllog');",
+    )
+    mp_opportunity_damage = "if(hit){let n=rollDice(e.damage||'1d4');if(roll.r===20)n+=rollDice(e.damage||'1d4');sr12DamageHero(player,n,'physical',e);}"
+    if base.count(mp_opportunity_damage) != 1:
+        raise SystemExit("Expected one multiplayer monster opportunity-attack damage expression.")
+    base = base.replace(
+        mp_opportunity_damage,
+        "if(hit){let n=rollDice(e.damage||'1d4');const criticalDice=sr18CriticalExtraDice(e.damage||'1d4');if(critical&&criticalDice)n+=rollDice(criticalDice);e._sr29AttackCriticalPending=critical;sr12DamageHero(player,n,'physical',e);e.lastAttackCritical=false;}",
+    )
+
     # The active solo V11 weapon attack must define its condition-based critical
     # after the hit result; the earlier damage-only patch referenced an undefined name.
     solo_hero_hit = "const cover=sr11Cover(e.pos,b.heroPos),ac=e.ac+cover,hit=sr25AttackSuccess(roll,ac);"
