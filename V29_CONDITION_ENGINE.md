@@ -207,3 +207,15 @@ This is an integration milestone, not a claim that the entire damage/death/reviv
 - End-to-end regression tests call the active solo monster attack function and verify the 5-foot critical case and `1d6+3` damage result.
 
 The wider attack and damage pipelines remain Partial; this closes one active solo monster-attack path, not every legacy companion, player, or spell attack path.
+
+
+## V29.40 — Timed recovery after stabilization
+
+- When the solo hero reaches three successful death saves, the engine rolls and stores a 1d4-hour stable recovery interval.
+- The engine wraps the existing V18 world-clock advancement. Four-hour watches advanced by travel, rest, sleep, downtime, research, or crafting contribute elapsed time; ordinary action ticks do not. Full-day advances count as 24 hours per day.
+- When elapsed time reaches the stored interval, the hero regains 1 HP, consciousness, and normal downed-state eligibility. The recovery interval and elapsed time persist with the character save.
+- Damage at 0 HP cancels the stable timer and returns the hero to failed death saves. Healing above 0 HP clears the downed state immediately. Long-rest HP recovery also clears stale stable metadata.
+- The timed recovery adapter is explicitly limited to solo state; multiplayer stable recovery remains open rather than accidentally applying only to the host hero.
+- Regression tests cover the 1d4 interval, partial elapsed time, completion, no advancement from ordinary actions, and a real four-hour world-clock tick.
+
+Death and recovery remain Partial until multiplayer stable recovery, resurrection effects, and live two-device testing are complete.
