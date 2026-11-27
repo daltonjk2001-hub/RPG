@@ -335,9 +335,13 @@ try{
  const soloPetrifiedHero=actor({id:'solo-petrified-hero',name:'Solo Petrified Hero'});
  T.apply(soloPetrifiedHero,'petrified','permanent','stone');
  const beforePetrifiedDamageState=T18.state;
+ const soloDamageAttacker={id:'petrified-attacker',name:'Petrified Attacker'};
+ const soloControlHero=actor({id:'solo-control-hero',name:'Solo Control Hero'});
+ T18.state={character:soloControlHero,campaign:{},combat:{mp:null,enemies:[]},log:[]};
+ const soloControlDamage=T.applyMonsterDamage({player:{id:'solo',name:'Solo Control Hero',character:soloControlHero}},10,'fire',soloDamageAttacker);
  T18.state={character:soloPetrifiedHero,campaign:{},combat:{mp:null,enemies:[]},log:[]};
- const soloPetrifiedDamage=T.applyMonsterDamage({player:{id:'solo',name:'Solo Petrified Hero',character:soloPetrifiedHero}},10,'fire',{id:'petrified-attacker',name:'Petrified Attacker'});
- assert('Petrified resistance halves monster damage against the solo player without persisting a synthetic resistance',soloPetrifiedDamage===5&&soloPetrifiedHero.hp===25&&!Array.isArray(soloPetrifiedHero.resistances),JSON.stringify({soloPetrifiedDamage,hp:soloPetrifiedHero.hp,resistances:soloPetrifiedHero.resistances}));
+ const soloPetrifiedDamage=T.applyMonsterDamage({player:{id:'solo',name:'Solo Petrified Hero',character:soloPetrifiedHero}},10,'fire',soloDamageAttacker);
+ assert('Petrified resistance halves monster damage against the solo player without persisting a synthetic resistance',soloControlDamage>0&&soloPetrifiedDamage===Math.floor(soloControlDamage/2)&&soloPetrifiedHero.hp===30-soloPetrifiedDamage&&!Array.isArray(soloPetrifiedHero.resistances),JSON.stringify({soloControlDamage,soloPetrifiedDamage,hp:soloPetrifiedHero.hp,resistances:soloPetrifiedHero.resistances}));
  T18.state=beforePetrifiedDamageState;
  const exhaustionSave=T25.resolveCreatureSavingThrow(petrified,'CON',[12],5,15);
  assert('Exhaustion applies its -2 per level modifier to creature saves',exhaustionSave.total===15);
