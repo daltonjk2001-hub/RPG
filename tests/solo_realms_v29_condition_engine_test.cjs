@@ -1234,7 +1234,7 @@ try{
   T18.state={character:mpAttackDownedHero,campaign:{multiplayer:{active:true,players:[mpAttackDownedPlayer]}},combat:{round:1,mp:{heroPositions:{'mp-attack-downed':{x:1,y:1}},turnOrder:[],index:0},enemies:[mpDownedAttacker],map:{width:8,height:6,terrain:mpDownedTerrain}},log:[]};
   const priorMpDownedAttackRandom=math.random;math.random=()=>0.5;
   try{D.multiplayerEnemyTurn(mpDownedAttacker);}finally{math.random=priorMpDownedAttackRandom;}
-  assert('Multiplayer monster critical hits against an Unconscious hero cause two death-save failures',mpAttackDownedHero.deathFailure===2&&mpDownedAttacker.lastAttackCritical===true&&mpDownedAttacker._sr29AttackCriticalPending===undefined,JSON.stringify({failures:mpAttackDownedHero.deathFailure,critical:mpDownedAttacker.lastAttackCritical,marker:mpDownedAttacker._sr29AttackCriticalPending,log:T18.state.log.slice(0,5)}));
+  assert('Multiplayer monster critical hits against an Unconscious hero cause two death-save failures',mpAttackDownedHero.deathFailure===2&&!mpDownedAttacker.lastAttackCritical&&mpDownedAttacker._sr29AttackCriticalPending===undefined&&T18.state.log.some(x=>/Critical hit/.test(x.msg)),JSON.stringify({failures:mpAttackDownedHero.deathFailure,criticalMarker:mpDownedAttacker.lastAttackCritical,pending:mpDownedAttacker._sr29AttackCriticalPending,log:T18.state.log.slice(0,5)}));
 
   const mpDownedCriticalHero=actor({id:'mp-downed-critical-hero',name:'MP Downed Critical Hero',hp:0,maxHp:20,tempHP:100,mpDowned:true,mpDead:false,stable:false,unconscious:true,deathSuccess:0,deathFailure:0,conditions:[{name:'unconscious',duration:999}]});
   const mpDownedCriticalPlayer={id:'mp-downed-critical-hero',name:'MP Downed Critical Hero',connected:true,character:mpDownedCriticalHero};
