@@ -118,15 +118,18 @@ if(typeof sr12DamageHero==='function'){
     const c=player?.character,hpBefore=Number(c?.hp)||0,wasStable=!!c?.stable;
     const downedBefore=!!(c&&hpBefore<=0&&!c.mpDead&&(c.mpDowned||c.stable||sr29SoloHasUnconscious(c)));
     const amount=Math.max(0,Number(args[0])||0),damageType=args[1]||'physical';
+    const resistanceAdjusted=c?.rageRounds>0&&c?.rageResist&&['physical','bludgeoning','piercing','slashing'].includes(damageType)?Math.ceil(amount/2):amount;
+    const damageAfterGuard=Math.max(0,resistanceAdjusted-Math.max(0,Number(c?.guard)||0));
     const source=args[2]&&typeof args[2]==='object'?args[2]:null;
+    const hasCriticalMarker=!!source&&Object.prototype.hasOwnProperty.call(source,'_sr29AttackCriticalPending');
     const pendingCritical=source?._sr29AttackCriticalPending===true;
     const result=sr29PriorMultiplayerDamageHero.call(this,player,...args);
     if(c&&wasStable&&!c.stable){delete c.stableRecoveryHours;delete c.stableElapsedHours;}
-    if(c&&downedBefore&&amount>0&&!c.mpDead){
+    if(c&&downedBefore&&damageAfterGuard>0&&!c.mpDead){
       delete c.stableRecoveryHours;delete c.stableElapsedHours;
       c.stable=false;c.mpDowned=true;c.unconscious=true;
       const critical=pendingCritical||source?.lastAttackCritical===true;
-      const massive=amount>=Math.max(1,Number(c.maxHp)||Infinity);
+      const massive=damageAfterGuard>=Math.max(1,Number(c.maxHp)||Infinity);
       const failures=massive?3:(critical?2:1);
       c.deathFailure=Math.min(3,(Number(c.deathFailure)||0)+failures);
       if(massive||c.deathFailure>=3){
@@ -137,7 +140,7 @@ if(typeof sr12DamageHero==='function'){
       }
       if(typeof save==='function')save();
     }
-    if(pendingCritical)delete source._sr29AttackCriticalPending;
+    if(hasCriticalMarker)delete source._sr29AttackCriticalPending;
     return result;
   };
 }
@@ -195,7 +198,7 @@ if(typeof damagePlayer==='function'){
   damagePlayer=function(amount,...args){
     const c=state?.character,b=state?.combat,hpBefore=Number(c?.hp)||0;
     const downedBefore=!!(c&&b&&!b.mp&&hpBefore<=0&&(b.downed||c.stable||sr29SoloHasUnconscious(c)));
-    const pendingCriticalEnemy=(b?.enemies||[]).find(enemy=>enemy?._sr29AttackCriticalPending===true);
+    const pendingCriticalEnemy=(b?.enemies||[]).find(enemy=>enemy&&Object.prototype.hasOwnProperty.call(enemy,'_sr29AttackCriticalPending'));
     const result=sr29SoloPriorDamagePlayer.call(this,amount,...args);
     if(c&&b&&!b.mp){
       if(downedBefore){
