@@ -5533,6 +5533,11 @@ function sr136RunTests(){
     ok('Enemy Reaction refreshes at the start of its own initiative turn',sr136RefreshEnemyReaction(enemyReaction)&&enemyReaction.reactionAvailable===true);
     const deadEnemyReaction={hp:0,reactionAvailable:false};
     ok('Defeated enemies do not receive a refreshed Reaction',!sr136RefreshEnemyReaction(deadEnemyReaction)&&deadEnemyReaction.reactionAvailable===false);
+    const priorReactionState=state;
+    state={combat:{mp:{},round:1,enemies:[{hp:10,reactionAvailable:false,conditions:[]}]},campaign:{multiplayer:{players:[{character:{reactionAvailable:false,conditions:[]}}]},companions:[]},log:[]};
+    sr12EndRound();
+    ok('Round boundary does not prematurely refresh hero or monster Reactions',state.campaign.multiplayer.players[0].character.reactionAvailable===false&&state.combat.enemies[0].reactionAvailable===false);
+    state=priorReactionState;
     const activeSwap={mp:{index:0,turnOrder:[{kind:'hero',id:'active-a',initiative:12,tieMode:'party-choice'},{kind:'hero',id:'active-b',initiative:12,tieMode:'party-choice'}]}};
     const activeChanged=sr136ReorderTie(activeSwap,1,'up','active-a');
     ok('Changing the first tied hero is detected so the host can initialize the newly active turn',activeChanged.changed&&activeChanged.activeActorChanged&&activeChanged.activeActor==='active-b');
