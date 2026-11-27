@@ -217,10 +217,24 @@ function sr29MpPruneGrappleChallenges(snapshot=state){
     const attacker=players.find(item=>String(item?.id||'')===String(challenge?.attackerId||''));
     const target=players.find(item=>String(item?.id||'')===String(challenge?.targetId||''));
     let reason='';
-    if(!challenge?.id||!attacker||!target)reason='participant-unavailable';
+    if(!challenge?.id||!attacker||!target||!attacker.character||!target.character)reason='participant-unavailable';
     else if(attacker.connected===false||target.connected===false)reason='participant-disconnected';
-    else if(Number(attacker.character?.hp)<=0||Number(target.character?.hp)<=0)reason='participant-defeated';
+    else if(Number(attacker.character.hp)<=0||Number(target.character.hp)<=0)reason='participant-defeated';
+    else if(sr29Has(attacker.character,'incapacitated'))reason='grappler-incapacitated';
     else if(round>0&&Number.isFinite(Number(challenge.createdRound))&&round>Number(challenge.createdRound))reason='challenge-expired';
+    else {
+      // A save prompt is not a grapple yet. Revalidate the live participants
+      // before accepting the target's response so movement/forced displacement
+      // or an incapacitated grappler cannot create an out-of-range grapple.
+      const positions=snapshot.combat.mp.heroPositions||{};
+      const attackerPos=positions[attacker.id]||attacker.pos||attacker.character.pos||attacker.character.position;
+      const targetPos=positions[target.id]||target.pos||target.character.pos||target.character.position;
+      if(attackerPos&&targetPos&&[attackerPos.x,attackerPos.y,targetPos.x,targetPos.y].every(value=>Number.isFinite(Number(value)))){
+        const distance=Math.max(Math.abs(Number(attackerPos.x)-Number(targetPos.x)),Math.abs(Number(attackerPos.y)-Number(targetPos.y)))*5;
+        const reach=Number(challenge.reach??5);
+        if(Number.isFinite(reach)&&reach>0&&distance>reach)reason='grapple-range-exceeded';
+      }
+    }
     if(reason)reasons.push({id:String(challenge?.id||''),reason});
     else retained.push(challenge);
   }
