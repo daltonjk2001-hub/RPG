@@ -76,7 +76,7 @@ function sr29MultiplayerAdvanceStableTime(hours){
     log(`${player.name||c.name||'A hero'} regains 1 HP and consciousness after being stable.`,'goodlog');
     recovered++;
   }
-  if(advanced){if(typeof save==='function')save();if(typeof sr4Broadcast==='function')sr4Broadcast();}
+  if(advanced&&typeof sr4QueueSync==='function')sr4QueueSync();
   return recovered>0;
 }
 function sr29SoloAdvanceStableTime(hours){
