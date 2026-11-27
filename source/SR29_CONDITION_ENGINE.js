@@ -385,6 +385,21 @@ function sr29DistanceBetween(a,b,options={}) {
   if([ax,ay,bx,by].every(Number.isFinite))return Math.max(Math.abs(ax-bx),Math.abs(ay-by))*5;
   return null;
 }
+function sr29FrightenedMovementBlocked(actor,from,to,snapshot=state) {
+  if(!actor||!from||!to)return false;
+  const effects=sr29Entries(actor).filter(item=>item.name==='frightened'&&item.sourceVisible===true);
+  if(!effects.length)return false;
+  const participants=sr29CombatParticipants(snapshot);
+  for(const effect of effects){
+    const sourceId=String(effect.sourceId||effect.sourceName||'');
+    if(!sourceId)continue;
+    const source=participants.find(row=>row.actor!==actor&&row.ids.includes(sourceId));
+    if(!source?.pos)continue;
+    const before=sr29DistanceBetween(from,source.pos),after=sr29DistanceBetween(to,source.pos);
+    if(Number.isFinite(before)&&Number.isFinite(after)&&after<before)return true;
+  }
+  return false;
+}
 function sr29ReleaseGrapple(target,options={}) {
   if(!target)return {released:false,removed:0};
   const matches=sr29Entries(target).filter(item=>item.name==='grappled'&&
@@ -988,7 +1003,7 @@ globalThis.__SR29_TEST={
   namesFor:sr29Names,status:sr29Status,isImmune:sr29IsImmune,changeExhaustion:sr29ChangeExhaustion,
   longRestExhaustion:sr29LongRestExhaustion,autoFailSave:sr29AutoFailSave,attackState:sr29AttackState,
   skillMode:sr29SkillMode,criticalOnHit:sr29CriticalOnHit,canAct:sr29CanAct,canMove:sr29CanMove,
-  canMoveToward:sr29CanMoveToward,cannotHarm:sr29CannotHarm,socialCheckAdvantage:sr29SocialCheckAdvantage,
+  canMoveToward:sr29CanMoveToward,frightenedMovementBlocked:sr29FrightenedMovementBlocked,cannotHarm:sr29CannotHarm,socialCheckAdvantage:sr29SocialCheckAdvantage,
   conditionPanel:sr29ConditionPanel,uiTargets:sr29UiTargets,resolveUiTarget:sr29UiTarget,
   canonicalAbilityCheck:sr29CanonicalAbilityCheck,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,
   damageMultiplier:sr29DamageMultiplier,applyEnemyDamage:typeof sr12ApplyDamage==='function'?sr12ApplyDamage:null,
