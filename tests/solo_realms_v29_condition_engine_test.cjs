@@ -53,7 +53,7 @@ try{
  context.render=revivalPriorRender;
 
  const revivalClock=Date.UTC(2026,10,27,12,0,0);
- const revivalProbe=deathAt=>actor({hp:0,mpDead:true,deathAt});
+ const revivalProbe=deathAt=>actor({hp:0,mpDead:true,creatureTypeAtDeath:'Humanoid',deathAt});
  const centuryCutoff=new Date(revivalClock);centuryCutoff.setUTCFullYear(centuryCutoff.getUTCFullYear()-100);
  const bicenturyCutoff=new Date(revivalClock);bicenturyCutoff.setUTCFullYear(bicenturyCutoff.getUTCFullYear()-200);
  const tenDays=10*24*60*60*1000;
@@ -76,6 +76,24 @@ try{
  assert('Resurrection eligibility uses the exact 100-calendar-year boundary, including leap-year spans',centuryEligibility.ok&&!centuryBeforeEligibility.ok,JSON.stringify({cutoff:centuryCutoff.toISOString(),now:new Date(revivalClock).toISOString(),at:centuryEligibility,before:centuryBeforeEligibility,character:revivalProbe(centuryCutoff.getTime())}));
  const bicenturyEligibility=RV.revivalEligibility(revivalProbe(bicenturyCutoff.getTime()),'True Resurrection',revivalClock),bicenturyBeforeEligibility=RV.revivalEligibility(revivalProbe(bicenturyCutoff.getTime()-1),'True Resurrection',revivalClock);
  assert('True Resurrection eligibility uses the exact 200-calendar-year boundary, including leap-year spans',bicenturyEligibility.ok&&!bicenturyBeforeEligibility.ok,JSON.stringify({cutoff:bicenturyCutoff.toISOString(),now:new Date(revivalClock).toISOString(),at:bicenturyEligibility,before:bicenturyBeforeEligibility,character:revivalProbe(bicenturyCutoff.getTime())}));
+ const oldAgeTarget=revivalProbe(revivalClock-1000);oldAgeTarget.causeOfDeath='old age';
+ assert('Old-age deaths are rejected by Revivify, Resurrection and True Resurrection',!RV.revivalEligibility(oldAgeTarget,'Revivify',revivalClock).ok&&!RV.revivalEligibility(oldAgeTarget,'Resurrection',revivalClock).ok&&!RV.revivalEligibility(oldAgeTarget,'True Resurrection',revivalClock).ok);
+ assert('Raise Dead and Reincarnate follow their printed eligibility text and do not inherit an unstated old-age exclusion',RV.revivalEligibility(oldAgeTarget,'Raise Dead',revivalClock).ok&&RV.revivalEligibility(oldAgeTarget,'Reincarnate',revivalClock).ok);
+ const undeadTarget=revivalProbe(revivalClock-1000);undeadTarget.creatureTypeAtDeath='Undead';undeadTarget.undeadAtDeath=true;
+ assert('Raise Dead and Resurrection reject a target that was Undead at death',!RV.revivalEligibility(undeadTarget,'Raise Dead',revivalClock).ok&&!RV.revivalEligibility(undeadTarget,'Resurrection',revivalClock).ok);
+ assert('True Resurrection permits an Undead target and restores its eligibility',RV.revivalEligibility(undeadTarget,'True Resurrection',revivalClock).ok);
+ assert('Reincarnate accepts a dead Humanoid or piece but rejects a creature whose type at death was not Humanoid',RV.revivalEligibility(revivalProbe(revivalClock-1000),'Reincarnate',revivalClock).ok&&!RV.revivalEligibility({...revivalProbe(revivalClock-1000),creatureTypeAtDeath:'Beast'},'Reincarnate',revivalClock).ok);
+ const missingLimb=revivalProbe(revivalClock-1000);missingLimb.missingBodyParts=['left hand'];
+ assert('Revivify rejects any recorded missing body part while Raise Dead and new-body Reincarnate do not restore that missing part',!RV.revivalEligibility(missingLimb,'Revivify',revivalClock).ok&&RV.revivalEligibility(missingLimb,'Raise Dead',revivalClock).ok&&RV.revivalEligibility(missingLimb,'Reincarnate',revivalClock).ok);
+ const missingVital=revivalProbe(revivalClock-1000);missingVital.missingBodyParts=['head'];
+ assert('Raise Dead automatically fails when a vital part such as the head is missing, while Resurrection can restore it',!RV.revivalEligibility(missingVital,'Raise Dead',revivalClock).ok&&RV.revivalEligibility(missingVital,'Resurrection',revivalClock).ok);
+ const explicitlyMissingVital=revivalProbe(revivalClock-1000);explicitlyMissingVital.missingVitalParts=['heart'];
+ assert('Raise Dead also rejects an explicitly missing integral organ',RV.hasMissingVitalParts(explicitlyMissingVital)&&!RV.revivalEligibility(explicitlyMissingVital,'Raise Dead',revivalClock).ok);
+ const snapshotHuman=actor({ancestry:'Human',creatureType:'Humanoid',diedOfOldAge:true});
+ const snapshotUndead=actor({ancestry:'Human',creatureType:'Undead'});
+ D.recordDeathSnapshot(snapshotHuman);D.recordDeathSnapshot(snapshotUndead);
+ assert('Death recording snapshots Humanoid type and an explicit old-age cause without guessing age from years lived',snapshotHuman.creatureTypeAtDeath==='Humanoid'&&snapshotHuman.causeOfDeath==='old-age'&&D.isOldAgeDeath(snapshotHuman));
+ assert('Death recording preserves explicit Undead type at the time of death rather than inferring it from ancestry',snapshotUndead.creatureTypeAtDeath==='Undead'&&snapshotUndead.undeadAtDeath===true&&D.wasUndeadAtDeath(snapshotUndead));
  assert('An unconscious or stable creature at 0 HP is not classified as a dead resurrection target',!RV.revivalEligibility(actor({hp:0,mpDead:false,dead:false,deathAt:revivalClock-1000}),'Revivify',revivalClock).ok);
  assert('A missing or future death timestamp cannot satisfy revival eligibility',!RV.revivalEligibility(actor({hp:0,mpDead:true}),'Revivify',revivalClock).ok&&!RV.revivalEligibility(revivalProbe(revivalClock+1),'Revivify',revivalClock).ok);
 
@@ -109,11 +127,11 @@ try{
  T.gameplay.setSpellData('Cure Wounds',{name:'Cure Wounds',level:1,classes:['Cleric'],kind:'heal',range:'Touch',castingTime:'Action',components:'V, S',description:'A creature regains hit points.'});
  const resurrectionCaster=actor({id:'resurrection-caster',name:'Resurrection Cleric',classId:'Cleric',level:13,classLevels:{Cleric:13},spells:['Resurrection','Cure Wounds'],preparedSpells:['Resurrection','Cure Wounds'],spellSlotsByLevel:{1:2,7:1},spellSlotSpentThisTurn:false});
  const resurrectionCasterPlayer={id:'resurrection-caster',name:'Resurrection Cleric',connected:true,character:resurrectionCaster};
- const resurrectionTarget=actor({id:'resurrection-target',name:'Resurrection Target',hp:0,maxHp:48,mpDead:true,dead:true,deathAt:Date.now()-365*24*60*60*1000,deathFailure:3});
+ const resurrectionTarget=actor({id:'resurrection-target',name:'Resurrection Target',hp:0,maxHp:48,mpDead:true,dead:true,deathAt:Date.now()-365*24*60*60*1000,deathFailure:3,missingBodyParts:['left arm','heart'],missingVitalParts:['heart']});
  const resurrectionTargetPlayer={id:'resurrection-target',name:'Resurrection Target',connected:true,character:resurrectionTarget};
  T18.state={character:resurrectionCaster,campaign:{day:1,region:'Resurrection Tax Test',location:'Resurrection Tax Test',visited:['Resurrection Tax Test'],companions:[],npcs:[],sideQuests:[],story:{},flags:{},mainQuest:{kind:'test',title:'Resurrection Tax Test',goal:'Validate the caster tax'},multiplayer:{active:true,players:[resurrectionCasterPlayer,resurrectionTargetPlayer]}},combat:null,log:[]};
  const resurrectionCast=T.gameplay.castSpell(resurrectionCasterPlayer,'Resurrection','resurrection-target',true);
- assert('Resurrection of a target dead at least 365 days restores the target and taxes the caster',resurrectionCast===true&&resurrectionTarget.hp===48&&resurrectionTarget.revivalD20Penalty===4&&resurrectionCaster.resurrectionCasterTax===true,JSON.stringify({resurrectionCast,caster:resurrectionCaster,target:{hp:resurrectionTarget.hp,penalty:resurrectionTarget.revivalD20Penalty}}));
+ assert('Resurrection of a target dead at least 365 days restores the target and taxes the caster',resurrectionCast===true&&resurrectionTarget.hp===48&&resurrectionTarget.revivalD20Penalty===4&&resurrectionTarget.missingBodyParts.length===0&&resurrectionTarget.missingVitalParts.length===0&&resurrectionCaster.resurrectionCasterTax===true,JSON.stringify({resurrectionCast,caster:resurrectionCaster,target:{hp:resurrectionTarget.hp,penalty:resurrectionTarget.revivalD20Penalty}}));
  const slotsBeforeTaxedCast={...resurrectionCaster.spellSlotsByLevel};
  const lockedCast=T.gameplay.castSpell(resurrectionCasterPlayer,'Cure Wounds',null,true);
  assert('A taxed Resurrection caster cannot cast another spell before a Long Rest',lockedCast===false&&JSON.stringify(resurrectionCaster.spellSlotsByLevel)===JSON.stringify(slotsBeforeTaxedCast),JSON.stringify({lockedCast,slots:resurrectionCaster.spellSlotsByLevel,toast:toast.textContent}));
@@ -1187,7 +1205,7 @@ try{
   assert('Monster critical bonus dice preserve flat attack damage modifiers',T18.criticalExtraDice('2d6+4')==='2d6'&&T18.criticalExtraDice('1d8 + 1d6 + 3')==='1d8+1d6'&&T18.criticalExtraDice('1d10-2')==='1d10');
 
   const D=context.__SR29_DEATH_TEST;
-  assert('V29.51 Resurrection caster-tax and return-penalty lifecycle is installed',!!D&&D.version==='29.51.0'&&typeof D.deathSave==='function');
+  assert('V29.52 spell-specific revival eligibility and caster-tax lifecycle is installed',!!D&&D.version==='29.52.0'&&typeof D.deathSave==='function');
 
   const soloCriticalHero=actor({id:'solo-critical-hero',name:'Solo Critical Hero',hp:30,maxHp:30,armor:'Traveler’s clothes'});
   const soloCriticalEnemy={id:'solo-critical-enemy',name:'Solo Critical Monster',attack:100,damage:'1d6',pos:{x:2,y:1}};
