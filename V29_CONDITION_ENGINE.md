@@ -323,3 +323,12 @@ Still incomplete: Reincarnate's complete species-specific trait automation and p
 - Corrected the non-Undead restoration so a target without an existing current creature-type field receives its saved pre-Undead type (or the player Humanoid fallback).
 - Material price parsing now accepts the 2024 component notation `25,000+ GP`; the end-to-end True Resurrection cast therefore validates and consumes its 25,000 gp diamond instead of bypassing the minimum-value check.
 - Added regressions for the missing current-type field and the exact 25,000+ gp component notation.
+
+
+## V29.59 — Interruptible long-casting activity
+
+- Spells with a casting time of at least one minute now start a saved pending activity instead of resolving instantly. The spell must be known/prepared, have an available slot, satisfy revival eligibility and have its priced material available before the activity begins.
+- Starting a cast does not spend a spell slot or consume a component. Completion routes back through the existing spell resolver, which rechecks current spell/target state and performs the resource transaction only at the end.
+- The campaign clock now tracks minute-of-day alongside its existing four-hour watch and day. The Spellbook offers ten-minute focused-casting segments; a one-hour spell therefore takes six segments. The caster can cancel, and starting another action, submitting an action form, or taking combat damage can interrupt the activity.
+- Damage forces a Constitution saving throw (DC 10 or half the damage, whichever is higher). A failed save interrupts the cast without expending its slot or material; a successful save maintains focus. Incapacitation also interrupts.
+- Regressions cover pending/start state, no early expenditure, minute-clock advancement, completion, interruption, and concentration failure. This is an out-of-combat activity model; the app still does not simulate all 600 six-second combat turns within a one-hour casting time. Death/recovery remains **Partial**.
