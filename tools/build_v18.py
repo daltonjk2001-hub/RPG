@@ -287,6 +287,17 @@ def build_runtime() -> str:
             )
         base = base.replace(old_check, new_check)
 
+    # A monster can attack an Unconscious hero at 0 HP. Do not stop the
+    # active V11 monster action or turn dispatcher merely because the hero is down.
+    solo_v11_attack_guard = "const c=state.character;if(!e||c.hp<=0)return;"
+    if base.count(solo_v11_attack_guard) != 1:
+        raise SystemExit("Expected one active V11 solo monster attack HP guard.")
+    base = base.replace(solo_v11_attack_guard, "const c=state.character;if(!e)return;")
+    solo_v11_turn_guard = "if(sr9Dist(e.pos,b.heroPos)<=5&&state.character.hp>0)sr10EnemyAttack(e);"
+    if base.count(solo_v11_turn_guard) != 1:
+        raise SystemExit("Expected one active V11 solo monster turn HP guard.")
+    base = base.replace(solo_v11_turn_guard, "if(sr9Dist(e.pos,b.heroPos)<=5)sr10EnemyAttack(e);")
+
     # The final V11 initiative adapter replaces the older V10 enemy attack;
     # route that active implementation through canonical critical resolution.
     solo_v11_hit = "total=roll.total,hit=roll.r===20||(roll.r!==1&&total>=ac);"
