@@ -906,8 +906,8 @@ if(typeof sr21ResolvePlayerAction==='function') {
   const sr29PriorResolvePlayerAction=sr21ResolvePlayerAction;
   sr21ResolvePlayerAction=function(text,options={}) {
     const action=String(text||''),effective={...(options||{})};
-    const mode=SR20_MODES.includes(effective.mode)&&effective.mode!=='auto'?effective.mode:sr21InferMode(action);
-    if(mode==='social'&&typeof sr20FindNPC==='function'){
+    const socialMode=SR20_MODES.includes(effective.mode)&&effective.mode!=='auto'?effective.mode:sr21InferMode(action);
+    if(socialMode==='social'&&typeof sr20FindNPC==='function'){
       const socialTarget=sr20FindNPC(effective.target,action);
       if(sr29SocialCheckAdvantage(state?.character,socialTarget))effective.advantage=true;
     }
