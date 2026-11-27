@@ -123,10 +123,7 @@ if(typeof sr12DamageHero==='function'){
     if(c?.mpDead&&!Number(c.deathAt))c.deathAt=Date.now();
     // V13.2 already owns multiplayer downed-hit failures. This adapter only
     // consumes the V29 source marker after that canonical transaction.
-    if(source&&(hasCriticalMarker||source.lastAttackCritical===true)){
-      delete source._sr29AttackCriticalPending;
-      delete source.lastAttackCritical;
-    }
+    if(source&&hasCriticalMarker)delete source._sr29AttackCriticalPending;
     return result;
   };
 }
