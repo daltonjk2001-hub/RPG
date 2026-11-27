@@ -1262,6 +1262,15 @@ try{
   try{D.multiplayerEnemyTurn(mpStandingCriticalEnemy);}finally{math.random=priorMpStandingCriticalRandom;}
   assert('Multiplayer monster natural-20 critical damage doubles dice but not the flat modifier',mpStandingCriticalHero.hp===30&&mpStandingCriticalHero.tempHP===85&&mpStandingCriticalEnemy._sr29LastAttackCritical===true&&!mpStandingCriticalEnemy.lastAttackCritical,JSON.stringify({hp:mpStandingCriticalHero.hp,tempHP:mpStandingCriticalHero.tempHP,critical:mpStandingCriticalEnemy._sr29LastAttackCritical}));
 
+
+  const mpOpportunityHero=actor({id:'mp-opportunity-hero',name:'MP Opportunity Hero',hp:30,maxHp:30,tempHP:100,movement:30,movementSpent:0,mpDowned:false,mpDead:false,conditions:[]});
+  const mpOpportunityPlayer={id:'mp-opportunity-hero',name:'MP Opportunity Hero',connected:true,character:mpOpportunityHero};
+  const mpOpportunityEnemy={id:'mp-opportunity-enemy',name:'MP Opportunity Monster',attack:100,damage:'1d6+3',hp:20,maxHp:20,reactionAvailable:true,pos:{x:1,y:1}};
+  T18.state={character:mpOpportunityHero,campaign:{multiplayer:{active:true,players:[mpOpportunityPlayer]},companions:[]},combat:{mp:{heroPositions:{'mp-opportunity-hero':{x:2,y:1}},turnOrder:[],index:0},heroPos:{x:2,y:1},enemies:[mpOpportunityEnemy],map:{width:8,height:6,terrain:[]},round:1},log:[]};
+  const priorOpportunityRandom=math.random;math.random=()=>0.999;
+  let mpOpportunityMoved=false;try{mpOpportunityMoved=T.gameplay.moveHero(mpOpportunityPlayer,3,1);}finally{math.random=priorOpportunityRandom;}
+  assert('Multiplayer monster opportunity attack on a departing hero doubles damage dice only',mpOpportunityMoved&&mpOpportunityHero.hp===30&&mpOpportunityHero.tempHP===85&&T18.state.combat.mp.heroPositions['mp-opportunity-hero'].x===3&&mpOpportunityEnemy.reactionAvailable===false&&mpOpportunityEnemy._sr29LastAttackCritical===true&&!mpOpportunityEnemy.lastAttackCritical&&!mpOpportunityEnemy._sr29AttackCriticalPending,JSON.stringify({moved:mpOpportunityMoved,hp:mpOpportunityHero.hp,tempHP:mpOpportunityHero.tempHP,pos:T18.state.combat.mp.heroPositions['mp-opportunity-hero'],enemy:mpOpportunityEnemy}));
+
   const mpDownedCriticalHero=actor({id:'mp-downed-critical-hero',name:'MP Downed Critical Hero',hp:0,maxHp:20,tempHP:100,mpDowned:true,mpDead:false,stable:false,unconscious:true,deathSuccess:0,deathFailure:0,conditions:[{name:'unconscious',duration:999}]});
   const mpDownedCriticalPlayer={id:'mp-downed-critical-hero',name:'MP Downed Critical Hero',connected:true,character:mpDownedCriticalHero};
   const mpDownedCriticalEnemy={id:'mp-downed-critical-enemy',name:'MP Downed Critical Monster',attack:100,damage:'1d6+3',pos:{x:2,y:1}};
