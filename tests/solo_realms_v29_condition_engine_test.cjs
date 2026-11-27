@@ -1187,7 +1187,7 @@ try{
   assert('Monster critical bonus dice preserve flat attack damage modifiers',T18.criticalExtraDice('2d6+4')==='2d6'&&T18.criticalExtraDice('1d8 + 1d6 + 3')==='1d8+1d6'&&T18.criticalExtraDice('1d10-2')==='1d10');
 
   const D=context.__SR29_DEATH_TEST;
-  assert('V29.50 revival return-penalty lifecycle is installed',!!D&&D.version==='29.50.0'&&typeof D.deathSave==='function');
+  assert('V29.51 Resurrection caster-tax and return-penalty lifecycle is installed',!!D&&D.version==='29.51.0'&&typeof D.deathSave==='function');
 
   const soloCriticalHero=actor({id:'solo-critical-hero',name:'Solo Critical Hero',hp:30,maxHp:30,armor:'Traveler’s clothes'});
   const soloCriticalEnemy={id:'solo-critical-enemy',name:'Solo Critical Monster',attack:100,damage:'1d6',pos:{x:2,y:1}};
