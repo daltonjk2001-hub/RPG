@@ -401,7 +401,7 @@ try{
  assert('Cunning Action Dash adds the Exhaustion-adjusted Speed, not the unmodified base Speed',exhaustedCunningDash===true&&dashRogue.movement===40&&dashRogue.speed===30);
  const windMonk=actor({id:'wind-monk',name:'Wind Monk',classId:'Monk',classLevels:{Monk:2},level:2,baseMovement:30,movementBonus:0,movement:20,speed:30,exhaustion:2,focus:2,focusMax:2,resourcesByClass:{Monk:{focus:2}},bonusActionSpent:false});
  const windMonkPlayer={id:'wind-monk',name:'Wind Monk',connected:true,character:windMonk};
- T18.state={character:windMonk,campaign:{day:1,region:'Wind Test',location:'Wind Test',visited:[],companions:[],npcs:[],sideQuests:[],story:{},flags:{},mainQuest:{kind:'test',title:'Wind Test',goal:'Validate Step of the Wind'},multiplayer:{players:[windMonkPlayer]}},combat:{mp:{turnOrder:[{id:'wind-monk',kind:'hero'}],index:0,heroPositions:{'wind-monk':{x:1,y:1}}},heroPos:{x:1,y:1},enemies:[],round:1},log:[]};
+ T18.state={character:windMonk,campaign:{day:1,region:'Wind Test',location:'Wind Test',visited:[],companions:[],npcs:[],sideQuests:[],story:{},flags:{},mainQuest:{kind:'test',title:'Wind Test',goal:'Validate Step of the Wind'},multiplayer:{players:[windMonkPlayer]}},combat:{mp:{turnOrder:[{id:'wind-monk',kind:'hero'}],index:0,heroPositions:{'wind-monk':{x:1,y:1}}},heroPos:{x:1,y:1},enemies:[],map:{width:8,height:6,terrain:[]},initiativeOrder:[],round:1},log:[]};
  T.gameplay.beginHeroTurn(windMonkPlayer);
  const exhaustedStepOfWind=T.gameplay.runFeature(windMonkPlayer,'stepOfWind','dash');
  assert('Step of the Wind Dash adds the Exhaustion-adjusted Speed and restores base movement metadata',exhaustedStepOfWind===true&&windMonk.movement===40&&windMonk.baseMovement===30&&windMonk.resourcesByClass.Monk.focus===1);
