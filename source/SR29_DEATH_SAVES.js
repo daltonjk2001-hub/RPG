@@ -132,6 +132,7 @@ if(typeof sr12DamageHero==='function'){
       const critical=criticalSource;
       const massive=damageAfterGuard>=Math.max(1,Number(c.maxHp)||Infinity);
       const failures=massive?3:(critical?2:1);
+      console.log('V29 MP downed damage diagnostic',{amount,damageAfterGuard,maxHp:c.maxHp,critical,massive,priorFailures:c.deathFailure,failures,source});
       c.deathFailure=Math.min(3,(Number(c.deathFailure)||0)+failures);
       if(massive||c.deathFailure>=3){
         c.mpDead=true;c.mpDowned=true;c.deathAt=Date.now();
