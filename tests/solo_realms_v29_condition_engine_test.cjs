@@ -31,6 +31,15 @@ for(const pattern of ['const ANCESTRIES','ANCESTRIES[data.ancestry]','ancestry.b
   from=index+pattern.length;
  }
  console.log("ANCESTRY_PIPELINE "+pattern+" "+JSON.stringify({count:hits.length,hits}));
+for(const token of ["ancestry==='Dwarf'","ancestry==='Tiefling'","ancestry==='Aasimar'","ancestry==='Dragonkin'","ancestry==='Elf'","ancestry==='Halfling'","dragonBreathUsed","radiantTouchUsed","elfSense","flags.lucky","ancestry.bonus","maxHp+=2","maxHp =","levelUp"]){
+ const hits=[];let from=0,index=-1;
+ while((index=html.indexOf(token,from))>=0&&hits.length<12){
+  hits.push({line:html.slice(0,index).split("\\n").length,excerpt:html.slice(Math.max(0,index-220),Math.min(html.length,index+850)).replace(/\\s+/g," ")});
+  from=index+token.length;
+ }
+ console.log("ANCESTRY_RULE "+token+" "+JSON.stringify({count:hits.length,hits}));
+}
+
 }
 
 function assert(name,value,detail=''){checks.push({name,pass:!!value,detail:String(detail||'')});}
