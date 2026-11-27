@@ -23,6 +23,7 @@ vm.runInNewContext(scripts[0],context,{timeout:60000,filename:'Solo_Realms_V29_C
 const T=context.__SR29_TEST,T25=context.__SR25_TEST,T21=context.__SR21_TEST,T18=context.__SR18_TEST,RV=context.__SR29_DEATH_TEST;
 if(!T||!T25||T.version!=='29.0.0')throw new Error('V29 condition engine or typed-save integration is missing.');
 const checks=[];
+console.log('REINCARNATE_SCHEMA '+JSON.stringify({names:T18.ancestryNames,records:T18.ancestryData}));
 function assert(name,value,detail=''){checks.push({name,pass:!!value,detail:String(detail||'')});}
 function actor(extra={}){return {id:'v29-target',name:'V29 Target',hp:30,maxHp:30,baseSpeed:30,speed:30,
  stats:{STR:10,DEX:10,CON:10,INT:10,WIS:10,CHA:10},conditions:[],activeEffects:[],...extra};}
