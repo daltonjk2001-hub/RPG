@@ -1116,6 +1116,11 @@ try{
   T18.state={character:healedDeathHero,campaign:{companions:[],day:1},combat:{mp:null,downed:true,round:1,enemies:[]},log:[]};
   const soloHealAmount=context.heal(5);
   assert('Healing above 0 HP clears solo stable, unconscious and death-save state',soloHealAmount===5&&healedDeathHero.hp===5&&!healedDeathHero.stable&&!healedDeathHero.unconscious&&healedDeathHero.deathSuccess===0&&healedDeathHero.deathFailure===0&&!T18.state.combat.downed);
+
+  const deadHero=actor({id:'dead-hero',name:'Dead Hero',hp:0,maxHp:20,mpDead:true,deathAt:123,stable:false,unconscious:true});
+  T18.state={character:deadHero,campaign:{companions:[],day:1},combat:{mp:null,downed:true,round:1,enemies:[]},log:[]};
+  const deadHealAmount=context.heal(10);
+  assert('Ordinary healing cannot revive a dead solo character',deadHealAmount===0&&deadHero.hp===0&&deadHero.mpDead===true&&deadHero.deathAt===123);
   const newlyDownedHero=actor({id:'newly-downed-hero',name:'Newly Downed Hero',hp:4,maxHp:20});
   T18.state={character:newlyDownedHero,campaign:{companions:[],day:1},combat:{mp:null,downed:false,round:1,enemies:[]},log:[]};
   const appliedDamage=context.damagePlayer(9);
