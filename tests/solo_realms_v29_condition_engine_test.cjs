@@ -1109,16 +1109,16 @@ try{
   T.gameplay.setSpellData('V29 Critical Bolt',{name:'V29 Critical Bolt',level:0,classes:['Wizard'],attack:true,damage:'1d6+3',damageType:'force',range:'30 feet',castingTime:'Action',description:'Make a ranged spell attack against one creature.'});
   T18.state={character:srdSpellCaster,campaign:{day:1,region:'Spell Critical Test',location:'Spell Critical Test',visited:['Spell Critical Test'],companions:[],npcs:[],sideQuests:[],story:{},flags:{},mainQuest:{kind:'test',title:'Spell Critical Test',goal:'Validate spell criticals'}},combat:{mp:null,heroPos:{x:1,y:1},target:0,enemies:[srdSpellTarget],map:{width:8,height:6,terrain:[]},round:1},log:[]};
   T.apply(srdSpellTarget,'paralyzed','permanent','SRD spell critical regression');
-  const priorSrdSpellRandom=math.random,srdSpellRolls=[0.5,0.5,0.999,0.999];math.random=()=>srdSpellRolls.length?srdSpellRolls.shift():0.5;
+  const priorSrdSpellRandom=math.random,srdSpellRolls=[0.5,0.5,0.5,0.999];math.random=()=>srdSpellRolls.length?srdSpellRolls.shift():0.5;
   let srdSpellCast=false;try{srdSpellCast=T.gameplay.castSpell({id:'solo',name:'SRD Spell Caster',character:srdSpellCaster},'V29 Critical Bolt');}finally{math.random=priorSrdSpellRandom;}
-  assert('SRD spell attack automatically critical-hits a Paralyzed target within 5 feet and doubles dice only',srdSpellCast===true&&srdSpellTarget.hp===5&&T18.state.log.some(x=>/critically hits Paralyzed SRD Spell Target/.test(x.msg)),JSON.stringify({cast:srdSpellCast,hp:srdSpellTarget.hp,log:T18.state.log.slice(-5)}));
+  assert('SRD spell attack automatically critical-hits a Paralyzed target within 5 feet and doubles dice only',srdSpellCast===true&&srdSpellTarget.hp===7&&srdSpellTarget._sr29LastSpellAttackRoll!==20&&srdSpellTarget._sr29LastSpellAttackCritical===true&&T18.state.log.some(x=>/critically hits Paralyzed SRD Spell Target on d20 11/.test(x.msg)),JSON.stringify({cast:srdSpellCast,hp:srdSpellTarget.hp,log:T18.state.log.slice(-5)}));
   const legacySpellCaster=actor({id:'legacy-spell-caster',name:'Legacy Spell Caster',classId:'Wizard',level:5,classLevels:{Wizard:5},stats:{STR:10,DEX:10,CON:10,INT:20,WIS:10,CHA:10}});
   const legacySpellTarget=actor({id:'legacy-spell-target',name:'Paralyzed Legacy Spell Target',hp:20,maxHp:20,ac:1,pos:{x:2,y:1}});
   T18.state={character:legacySpellCaster,campaign:{},combat:{mp:null,heroPos:{x:1,y:1},enemies:[legacySpellTarget],map:{width:8,height:6,terrain:[]},round:1},log:[]};
   T.apply(legacySpellTarget,'paralyzed','permanent','legacy spell critical regression');
-  const priorLegacySpellRandom=math.random,legacySpellRolls=[0.5,0.5,0.999,0.999];math.random=()=>legacySpellRolls.length?legacySpellRolls.shift():0.5;
+  const priorLegacySpellRandom=math.random,legacySpellRolls=[0.5,0.5,0.5,0.999];math.random=()=>legacySpellRolls.length?legacySpellRolls.shift():0.5;
   let legacySpellDamage=0;try{legacySpellDamage=T18.spellDamage(legacySpellTarget,{name:'Legacy Bolt',kind:'damage',dice:'1d6+3',damageType:'force'},legacySpellCaster,{attack:true});}finally{math.random=priorLegacySpellRandom;}
-  assert('Legacy multiplayer spell-damage resolver applies condition criticals and doubles only damage dice',legacySpellDamage===15&&legacySpellTarget.hp===5&&T18.state.log.some(x=>/critically hits Paralyzed Legacy Spell Target/.test(x.msg)),JSON.stringify({damage:legacySpellDamage,hp:legacySpellTarget.hp,log:T18.state.log}));
+  assert('Legacy multiplayer spell-damage resolver applies condition criticals and doubles only damage dice',legacySpellDamage===13&&legacySpellTarget.hp===7&&legacySpellTarget._sr29LastSpellAttackRoll!==20&&legacySpellTarget._sr29LastSpellAttackCritical===true&&T18.state.log.some(x=>/critically hits Paralyzed Legacy Spell Target on d20 11/.test(x.msg)),JSON.stringify({damage:legacySpellDamage,hp:legacySpellTarget.hp,log:T18.state.log}));
 
   const soloRogueTarget=actor({id:'solo-rogue-target',name:'Paralyzed Rogue Target',hp:100,maxHp:100,ac:1,pos:{x:2,y:1}});
   const soloRogueTerrain=[];for(let x=0;x<8;x++)for(let y=0;y<6;y++)soloRogueTerrain.push({x,y,kind:'floor'});
