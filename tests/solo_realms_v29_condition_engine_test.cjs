@@ -1220,7 +1220,7 @@ try{
   const validatedDeathSave=T18.validateSave(JSON.parse(JSON.stringify(deathSavePayload)));
   assert('Save validation and JSON round-trip preserve downed, stable and death timestamp fields',validatedDeathSave.ok&&validatedDeathSave.state.character.deathSuccess===2&&validatedDeathSave.state.character.deathFailure===1&&validatedDeathSave.state.character.stable===true&&validatedDeathSave.state.character.stableRecoveryHours===3&&validatedDeathSave.state.character.stableElapsedHours===2&&validatedDeathSave.state.character.deathAt===123456&&validatedDeathSave.state.combat.downed===true);
 
-  const mpStableHero=actor({id:'mp-stable-hero',name:'MP Stable Hero',hp:0,maxHp:20,mpDowned:true,mpDead:false,stable:false,deathSuccess:2,deathFailure:0,unconscious:true,conditions:[{name:'unconscious',duration:999}]});
+  const mpStableHero=actor({id:'mp-stable-hero',name:'MP Stable Hero',classId:'Fighter',ancestry:'Human',level:5,inventory:[],proficiencies:[],hp:0,maxHp:20,mpDowned:true,mpDead:false,stable:false,deathSuccess:2,deathFailure:0,unconscious:true,conditions:[{name:'unconscious',duration:999}]});
   const mpStablePlayer={id:'mp-stable-hero',name:'MP Stable Hero',connected:true,character:mpStableHero};
   T18.state={character:mpStableHero,campaign:{day:1,multiplayer:{active:true,players:[mpStablePlayer]}},combat:{mp:{},enemies:[]},log:[]};
   const priorMpStableRandom=math.random;math.random=()=>0.5;
