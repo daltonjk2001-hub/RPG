@@ -352,8 +352,8 @@ function sr18ResolveMonsterAction(enemy,action,target){
  sr18TeleportMonster(enemy,target,desc);
  // A teleport-only stat-block action consumes its action; it must not fall through to the legacy default 1d4 attack.
  if(teleportIntent&&!save&&!sr14MonsterActionDamage(action)&&!action.damage?.length&&!/\b(?:attack roll|melee attack|ranged attack|hit:|damage)\b/i.test(desc))return true;
- const range=sr18ParseActionRange(action),dist=enemy.pos&&target.pos?sr12Distance(enemy.pos,target.pos):0;
- if(!range.ranged&&dist>range.reach){if(state.combat?.mp)sr12EnemyStep(enemy,target.pos);else if(typeof sr10EnemyMove==='function')sr10EnemyMove(enemy);return false;}
+ const range=sr18ParseActionRange(action),dist=enemy.pos&&target.pos?sr12Distance(enemy.pos,target.pos):null;
+ if(!range.ranged&&dist!==null&&dist>range.reach){if(state.combat?.mp)sr12EnemyStep(enemy,target.pos);else if(typeof sr10EnemyMove==='function')sr10EnemyMove(enemy);return false;}
  if(enemy.pos&&target.pos&&!sr11HasLOS(enemy.pos,target.pos))return false;
  const targets=save?sr18MonsterTargetsForAction(enemy,action,target,save):[target];let did=false;
  for(const t of targets){const hero=t.player,cc=hero.character;if(!cc||cc.hp<=0)continue;
@@ -385,7 +385,7 @@ function sr18ResolveMonsterAction(enemy,action,target){
    log(`${enemy.name} uses ${action.name}; ${hero.name} makes a ${save.ability} save (${result.total} vs DC ${save.dc}) and takes ${actual} ${type} damage${condition&&failedSave?` and gains ${condition}`:''}.`,'badlog');
   }else{
    const bonus=Number(action.attack_bonus??enemy.attack)||0,r=sr11RollAttack(bonus,enemy,cc,!range.ranged),ac=sr12WithHero(hero,()=>computeAC())+(cc.buffRounds>0?2:0)+(state.combat?.mp?sr11Cover(t.pos,enemy.pos):0),d20=sr25ResolveAttackRecord(r,ac),hit=d20.success;
-   if(hit){let amount=rollDice(dice);if(d20.critical)amount+=rollDice(dice);const actual=sr18MonsterApplyDamage(t,amount,type,enemy);sr18DisplaceCombatant(t,enemy,desc);log(`${enemy.name} uses ${action.name} against ${hero.name}: hit for ${actual} ${type} damage.`,'badlog');}else log(`${enemy.name} uses ${action.name} against ${hero.name}: miss.`,'rolllog');
+   if(hit){let amount=rollDice(dice);const automaticCritical=dist!==null&&typeof sr29CriticalOnHit==='function'&&sr29CriticalOnHit(cc,{hit,distance:dist}),critical=!!d20.critical||automaticCritical;if(critical)amount+=rollDice(dice);const actual=sr18MonsterApplyDamage(t,amount,type,enemy);sr18DisplaceCombatant(t,enemy,desc);log(`${enemy.name} uses ${action.name} against ${hero.name}: ${critical?'critical hit':'hit'} for ${actual} ${type} damage.`,'badlog');}else log(`${enemy.name} uses ${action.name} against ${hero.name}: miss.`,'rolllog');
   }
  }
  did=true;return did;
