@@ -345,7 +345,7 @@ function sr18TeleportMonster(enemy,target,description){
  log(enemy.name+' teleports to an unoccupied space '+plan.travelFeet+' feet away.','rolllog');
  return true;
 }
-function sr18CriticalExtraDice(expression){const terms=sr18Text(expression).match(/[+-]?\s*(?:\d+)?d\d+/gi)||[];return terms.map((term,index)=>{const value=term.replace(/\s/g,'');return index===0?value.replace(/^\+/,''):(value.startsWith('-')?value:'+'+value);}).join('');}
+function sr18CriticalExtraDice(expression){const terms=sr18Text(expression).match(/[+-]?\s*(?:\d+)?d\d+/gi)||[];return terms.map((term,index)=>{const value=term.replace(/\s/g,'');return index===0?value.replace(/^\+/,''):(value.startsWith('-')||value.startsWith('+')?value:'+'+value);}).join('');}
 function sr18ResolveMonsterAction(enemy,action,target){
  if(!target?.player?.character||!action||!sr18CanUseAction(enemy))return false;
  const p=target.player,c=p.character,desc=sr18Text(action.description),save=sr14ParseMonsterSave(desc),dice=sr14MonsterActionDamage(action)||'1d4',type=sr18Text(action.damage?.[0]?.type||'physical').toLowerCase();
