@@ -250,22 +250,29 @@ def build_runtime() -> str:
             )
         base = base.replace(old_check, new_check)
 
-    # V10's direct initiative monster attack path also uses the canonical condition advantage and critical rules.
-    solo_monster_attack = "let r=die(20),total=r+(Number(e.attack)||0)-2*(Number(e.exhaustion)||0),disadv=false;if(c.dodging){const r2=die(20);r=Math.min(r,r2);total=r+(Number(e.attack)||0)-2*(Number(e.exhaustion)||0);disadv=true;}const hit=r===20||(r!==1&&total>=ac);"
-    if base.count(solo_monster_attack) != 1:
-        raise SystemExit("Expected one V10 direct monster attack roll path.")
+    # The final V11 initiative adapter replaces the older V10 enemy attack;
+    # route that active implementation through canonical critical resolution.
+    solo_v11_hit = "total=roll.total,hit=roll.r===20||(roll.r!==1&&total>=ac);"
+    if base.count(solo_v11_hit) != 1:
+        raise SystemExit("Expected one active V11 solo initiative monster hit check.")
     base = base.replace(
-        solo_monster_attack,
-        "const conditionMode=sr29AttackState(e,c,{melee:true,distance:5});let mode=conditionMode.mode;const canSeeAttacker=!sr29Has(e,'invisible')&&!e.invisible&&!e.hidden&&!sr29Has(c,'blinded')&&!c.blinded;if(c.dodging&&canSeeAttacker)mode=mode==='advantage'?'normal':'disadvantage';const r1=die(20),r2=mode==='normal'?r1:die(20),r=mode==='advantage'?Math.max(r1,r2):mode==='disadvantage'?Math.min(r1,r2):r1,attackBonus=(Number(e.attack)||0)-2*(Number(e.exhaustion)||0),total=r+attackBonus,disadv=mode==='disadvantage';const hit=sr25AttackSuccess({r,total},ac),automaticCritical=hit&&sr29CriticalOnHit(c,{hit,distance:5}),critical=r===20||automaticCritical;",
+        solo_v11_hit,
+        "total=roll.total,hit=sr25AttackSuccess({r:roll.r,total},ac),automaticCritical=hit&&sr29CriticalOnHit(c,{hit,distance:dist}),critical=roll.r===20||automaticCritical;",
     )
-    solo_monster_log = "log(`${e.name} ${disadv?'attacks with disadvantage: ':''}d20 ${r} + ${Number(e.attack)||0} = ${total} vs AC ${ac}. ${hit?'Hit.':'Miss.'}`,hit?'badlog':'goodlog');"
-    if base.count(solo_monster_log) != 1:
-        raise SystemExit("Expected one V10 monster attack result log.")
-    base = base.replace(solo_monster_log, "log(`${e.name} ${disadv?'attacks with disadvantage: ':''}d20 ${r} + ${Number(e.attack)||0} = ${total} vs AC ${ac}. ${critical?'Critical hit.':hit?'Hit.':'Miss.'}`,hit?'badlog':'goodlog');")
-    solo_monster_critical = "if(r===20)dmg+=rollDice(e.damage||'1d4');"
-    if base.count(solo_monster_critical) != 1:
-        raise SystemExit("Expected one V10 monster natural-20 damage expression.")
-    base = base.replace(solo_monster_critical, "const criticalDice=sr18CriticalExtraDice(e.damage||'1d4');if(critical&&criticalDice)dmg+=rollDice(criticalDice);")
+    solo_v11_log = "log(`${e.name} ${roll.adv?'attacks with advantage':roll.dis?'attacks with disadvantage':'attacks'}: d20 ${roll.r} + ${base} = ${total} vs AC ${ac}. ${hit?'Hit.':'Miss.'}`,hit?'badlog':'goodlog');"
+    if base.count(solo_v11_log) != 1:
+        raise SystemExit("Expected one active V11 solo monster attack result log.")
+    base = base.replace(
+        solo_v11_log,
+        "log(`${e.name} ${roll.adv?'attacks with advantage':roll.dis?'attacks with disadvantage':'attacks'}: d20 ${roll.r} + ${base} = ${total} vs AC ${ac}. ${critical?'Critical hit.':hit?'Hit.':'Miss.'}`,hit?'badlog':'goodlog');",
+    )
+    solo_v11_critical = "if(roll.r===20)dmg+=rollDice(e.damage||'1d4');"
+    if base.count(solo_v11_critical) != 1:
+        raise SystemExit("Expected one active V11 solo monster critical-damage expression.")
+    base = base.replace(
+        solo_v11_critical,
+        "const criticalDice=sr18CriticalExtraDice(e.damage||'1d4');if(critical&&criticalDice)dmg+=rollDice(criticalDice);",
+    )
 
     # Route the solo initiative loop through the canonical turn-start death-save procedure.
     solo_downed_turn = "if(state.character.hp<=0){downed();if(!state.combat)return;const skipped=b.turnIndex+1;"
