@@ -438,7 +438,7 @@ def main() -> None:
 
     print(f"Built {PWA_HTML.relative_to(ROOT)} ({PWA_HTML.stat().st_size:,} bytes)")
     print(f"Synchronized {DOCS_DIR.relative_to(ROOT)}/ from {PWA_DIR.relative_to(ROOT)}/")
-    print("Assembled V18 rules, V19 Director/world, V20 gameplay/layout, V21 hardening, V23 Director-first gameplay, and V24 The Chronicler custom AI Director, V25 campaign ruleset contract, and V29 canonical condition engine V29.1 live grapple gameplay adapters, V29.38 solo death-save lifecycle, and V29.39 active solo monster attack parity.")
+    print("Assembled V18 rules, V19 Director/world, V20 gameplay/layout, V21 hardening, V23 Director-first gameplay, and V24 The Chronicler custom AI Director, V25 campaign ruleset contract, and V29 canonical condition engine V29.1 live grapple gameplay adapters, V29.38 solo death-save lifecycle, V29.39 active solo monster attack parity, and V29.40 timed stable recovery.")
 
 
 if __name__ == "__main__":
