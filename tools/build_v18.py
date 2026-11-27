@@ -338,12 +338,12 @@ def build_runtime() -> str:
 
     # Multiplayer enemy attacks use the same condition-based critical rule and
     # carry a one-shot critical marker into the downed-hero damage adapter.
-    mp_enemy_attack = "const roll=sr11RollAttack(base+(pack?2:0),enemy,c,true),cover=sr11Cover(target.pos,enemy.pos),ac=sr4WithCharRead(player,computeAC)+(c.buffRounds>0?2:0)+cover,hit=roll.r===20||(roll.r!==1&&roll.total>=ac);"
+    mp_enemy_attack = "const roll=sr11RollAttack(base+(pack?2:0),enemy,c,true),cover=sr11Cover(target.pos,enemy.pos),ac=sr4WithCharRead(player,computeAC)+(c.buffRounds>0?2:0)+cover,hit=sr25AttackSuccess(roll,ac);"
     if base.count(mp_enemy_attack) != 1:
         raise SystemExit("Expected one active multiplayer enemy attack resolver.")
     base = base.replace(
         mp_enemy_attack,
-        "const roll=sr11RollAttack(base+(pack?2:0),enemy,c,true),cover=sr11Cover(target.pos,enemy.pos),ac=sr4WithCharRead(player,computeAC)+(c.buffRounds>0?2:0)+cover,hit=roll.r===20||(roll.r!==1&&roll.total>=ac),critical=roll.r===20||(hit&&sr29CriticalOnHit(c,{hit,distance}));",
+        "const roll=sr11RollAttack(base+(pack?2:0),enemy,c,true),cover=sr11Cover(target.pos,enemy.pos),ac=sr4WithCharRead(player,computeAC)+(c.buffRounds>0?2:0)+cover,hit=sr25AttackSuccess(roll,ac),critical=roll.r===20||(hit&&sr29CriticalOnHit(c,{hit,distance}));",
     )
     mp_enemy_log = "log(`${enemy.name} ${roll.adv?'attacks with advantage':roll.dis?'attacks with disadvantage':'attacks'} ${player.name}: d20 ${roll.r} + ${base+(pack?2:0)} = ${roll.total} vs AC ${ac}. ${hit?'Hit':'Miss'}.`,hit?'badlog':'goodlog');"
     if base.count(mp_enemy_log) != 1:
