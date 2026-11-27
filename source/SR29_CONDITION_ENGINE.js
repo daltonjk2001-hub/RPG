@@ -848,6 +848,10 @@ if(typeof sr10EnemyMove==='function'){
   const sr29PriorEnemyMove=sr10EnemyMove;
   sr10EnemyMove=function(actor,...args){
     if(!sr29CanMove(actor))return false;
+    const goal=state?.combat?.heroPos;
+    if(goal&&actor?.pos&&sr29FrightenedMovementBlocked(actor,actor.pos,goal,state)){
+      log((actor.name||'The creature')+' cannot willingly move closer to the visible source of its Fear.','muted');return false;
+    }
     const base=Number(actor?.baseSpeed||actor?.speed||30),exhaustion=Math.max(0,Math.min(6,Math.floor(Number(actor?.exhaustion)||0)));
     actor.speed=Math.max(0,base-5*exhaustion);
     const result=sr29PriorEnemyMove.call(this,actor,...args);
@@ -858,6 +862,10 @@ if(typeof sr10EnemyMove==='function'){
 if(typeof sr12EnemyStep==='function'){
   const sr29PriorEnemyStep=sr12EnemyStep;
   sr12EnemyStep=function(...args){
+    const actor=args[0],goal=args[1];
+    if(actor?.pos&&goal&&sr29FrightenedMovementBlocked(actor,actor.pos,goal,state)){
+      log((actor.name||'The creature')+' cannot willingly move closer to the visible source of its Fear.','muted');return false;
+    }
     const result=sr29PriorEnemyStep.apply(this,args);
     sr29ReconcileCombatGrapples();
     return result;
