@@ -1335,7 +1335,15 @@ try{
   assert('Monster critical bonus dice preserve flat attack damage modifiers',T18.criticalExtraDice('2d6+4')==='2d6'&&T18.criticalExtraDice('1d8 + 1d6 + 3')==='1d8+1d6'&&T18.criticalExtraDice('1d10-2')==='1d10');
 
   const D=context.__SR29_DEATH_TEST;
-  assert('V29.59 interruptible long-casting activity and campaign clock are installed',!!D&&D.version==='29.59.0'&&typeof D.deathSave==='function');
+  assert('V29.60 structured slot payment and interruptible long-casting activity are installed',!!D&&D.version==='29.60.0'&&typeof D.deathSave==='function');
+ const noDoubleSpendCaster=actor({spellSlotsByLevel:{5:1},pactSlotsByLevel:{3:2}});
+ const regularSlotPending={slotLevel:5,slotKind:'regular',slotCountBefore:1,legacySpellSlotsBefore:3};
+ const regularSlotPayment=RV.commitLongCastSpellSlot(regularSlotPending,noDoubleSpendCaster);
+ const repeatedSlotPayment=RV.commitLongCastSpellSlot(regularSlotPending,noDoubleSpendCaster);
+ assert('Long-cast slot payment spends one structured regular slot exactly once and never double-charges on repeated completion',regularSlotPayment.ok&&regularSlotPayment.spent&&!regularSlotPayment.alreadySpent&&repeatedSlotPayment.ok&&repeatedSlotPayment.alreadySpent&&noDoubleSpendCaster.spellSlotsByLevel[5]===0&&noDoubleSpendCaster.pactSlotsByLevel[3]===2);
+ const pactSlotCaster=actor({spellSlotsByLevel:{},pactSlotsByLevel:{3:2}});
+ const pactSlotPayment=RV.commitLongCastSpellSlot({slotLevel:3,slotKind:'pact',slotCountBefore:2},pactSlotCaster);
+ assert('Long-cast slot payment preserves the pact-slot pool when a structured pact slot was selected',pactSlotPayment.ok&&pactSlotPayment.kind==='pact'&&pactSlotCaster.pactSlotsByLevel[3]===1&&pactSlotCaster.spellSlotsByLevel[3]===undefined);
 
   const soloCriticalHero=actor({id:'solo-critical-hero',name:'Solo Critical Hero',hp:30,maxHp:30,armor:'Traveler’s clothes'});
   const soloCriticalEnemy={id:'solo-critical-enemy',name:'Solo Critical Monster',attack:100,damage:'1d6',pos:{x:2,y:1}};

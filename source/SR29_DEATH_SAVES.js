@@ -1,7 +1,7 @@
-/* SOLO REALMS V29.59 — Interruptible long-casting activity and campaign minute clock.
-   V29.58 True Resurrection restoration and component price notation.
+/* SOLO REALMS V29.60 — Structured spell-slot payment at long-cast completion.
+   V29.59 interruptible long-casting activity and campaign minute clock.
    Death saves occur at the downed hero's turn start; three successes stabilize at 0 HP. */
-const SR29_DEATH_SAVES_VERSION='29.59.0';
+const SR29_DEATH_SAVES_VERSION='29.60.0';
 function sr29SoloRemoveUnconscious(c){
   if(!c)return;
   c.unconscious=false;
@@ -904,7 +904,7 @@ if(typeof createCharacter==='function'){
   };
 }
 
-// V29.59: longer casts are real, saved campaign activities, not instant spell effects.
+// V29.60: long-cast slot payment uses the structured regular/pact choice and never double-spends.
 let SR29_LONG_CAST_SEQUENCE=0;
 function sr29LongCastMinutes(spell){
   const value=String(spell?.castingTime||'Action').trim();
@@ -969,9 +969,15 @@ function sr29StartLongCast(playerOrNull,name,allyId=null,args=[]){
   if(!sr14SpellPrepared(caster,name)){toast('Prepare this spell before casting it.');return false;}
   if(sr29LongCastIncapacitated(caster)){toast('You cannot begin a long cast while incapacitated.');return false;}
   if(Number(caster.hp)<=0){toast('You cannot begin a long cast while unconscious.');return false;}
+  let chosenSlotLevel=0,chosenSlotKind='regular',chosenSlotCountBefore=null,legacySpellSlotsBefore=null;
   if(Number(spell.level)>0){
     const slot=typeof sr14GetCastSlot==='function'?sr14GetCastSlot(caster,Number(spell.level)):null;
-    if(slot===false||slot===null||slot===undefined||Number(slot)<=0){toast(`No level ${spell.level} or higher spell slot remains.`);return false;}
+    chosenSlotLevel=Number(slot&&typeof slot==='object'?slot.level:slot);
+    chosenSlotKind=slot&&typeof slot==='object'&&slot.kind==='pact'?'pact':'regular';
+    if(!Number.isInteger(chosenSlotLevel)||chosenSlotLevel<=0){toast(`No level ${spell.level} or higher spell slot remains.`);return false;}
+    const slotMap=chosenSlotKind==='pact'?caster.pactSlotsByLevel:caster.spellSlotsByLevel;
+    if(slotMap&&typeof slotMap==='object')chosenSlotCountBefore=Number(slotMap[chosenSlotLevel])||0;
+    legacySpellSlotsBefore=Number.isFinite(Number(caster.spellSlots))?Number(caster.spellSlots):null;
   }
   const roster=Array.isArray(state?.campaign?.multiplayer?.players)?state.campaign.multiplayer.players:[];
   const selected=allyId?roster.find(entry=>String(entry?.id)===String(allyId)):null;
@@ -996,7 +1002,8 @@ function sr29StartLongCast(playerOrNull,name,allyId=null,args=[]){
   const pending={
     id:`long-cast-${Date.now()}-${++SR29_LONG_CAST_SEQUENCE}`,spellName:String(name),requiredMinutes,elapsedMinutes:0,
     casterId:String(player.id||'solo'),casterName:String(player.name||caster.name||'Caster'),casterIsMain:caster===state.character,
-    targetId,fromMP:!!args[0],castMode:{...castOptions},startedAt:new Date().toISOString(),
+    targetId,fromMP:!!args[0],castMode:{...castOptions},slotLevel:chosenSlotLevel,slotKind:chosenSlotKind,
+    slotCountBefore:chosenSlotCountBefore,legacySpellSlotsBefore,startedAt:new Date().toISOString(),
     startedDay:Number(clock?.day)||Number(state.campaign.day)||1,startedMinuteOfDay:Number(clock?.minuteOfDay)||0
   };
   sr29LongCastState().pendingLongCast=pending;
@@ -1015,6 +1022,36 @@ function sr29InterruptPendingLongCast(reason='You stop casting before the spell 
   sr29LongCastSaveAndRender();
   return {interrupted:true,spellName:pending.spellName,elapsedMinutes:pending.elapsedMinutes,reason:text};
 }
+function sr29CommitLongCastSpellSlot(pending,caster){
+  const level=Math.floor(Number(pending?.slotLevel)||0);
+  if(level<=0)return {ok:true,spent:false,reason:'Cantrip/no slot required'};
+  const kind=pending?.slotKind==='pact'?'pact':'regular';
+  const map=kind==='pact'?caster?.pactSlotsByLevel:caster?.spellSlotsByLevel;
+  if(map&&typeof map==='object'){
+    const before=Number(pending.slotCountBefore),current=Number(map[level])||0;
+    if(Number.isFinite(before)&&current<before){
+      caster.spellSlotSpentThisTurn=true;
+      return {ok:true,spent:true,alreadySpent:true,level,kind};
+    }
+    if(current<=0)return {ok:false,spent:false,reason:`The selected ${kind} level ${level} slot is no longer available.`};
+    if(typeof sr7ConsumeCastSlot==='function')sr7ConsumeCastSlot(caster,{level,kind});
+    else{
+      map[level]=Math.max(0,current-1);
+      if(typeof sr7UpdateSlotTotals==='function')sr7UpdateSlotTotals(caster);
+      else if(kind==='regular')caster.spellSlots=Math.max(0,(Number(caster.spellSlots)||0)-1);
+    }
+    caster.spellSlotSpentThisTurn=true;
+    return {ok:true,spent:true,alreadySpent:false,level,kind};
+  }
+  const before=Number(pending.legacySpellSlotsBefore),current=Number(caster?.spellSlots);
+  if(Number.isFinite(before)&&Number.isFinite(current)){
+    if(current<before){caster.spellSlotSpentThisTurn=true;return {ok:true,spent:true,alreadySpent:true,level,kind:'legacy'};}
+    if(current<=0)return {ok:false,spent:false,reason:'No spell slot remains at long-cast completion.'};
+    caster.spellSlots=current-1;caster.spellSlotSpentThisTurn=true;
+    return {ok:true,spent:true,alreadySpent:false,level,kind:'legacy'};
+  }
+  return {ok:false,spent:false,reason:'The selected spell slot could not be committed.'};
+}
 function sr29AdvancePendingLongCast(minutes=10){
   const pending=sr29LongCastPending();if(!pending)return {ok:false,reason:'No long cast is in progress.'};
   const caster=sr29LongCastCaster(pending);
@@ -1030,15 +1067,17 @@ function sr29AdvancePendingLongCast(minutes=10){
   if(remaining>0){sr29LongCastSaveAndRender();return {ok:true,completed:false,elapsedMinutes:pending.elapsedMinutes,remainingMinutes:remaining,world};}
   const player={id:pending.casterId,name:pending.casterName,character:caster};
   const result=sr29CastBeforeLongCasting.call(null,player,pending.spellName,pending.targetId,pending.fromMP,pending.castMode);
+  const slotPayment=result?sr29CommitLongCastSpellSlot(pending,caster):{ok:false,spent:false,reason:'Spell resolution failed.'};
+  const completed=!!result&&slotPayment.ok;
   const store=sr29LongCastState();if(store)store.pendingLongCast=null;
-  if(result){
-    log(`${pending.spellName} finishes casting after ${pending.requiredMinutes} minutes.`,'goodlog');
+  if(completed){
+    log(`${pending.spellName} finishes casting after ${pending.requiredMinutes} minutes; one ${slotPayment.kind} level ${slotPayment.level} spell slot is expended${slotPayment.alreadySpent?' (already paid by the spell resolver)':''}.`,'goodlog');
     toast(`${pending.spellName} completed.`);
   }else{
-    log(`${pending.spellName} could not resolve when its casting time ended. No spell slot was spent by the cast resolver.`,'badlog');
+    log(`${pending.spellName} did not complete: ${slotPayment.reason||'spell resolution failed'}.`,'badlog');
   }
   state.view='spells';sr29LongCastSaveAndRender();
-  return {ok:!!result,completed:true,result,spellName:pending.spellName,elapsedMinutes:pending.elapsedMinutes,world};
+  return {ok:completed,completed:true,result:completed,slotPayment,spellName:pending.spellName,elapsedMinutes:pending.elapsedMinutes,world};
 }
 function sr29LongCastConcentrationCheck(character,damage){
   const pending=sr29LongCastPending();if(!pending)return {active:false};
@@ -1118,7 +1157,7 @@ if(typeof sr12DamageHero==='function'){
 }
 
 globalThis.__SR29_DEATH_TEST={
-  version:SR29_DEATH_SAVES_VERSION,longCastMinutes:sr29LongCastMinutes,startLongCast:sr29StartLongCast,advancePendingLongCast:sr29AdvancePendingLongCast,interruptPendingLongCast:sr29InterruptPendingLongCast,longCastConcentrationCheck:sr29LongCastConcentrationCheck,pendingLongCast:sr29LongCastPending,campaignClock:sr29LongCastClock,applyTrueResurrectionEffects:sr29ApplyTrueResurrectionEffects,trueResurrectionBodyMissing:sr29TrueResurrectionBodyMissing,consumeMaterialComponent:sr29ConsumeMaterialComponent,materialComponentCost:sr29MaterialComponentCost,creatorMarkup:typeof renderCreator==='function'?renderCreator:null,injectDragonbornLineageField:sr29InjectDragonbornLineageField,isValidDraconicAncestry:sr29DraconicAncestryIsValid,reincarnateSpecies:SR29_REINCARNATE_SPECIES,reincarnateSpeciesFromRoll:sr29ReincarnateSpeciesFromRoll,applyReincarnateSpecies:sr29ApplyReincarnateSpecies,recordDeathSnapshot:sr29RecordDeathSnapshot,isOldAgeDeath:sr29IsOldAgeDeath,wasUndeadAtDeath:sr29WasUndeadAtDeath,isHumanoidAtDeath:sr29IsHumanoidAtDeath,missingBodyParts:sr29MissingBodyParts,hasMissingVitalParts:sr29HasMissingVitalParts,clearRevivalDeathMetadata:sr29ClearRevivalDeathMetadata,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestPenaltyRecovery:sr29ApplyLongRestPenaltyRecovery,hasResurrectionCasterTax:sr29HasResurrectionCasterTax,setResurrectionCasterTax:sr29SetResurrectionCasterTax,setDraconicAncestry:sr29SetDraconicAncestry,damageMultiplier:typeof sr14DamageMultiplier==='function'?sr14DamageMultiplier:null,dragonbornBreath:sr29DragonbornBreath,dragonbornBreathDamageDice:sr29DragonbornBreathDamageDice,dragonbornProficiencyBonus:sr29DragonbornProficiencyBonus,clearResurrectionCasterTax:sr29ClearResurrectionCasterTax,applyResurrectionTaxD20Result:sr29ApplyResurrectionTaxD20Result,rejectCastDuringResurrectionTax:sr29RejectCastDuringResurrectionTax,canonicalAbilityCheck:typeof sr29CanonicalAbilityCheck==='function'?sr29CanonicalAbilityCheck:null,attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
+  version:SR29_DEATH_SAVES_VERSION,longCastMinutes:sr29LongCastMinutes,startLongCast:sr29StartLongCast,commitLongCastSpellSlot:sr29CommitLongCastSpellSlot,advancePendingLongCast:sr29AdvancePendingLongCast,interruptPendingLongCast:sr29InterruptPendingLongCast,longCastConcentrationCheck:sr29LongCastConcentrationCheck,pendingLongCast:sr29LongCastPending,campaignClock:sr29LongCastClock,applyTrueResurrectionEffects:sr29ApplyTrueResurrectionEffects,trueResurrectionBodyMissing:sr29TrueResurrectionBodyMissing,consumeMaterialComponent:sr29ConsumeMaterialComponent,materialComponentCost:sr29MaterialComponentCost,creatorMarkup:typeof renderCreator==='function'?renderCreator:null,injectDragonbornLineageField:sr29InjectDragonbornLineageField,isValidDraconicAncestry:sr29DraconicAncestryIsValid,reincarnateSpecies:SR29_REINCARNATE_SPECIES,reincarnateSpeciesFromRoll:sr29ReincarnateSpeciesFromRoll,applyReincarnateSpecies:sr29ApplyReincarnateSpecies,recordDeathSnapshot:sr29RecordDeathSnapshot,isOldAgeDeath:sr29IsOldAgeDeath,wasUndeadAtDeath:sr29WasUndeadAtDeath,isHumanoidAtDeath:sr29IsHumanoidAtDeath,missingBodyParts:sr29MissingBodyParts,hasMissingVitalParts:sr29HasMissingVitalParts,clearRevivalDeathMetadata:sr29ClearRevivalDeathMetadata,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestPenaltyRecovery:sr29ApplyLongRestPenaltyRecovery,hasResurrectionCasterTax:sr29HasResurrectionCasterTax,setResurrectionCasterTax:sr29SetResurrectionCasterTax,setDraconicAncestry:sr29SetDraconicAncestry,damageMultiplier:typeof sr14DamageMultiplier==='function'?sr14DamageMultiplier:null,dragonbornBreath:sr29DragonbornBreath,dragonbornBreathDamageDice:sr29DragonbornBreathDamageDice,dragonbornProficiencyBonus:sr29DragonbornProficiencyBonus,clearResurrectionCasterTax:sr29ClearResurrectionCasterTax,applyResurrectionTaxD20Result:sr29ApplyResurrectionTaxD20Result,rejectCastDuringResurrectionTax:sr29RejectCastDuringResurrectionTax,canonicalAbilityCheck:typeof sr29CanonicalAbilityCheck==='function'?sr29CanonicalAbilityCheck:null,attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
   clearDowned:sr29SoloClearDowned,damageAtZero:sr29SoloDamageAtZero,hasUnconscious:sr29SoloHasUnconscious,
   heal:typeof heal==='function'?heal:null,damagePlayer:typeof damagePlayer==='function'?damagePlayer:null,
   soloMonsterAttack:typeof sr10EnemyAttack==='function'?sr10EnemyAttack:null,soloHeroAttack:typeof sr11HeroAttack==='function'?sr29TestSoloHeroAttack:null,advanceStableTime:sr29SoloAdvanceStableTime,

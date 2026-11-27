@@ -332,3 +332,11 @@ Still incomplete: Reincarnate's complete species-specific trait automation and p
 - The campaign clock now tracks minute-of-day alongside its existing four-hour watch and day. The Spellbook offers ten-minute focused-casting segments; a one-hour spell therefore takes six segments. The caster can cancel, and starting another action, submitting an action form, or taking combat damage can interrupt the activity.
 - Damage forces a Constitution saving throw (DC 10 or half the damage, whichever is higher). A failed save interrupts the cast without expending its slot or material; a successful save maintains focus. Incapacitation also interrupts.
 - Regressions cover pending/start state, no early expenditure, minute-clock advancement, completion, interruption, and concentration failure. This is an out-of-combat activity model; the app still does not simulate all 600 six-second combat turns within a one-hour casting time. Death/recovery remains **Partial**.
+
+
+## V29.60 — Structured spell-slot payment at long-cast completion
+
+- The spell-slot selector returns a structured choice identifying both slot level and whether the slot is regular or Pact Magic. Long-cast pending records now retain that exact choice and its pre-cast count.
+- At completion, the payment step checks whether the existing spell resolver already decremented the selected pool. If so, it does not charge again; otherwise it spends exactly one selected regular or pact slot and updates slot totals.
+- If the spell cannot resolve or the selected slot is no longer available, completion is not reported as successful. No slot is spent when the cast is interrupted.
+- Regression coverage checks regular-slot payment, pact-slot payment, and idempotent no-double-charge behavior. Death/recovery remains **Partial**.
