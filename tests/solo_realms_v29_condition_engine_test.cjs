@@ -1181,6 +1181,13 @@ try{
   D.advanceWorld('travel',0);
   assert('Multiplayer stable heroes regain 1 HP after the world-clock recovery interval',mpStableHero.hp===1&&!mpStableHero.stable&&!mpStableHero.mpDowned&&!mpStableHero.unconscious&&mpStableHero.deathSuccess===0&&mpStableHero.deathFailure===0,JSON.stringify({hp:mpStableHero.hp,stable:mpStableHero.stable,worldClock:T18.state.campaign.sr18?.clock}));
 
+  assert('Multiplayer timed recovery clears its persisted timer after restoration',mpStableHero.stableRecoveryHours===undefined&&mpStableHero.stableElapsedHours===undefined);
+  mpStableHero.hp=0;mpStableHero.stable=true;mpStableHero.mpDowned=false;mpStableHero.stableRecoveryHours=3;mpStableHero.stableElapsedHours=1;mpStableHero.deathFailure=0;
+  D.multiplayerDamageHero(mpStablePlayer,1,'physical',null);
+  assert('Damage to a stable multiplayer hero cancels timed recovery and resumes failed death saves',!mpStableHero.stable&&mpStableHero.mpDowned===true&&mpStableHero.deathFailure===1&&mpStableHero.stableRecoveryHours===undefined&&mpStableHero.stableElapsedHours===undefined);
+  mpStableHero.hp=1;D.clearMultiplayerDowned(mpStableHero);
+  assert('Multiplayer healing cleanup removes stable recovery metadata',!mpStableHero.stable&&mpStableHero.stableRecoveryHours===undefined&&mpStableHero.stableElapsedHours===undefined);
+
 
 
 
