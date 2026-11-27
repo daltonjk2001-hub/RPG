@@ -731,12 +731,7 @@ if(typeof sr11RollAttack==='function'){
       // Project only condition modifiers missing from legacy wrappers; do not replace
       // the older Dodge, Vex, outline, resource, or spell-effect layers.
       if(sr29Has(actor,'frightened')&&sr29FrightSourceVisible(actor,{}))temporarilyAdd(actor,'poisoned');
-      if(sr29Has(actor,'grappled')){
-        const grapple=sr29Entries(actor).find(x=>x.name==='grappled');
-        const grapplerId=String(grapple?.grapplerId||grapple?.sourceId||'');
-        const targetId=String(target?.id||target?.name||'');
-        if(!grapplerId||grapplerId!==targetId)temporarilyAdd(actor,'poisoned');
-      }
+      // Grappled does not modify attack rolls; only its Speed/release rules apply.
       if(sr29Has(target,'petrified'))temporarilyAdd(target,'restrained');
       if(targetIsProne){
         temporarilyRemove(target,'prone');
