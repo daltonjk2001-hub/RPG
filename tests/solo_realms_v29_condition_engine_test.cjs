@@ -1114,21 +1114,21 @@ try{
 
   const healedDeathHero=actor({id:'healed-death-hero',name:'Healed Death Hero',hp:0,maxHp:20,stable:true,unconscious:true,deathSuccess:3,deathFailure:1,conditions:[{name:'unconscious',duration:999}]});
   T18.state={character:healedDeathHero,campaign:{companions:[],day:1},combat:{mp:null,downed:true,round:1,enemies:[]},log:[]};
-  const soloHealAmount=context.heal(5);
+  const soloHealAmount=D.heal(5);
   assert('Healing above 0 HP clears solo stable, unconscious and death-save state',soloHealAmount===5&&healedDeathHero.hp===5&&!healedDeathHero.stable&&!healedDeathHero.unconscious&&healedDeathHero.deathSuccess===0&&healedDeathHero.deathFailure===0&&!T18.state.combat.downed);
 
   const deadHero=actor({id:'dead-hero',name:'Dead Hero',hp:0,maxHp:20,mpDead:true,deathAt:123,stable:false,unconscious:true});
   T18.state={character:deadHero,campaign:{companions:[],day:1},combat:{mp:null,downed:true,round:1,enemies:[]},log:[]};
-  const deadHealAmount=context.heal(10);
+  const deadHealAmount=D.heal(10);
   assert('Ordinary healing cannot revive a dead solo character',deadHealAmount===0&&deadHero.hp===0&&deadHero.mpDead===true&&deadHero.deathAt===123);
 
   const postCombatHero=actor({id:'post-combat-hero',name:'Post Combat Hero',hp:0,maxHp:20,stable:true,unconscious:true,deathSuccess:3,deathFailure:0,conditions:[{name:'unconscious',duration:999}]});
   T18.state={character:postCombatHero,campaign:{companions:[],day:1},combat:null,log:[]};
-  const postCombatHeal=context.heal(4);
+  const postCombatHeal=D.heal(4);
   assert('Healing after combat still clears a stable solo character at 0 HP',postCombatHeal===4&&postCombatHero.hp===4&&!postCombatHero.stable&&!postCombatHero.unconscious&&postCombatHero.deathSuccess===0&&postCombatHero.deathFailure===0);
   const newlyDownedHero=actor({id:'newly-downed-hero',name:'Newly Downed Hero',hp:4,maxHp:20});
   T18.state={character:newlyDownedHero,campaign:{companions:[],day:1},combat:{mp:null,downed:false,round:1,enemies:[]},log:[]};
-  const appliedDamage=context.damagePlayer(9);
+  const appliedDamage=D.damagePlayer(9);
   assert('Damage that reduces a solo hero to 0 HP enters the downed state for the next initiative turn',newlyDownedHero.hp===0&&appliedDamage===9&&T18.state.combat.downed===true&&newlyDownedHero.unconscious===true&&D.hasUnconscious(newlyDownedHero));
   assert('Multiplayer massive-damage death records the timestamp needed by Revivify',html.includes('c.deathFailure=3;c.deathAt=Date.now();log(`${player.name} suffers massive damage and dies instantly.`'));
 
