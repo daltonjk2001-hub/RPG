@@ -704,6 +704,27 @@ try{
  assert('Multiplayer heroes can choose Athletics or Acrobatics for Escape',typeof T.gameplay.multiplayerEscapeGrapple==='function'&&html.includes('Escape · Athletics')&&html.includes('Escape · Acrobatics'));
  assert('Multiplayer grapple initiation accepts a selected remote hero target and records a pending saving-throw challenge',html.includes('function sr29MpStartGrapple(player,targetId=null)')&&html.includes('mp.grappleChallenges.push')&&html.includes("action:'grapple',targetId"));
  assert('Remote grapple saving throws are delivered only by the targeted hero and resolved through the canonical save resolver',typeof T.gameplay.multiplayerResolveGrappleSave==='function'&&html.includes("item.targetId===player.id")&&html.includes('sr25ResolveCreatureSavingThrow(target,ability,[roll],bonus,challenge.escapeDC'));
+ assert('Pending multiplayer grapple challenges are cancelled if the grappler becomes Incapacitated or the pair moves beyond reach',(()=>{
+   const attacker=actor({id:'range-attacker',hp:20});
+   const target=actor({id:'range-target',hp:20});
+   const incapacitated=actor({id:'incapacitated-attacker',hp:20,conditions:['incapacitated']});
+   const heldTarget=actor({id:'incapacitated-target',hp:20});
+   const players=[
+     {id:'range-attacker',connected:true,character:attacker},
+     {id:'range-target',connected:true,character:target},
+     {id:'incapacitated-attacker',connected:true,character:incapacitated},
+     {id:'incapacitated-target',connected:true,character:heldTarget}
+   ];
+   const snapshot={combat:{round:2,mp:{heroPositions:{
+     'range-attacker':{x:1,y:1},'range-target':{x:4,y:1},
+     'incapacitated-attacker':{x:2,y:2},'incapacitated-target':{x:3,y:2}
+   },grappleChallenges:[
+     {id:'out-of-range',attackerId:'range-attacker',targetId:'range-target',createdRound:2,reach:5},
+     {id:'incapacitated',attackerId:'incapacitated-attacker',targetId:'incapacitated-target',createdRound:2,reach:5}
+   ]}},campaign:{multiplayer:{players}}};
+   const result=T.gameplay.multiplayerPruneGrappleChallenges(snapshot);
+   return result.removed===2&&result.remaining===0&&result.reasons.some(x=>x.reason==='grapple-range-exceeded')&&result.reasons.some(x=>x.reason==='grappler-incapacitated');
+ })());
  assert('Multiplayer grapple challenges recover from disconnects, defeated participants, and stale combat rounds',(()=>{
    const players=[
      {id:'attacker',connected:true,character:actor({hp:20})},
