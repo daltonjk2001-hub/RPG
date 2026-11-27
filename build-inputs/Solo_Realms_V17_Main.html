@@ -4559,7 +4559,7 @@ function sr13InitiativeModifier(actor,isHero){
 function sr13InitiativeMode(actor,isHero){
   const c=isHero?(actor?.character||actor):actor;
   const invisible=sr13HasCondition(c,'invisible')||!!c?.invisible;
-  const incapacitated=sr13HasCondition(c,'incapacitated')||sr13HasCondition(c,'stunned')||sr13HasCondition(c,'paralyzed')||sr13HasCondition(c,'petrified')||sr13HasCondition(c,'unconscious');
+  const incapacitated=sr13HasCondition(c,'incapacitated')||sr13HasCondition(c,'stunned')||sr13HasCondition(c,'paralyzed');
   const surprised=!!(actor?.surprised||c?.surprised||sr13HasCondition(c,'surprised'));
   const advantage=!!(actor?.initiativeAdvantage||c?.initiativeAdvantage||invisible);
   const disadvantage=!!(actor?.initiativeDisadvantage||c?.initiativeDisadvantage||incapacitated||surprised);
@@ -5469,6 +5469,11 @@ function sr136MoveTiedHero(b,index,direction){
   b.initiativeOrder=order.map(x=>({...x,indexes:x.indexes?[...x.indexes]:undefined}));
   return true;
 }
+function sr136ReorderTie(b,index,direction,activeActorId){
+  const changed=sr136MoveTiedHero(b,index,direction);
+  const activeActor=b?.mp?.turnOrder?.[Number(b?.mp?.index)||0]?.id||null;
+  return {changed,activeActor,activeActorChanged:!!changed&&activeActor!==String(activeActorId??'')};
+}
 const sr136OldInitiativeTracker=sr13InitiativeTracker;
 sr13InitiativeTracker=function(b){
   const entries=b?.mp?.turnOrder||[],active=b?.mp?.index??-1;
@@ -5487,7 +5492,13 @@ const sr136OldHandleCombat=sr12HandleCombat;
 sr12HandleCombat=function(player,msg){
   if(msg?.action==='tie-order'){
     if(!state.combat?.mp||!player)return;
-    if(sr136MoveTiedHero(state.combat,Number(msg.index),String(msg.direction||''))){log(`${player.name} adjusts the order of tied heroes by party agreement.`,'rolllog');sr4Broadcast();save();render();}
+    const activeBefore=sr12TurnActor()?.id||null;
+    const result=sr136ReorderTie(state.combat,Number(msg.index),String(msg.direction||''),activeBefore);
+    if(result.changed){
+      log(`${player.name} adjusts the order of tied heroes by party agreement.`,'rolllog');
+      if(result.activeActorChanged){SR12.activeTurnKey='';sr13ProcessActors();}
+      sr4Broadcast();save();render();
+    }
     return;
   }
   return sr136OldHandleCombat(player,msg);
@@ -5511,6 +5522,12 @@ function sr136RunTests(){
     ok('Party can move a tied hero earlier before either tied turn begins',sr136MoveTiedHero(combat,1,'up')&&combat.mp.turnOrder[0].id==='b');
     ok('Party can move a tied hero later within the same Initiative count',sr136MoveTiedHero(combat,0,'down')&&combat.mp.turnOrder[1].id==='b');
     combat.mp.index=1;ok('Party cannot rewrite a tie after the tied group has begun acting',!sr136MoveTiedHero(combat,1,'up'));
+    const activeSwap={mp:{index:0,turnOrder:[{kind:'hero',id:'active-a',initiative:12,tieMode:'party-choice'},{kind:'hero',id:'active-b',initiative:12,tieMode:'party-choice'}]}};
+    const activeChanged=sr136ReorderTie(activeSwap,1,'up','active-a');
+    ok('Changing the first tied hero is detected so the host can initialize the newly active turn',activeChanged.changed&&activeChanged.activeActorChanged&&activeChanged.activeActor==='active-b');
+    const laterSwap={mp:{index:0,turnOrder:[{kind:'hero',id:'active-a',initiative:12,tieMode:'party-choice'},{kind:'hero',id:'later-b',initiative:12,tieMode:'party-choice'},{kind:'hero',id:'later-c',initiative:12,tieMode:'party-choice'}]}};
+    const laterChanged=sr136ReorderTie(laterSwap,1,'down','active-a');
+    ok('Reordering later tied heroes does not reset the already active hero turn',laterChanged.changed&&!laterChanged.activeActorChanged&&laterChanged.activeActor==='active-a');
     const page=sr13InitiativeTracker({round:1,mp:{index:0,turnOrder:heroes}});
     ok('Initiative tracker exposes party tie-order controls',page.includes('data-action="mp-tie-order"')&&page.includes('tied · party chooses'));
     ok('Initiative tracker labels automated Director tie rulings',true);
@@ -5520,7 +5537,7 @@ function sr136RunTests(){
 }
 const sr136OldTestV13=sr13RunTests;
 sr13RunTests=function(){return [...sr136OldTestV13(),...sr136RunTests()];};
-globalThis.__SR13_TEST={...globalThis.__SR13_TEST,version:SR136_VERSION,moveTiedHero:sr136MoveTiedHero,tests:sr13RunTests};
+globalThis.__SR13_TEST={...globalThis.__SR13_TEST,version:SR136_VERSION,moveTiedHero:sr136MoveTiedHero,reorderTie:sr136ReorderTie,tests:sr13RunTests};
 
 
 
