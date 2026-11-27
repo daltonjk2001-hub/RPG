@@ -1314,6 +1314,15 @@ try{
 
 
 }catch(error){assert('V29 condition suite completes without uncaught runtime errors',false,error?.stack||String(error));}
+const revivalAuditTerms=['reviv','resurrect','raise dead','true resurrection','reincarnate','deathAt','mpDead','mpDowned','deathFailure','deathSuccess'];
+for(const term of revivalAuditTerms){
+ const hits=[];let from=0,index=-1;
+ while((index=html.toLowerCase().indexOf(term.toLowerCase(),from))>=0&&hits.length<16){
+  hits.push({line:html.slice(0,index).split('\\n').length,excerpt:html.slice(Math.max(0,index-220),Math.min(html.length,index+480)).replace(/\\s+/g,' ').slice(0,700)});
+  from=index+term.length;
+ }
+ console.log('REVIVAL_AUDIT '+term+' '+JSON.stringify({count:hits.length,hits}));
+}
 for(const check of checks)console.log((check.pass?'PASS ':'FAIL ')+check.name+(check.detail?' — '+check.detail:''));
 const passed=checks.filter(x=>x.pass).length;
 console.log('\nRESULT '+passed+'/'+checks.length+' V29 condition-engine assertions passed');
