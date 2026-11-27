@@ -67,6 +67,20 @@ def inject_ui_theme(template: str, css: str) -> str:
 
 def build_runtime() -> str:
     base = SRC.read_text(encoding="utf-8")
+    # Keep V13 downed-damage regressions diagnostically useful when a lifecycle
+    # adapter changes their result; this is test output only, not runtime behavior.
+    v13_critical_damage_test = "ok('V13.2 critical damage to a downed hero causes two death-save failures',testHero.character.deathFailure===2);"
+    if base.count(v13_critical_damage_test) != 1:
+        raise SystemExit("Expected one V13 downed critical damage assertion.")
+    base = base.replace(v13_critical_damage_test, "ok('V13.2 critical damage to a downed hero causes two death-save failures',testHero.character.deathFailure===2,JSON.stringify({failures:testHero.character.deathFailure,mpDead:testHero.character.mpDead,mpDowned:testHero.character.mpDowned,sourceCritical:killer.lastAttackCritical}));")
+    v13_fallback_test = "const fallbackTarget=sr12EnemyTarget({pos:{x:2,y:2}});ok('V13.2 enemy selects a downed hero only when no standing heroes remain',fallbackTarget?.id==='death-test');"
+    if base.count(v13_fallback_test) != 1:
+        raise SystemExit("Expected one V13 downed-target selection assertion.")
+    base = base.replace(v13_fallback_test, "const fallbackTarget=sr12EnemyTarget({pos:{x:2,y:2}});ok('V13.2 enemy selects a downed hero only when no standing heroes remain',fallbackTarget?.id==='death-test',JSON.stringify({target:fallbackTarget?.id,players:sr12AllHeroPositions().map(h=>({id:h.id,pos:h.pos,hp:h.player.character.hp,downed:h.player.character.mpDowned,dead:h.player.character.mpDead,connected:h.player.connected}))}));")
+    v13_enemy_critical_test = "ok('V13.2 melee attack against an unconscious target has Advantage and is a critical hit',testHero.character.deathFailure===2&&killer2.lastAttackCritical===true);"
+    if base.count(v13_enemy_critical_test) != 1:
+        raise SystemExit("Expected one V13 downed monster critical assertion.")
+    base = base.replace(v13_enemy_critical_test, "ok('V13.2 melee attack against an unconscious target has Advantage and is a critical hit',testHero.character.deathFailure===2&&killer2.lastAttackCritical===true,JSON.stringify({failures:testHero.character.deathFailure,critical:killer2.lastAttackCritical,marker:killer2._sr29AttackCriticalPending,enemyPos:killer2.pos,log:state.log.slice(-5)}));")
     layer = LAYER.read_text(encoding="utf-8").rstrip()
     studio = STUDIO.read_text(encoding="utf-8").rstrip()
     behavior = BEHAVIOR.read_text(encoding="utf-8").rstrip()
