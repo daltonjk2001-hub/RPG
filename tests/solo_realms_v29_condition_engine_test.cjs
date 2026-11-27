@@ -331,6 +331,14 @@ try{
  assert('Stunned does not automatically fail Constitution saves',con.success&&!con.autoFail);
  assert('Stunned prevents actions but does not reduce Speed to 0',!T.canAct(saves,'action')&&T.status(saves).speedOverride===null&&T.canMove(saves));
  const petrified=actor({exhaustion:1});T.apply(petrified,'petrified','permanent','stone');
+ assert('Petrified exposes resistance to every damage type through the canonical damage multiplier',T.damageMultiplier(petrified,'fire')===0.5&&T.damageMultiplier(petrified,'psychic')===0.5);
+ const soloPetrifiedHero=actor({id:'solo-petrified-hero',name:'Solo Petrified Hero'});
+ T.apply(soloPetrifiedHero,'petrified','permanent','stone');
+ const beforePetrifiedDamageState=T18.state;
+ T18.state={character:soloPetrifiedHero,campaign:{},combat:{mp:null,enemies:[]},log:[]};
+ const soloPetrifiedDamage=T.applyMonsterDamage({player:{id:'solo',name:'Solo Petrified Hero',character:soloPetrifiedHero}},10,'fire',{id:'petrified-attacker',name:'Petrified Attacker'});
+ assert('Petrified resistance halves monster damage against the solo player without persisting a synthetic resistance',soloPetrifiedDamage===5&&soloPetrifiedHero.hp===25&&!Array.isArray(soloPetrifiedHero.resistances),JSON.stringify({soloPetrifiedDamage,hp:soloPetrifiedHero.hp,resistances:soloPetrifiedHero.resistances}));
+ T18.state=beforePetrifiedDamageState;
  const exhaustionSave=T25.resolveCreatureSavingThrow(petrified,'CON',[12],5,15);
  assert('Exhaustion applies its -2 per level modifier to creature saves',exhaustionSave.total===15);
  const restrainedSave=actor();T.apply(restrainedSave,'restrained',2,'net');
