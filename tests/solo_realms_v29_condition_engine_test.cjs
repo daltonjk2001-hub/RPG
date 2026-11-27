@@ -1059,6 +1059,16 @@ try{
   try{monsterCriticalResult=T18.resolveMonsterAction(monsterCritEnemy,{name:'Claw',attack_bonus:100,description:'Melee Weapon Attack Roll: +100, reach 5 ft. Hit: 1d6 slashing damage.',damage:[{dice:'1d6',type:'slashing'}]},monsterCritTarget);}finally{math.random=priorMonsterCritRandom;}
   assert('Monster melee attacks automatically critical-hit a Paralyzed target within 5 feet',monsterCriticalResult===true&&monsterCritHero.hp===22&&T18.state.log.some(x=>/critical hit/.test(x.msg)),JSON.stringify({hp:monsterCritHero.hp,log:T18.state.log}));
 
+  const flatModifierHero=actor({id:'flat-modifier-hero',name:'Flat Modifier Hero',hp:30,maxHp:30});
+  const flatModifierEnemy={id:'flat-modifier-monster',name:'Flat Modifier Monster',attack:100,pos:{x:2,y:1}};
+  const flatModifierTarget={player:{id:'solo',name:'Flat Modifier Hero',character:flatModifierHero},pos:{x:1,y:1}};
+  T18.state={character:flatModifierHero,campaign:{multiplayer:null,companions:[]},combat:{mp:null,heroPos:{x:1,y:1},enemies:[flatModifierEnemy],map:{width:8,height:6,terrain:[]},round:1},log:[]};
+  T.apply(flatModifierHero,'paralyzed','permanent','flat modifier critical regression');
+  const priorFlatModifierRandom=math.random;math.random=()=>0.5;
+  let flatModifierResult=false;
+  try{flatModifierResult=T18.resolveMonsterAction(flatModifierEnemy,{name:'Modified Claw',attack_bonus:100,description:'Melee Weapon Attack Roll: +100, reach 5 ft. Hit: 1d6+3 slashing damage.',damage:[{dice:'1d6+3',type:'slashing'}]},flatModifierTarget);}finally{math.random=priorFlatModifierRandom;}
+  assert('Monster critical damage doubles the die but applies the flat damage modifier only once',flatModifierResult===true&&flatModifierHero.hp===19&&T18.state.log.some(x=>/critical hit for 11 slashing damage/.test(x.msg)),JSON.stringify({hp:flatModifierHero.hp,log:T18.state.log}));
+
   const distantUnconsciousHero=actor({id:'distant-unconscious-hero',name:'Distant Unconscious Hero',hp:30,maxHp:30});
   const distantPlayer={id:'solo',name:'Distant Unconscious Hero',character:distantUnconsciousHero};
   const distantMonster={id:'distant-monster',name:'Ranged Hunter',attack:100,pos:{x:3,y:1}};
