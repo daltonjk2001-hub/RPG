@@ -138,3 +138,10 @@ This dashboard maps the D&D reference PDF's Parts I–III and Appendices A–B t
 - Alert's Initiative bonus now falls back to the acting character's own level when a character record lacks a cached proficiency-bonus field. It no longer risks borrowing the host/local character's proficiency bonus for a remote party member.
 - Monster Initiative modifier resolution now ignores explicit null modifier fields and correctly falls back to the monster's Dexterity score.
 - Added two regression assertions for remote Alert proficiency calculation and nullable monster modifier fallback.
+
+
+## Initiative audit — remaining explicit gap
+
+- The 2024 Alert feat's Initiative Proficiency bonus is implemented and now uses the correct character-level proficiency bonus.
+- The separate Alert Initiative Swap benefit is **not yet implemented**. It requires a willing-ally confirmation step immediately after initiative rolls and before the first combat turn; a silent host-side swap would not satisfy the rule's consent requirement.
+- Keep Initiative and turn order marked Partial until that consent flow, solo/companion adjudication, and physical multiplayer timing are completed and tested.
