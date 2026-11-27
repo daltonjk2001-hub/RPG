@@ -74,13 +74,16 @@ try{
  assert('Raise Dead and Resurrection impose a four-point return penalty but Revivify does not',RV.setRevivalReturnPenalty(raiseReturn,'Raise Dead')&&RV.setRevivalReturnPenalty(resurrectionReturn,'Resurrection')&&RV.setRevivalReturnPenalty(revivifyReturn,'Revivify')===false&&raiseReturn.revivalD20Penalty===4&&resurrectionReturn.revivalD20Penalty===4&&!Object.prototype.hasOwnProperty.call(revivifyReturn,'revivalD20Penalty'));
  const penaltyCheckHero=actor({revivalD20Penalty:4});
  const penaltyCheck=RV.canonicalAbilityCheck(penaltyCheckHero,'Athletics',15,{roll:18,bonusOverride:0});
- assert('The Raise Dead/Resurrection penalty applies to canonical ability checks',penaltyCheck.roll===18&&penaltyCheck.bonus===-4&&penaltyCheck.total===14&&penaltyCheck.success===false,JSON.stringify(penaltyCheck));
+ assert('The Raise Dead/Resurrection penalty applies to canonical ability checks',penaltyCheck.roll===18&&penaltyCheck.bonus===-4&&penaltyCheck.total===14&&penaltyCheck.success===false&&penaltyCheck.d20?.success===false,JSON.stringify(penaltyCheck));
  const penaltySaveHero=actor({revivalD20Penalty:4});
  const priorPenaltySaveRandom=math.random;let penaltySave;try{math.random=()=>0.9;penaltySave=RV.savingThrow(penaltySaveHero,'CON',16);}finally{math.random=priorPenaltySaveRandom;}
  assert('The return penalty applies to saving throws after the natural roll',penaltySave.roll===19&&penaltySave.bonus===-4&&penaltySave.total===15&&penaltySave.success===false,JSON.stringify(penaltySave));
  const penaltyAttackHero=actor({revivalD20Penalty:4}),penaltyAttackTarget=actor({id:'penalty-attack-target',name:'Penalty Attack Target',ac:16});
  const priorPenaltyAttackRandom=math.random;let penaltyAttack;try{math.random=()=>0.9;penaltyAttack=RV.attackRoll(0,penaltyAttackHero,penaltyAttackTarget,false);}finally{math.random=priorPenaltyAttackRandom;}
  assert('The return penalty applies to weapon attack-roll totals',penaltyAttack.r===19&&penaltyAttack.total===15,JSON.stringify(penaltyAttack));
+ const penaltyNaturalTwenty=actor({revivalD20Penalty:4}),penaltyHighAC=actor({id:'penalty-high-ac',name:'Penalty High AC',ac:25});
+ const priorNaturalTwentyRandom=math.random;let naturalTwentyAttack;try{math.random=()=>0.999999;naturalTwentyAttack=RV.attackRoll(0,penaltyNaturalTwenty,penaltyHighAC,false);}finally{math.random=priorNaturalTwentyRandom;}
+ assert('A natural 20 remains an automatic hit even when the return penalty lowers its total below AC',naturalTwentyAttack.r===20&&naturalTwentyAttack.total===16&&naturalTwentyAttack.success===true,JSON.stringify(naturalTwentyAttack));
  const penaltyRecoveryHero=actor({revivalD20Penalty:4});
  const firstPenaltyRecovery=RV.reduceRevivalPenaltyAfterLongRest(penaltyRecoveryHero),secondPenaltyRecovery=RV.reduceRevivalPenaltyAfterLongRest(penaltyRecoveryHero);
  const thirdPenaltyRecovery=RV.reduceRevivalPenaltyAfterLongRest(penaltyRecoveryHero),fourthPenaltyRecovery=RV.reduceRevivalPenaltyAfterLongRest(penaltyRecoveryHero);
