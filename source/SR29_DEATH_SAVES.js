@@ -140,7 +140,7 @@ if(typeof sr12DamageHero==='function'){
       }else{
         log(`Damage at 0 HP causes ${failures} failed death save(s) (${c.deathFailure}/3).`,'badlog');
       }
-      if(typeof save==='function')save();
+      if(typeof sr4QueueSync==='function')sr4QueueSync();
     }
     if(hasCriticalMarker)delete source._sr29AttackCriticalPending;
     return result;
