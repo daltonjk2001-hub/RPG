@@ -1,6 +1,6 @@
-/* SOLO REALMS V29.50 — death-save, revival eligibility and return penalties.
+/* SOLO REALMS V29.51 — resurrection caster tax and return penalties.
    Death saves occur at the downed hero's turn start; three successes stabilize at 0 HP. */
-const SR29_DEATH_SAVES_VERSION='29.50.0';
+const SR29_DEATH_SAVES_VERSION='29.51.0';
 function sr29SoloRemoveUnconscious(c){
   if(!c)return;
   c.unconscious=false;
@@ -155,6 +155,7 @@ function sr29ApplyLongRestPenaltyRecovery(campaign=state?.campaign,character=sta
     seen.add(target);
     const before=sr29RevivalD20Penalty(target),after=sr29ReduceRevivalPenaltyAfterLongRest(target);
     if(after<before)reduced++;
+    sr29ClearResurrectionCasterTax(target);
   }
   return reduced;
 }
@@ -312,6 +313,30 @@ function sr29SetRevivalReturnPenalty(character,spellName){
   character.revivalD20Penalty=4;
   return true;
 }
+const SR29_RESURRECTION_CASTER_TAX_MS=365*24*60*60*1000;
+function sr29HasResurrectionCasterTax(character){return character?.resurrectionCasterTax===true;}
+function sr29SetResurrectionCasterTax(caster,target,now=Date.now()){
+  const deathAt=Number(target?.deathAt),elapsed=Number(now)-deathAt;
+  if(!caster||!target||!Number.isFinite(deathAt)||!Number.isFinite(elapsed)||elapsed<SR29_RESURRECTION_CASTER_TAX_MS)return false;
+  caster.resurrectionCasterTax=true;
+  caster.resurrectionCasterTaxAppliedAt=Number(now);
+  return true;
+}
+function sr29ResurrectionTaxOptions(character,options={}){
+  if(!sr29HasResurrectionCasterTax(character))return options;
+  const next={...(options||{})};
+  // A pre-existing Advantage and this Disadvantage cancel normally.
+  if(next.mode==='advantage')next.advantage=true;
+  if(next.mode==='normal')delete next.mode;
+  next.disadvantage=true;
+  return next;
+}
+function sr29ClearResurrectionCasterTax(character){
+  if(!character||!sr29HasResurrectionCasterTax(character))return false;
+  delete character.resurrectionCasterTax;
+  delete character.resurrectionCasterTaxAppliedAt;
+  return true;
+}
 function sr29ReduceRevivalPenaltyAfterLongRest(character){
   const current=sr29RevivalD20Penalty(character);
   if(!current)return 0;
@@ -323,7 +348,7 @@ function sr29ReduceRevivalPenaltyAfterLongRest(character){
 if(typeof sr29CanonicalAbilityCheck==='function'){
   const sr29PriorRevivalAbilityCheck=sr29CanonicalAbilityCheck;
   sr29CanonicalAbilityCheck=function(target,skill,dc,options={},fatiguePenalty=0){
-    const result=sr29PriorRevivalAbilityCheck.call(this,target,skill,dc,options,fatiguePenalty);
+    const result=sr29PriorRevivalAbilityCheck.call(this,target,skill,dc,sr29ResurrectionTaxOptions(target,options),fatiguePenalty);
     return sr29ApplyRevivalD20Penalty(target,result,dc);
   };
   if(globalThis.__SR29_TEST)globalThis.__SR29_TEST.canonicalAbilityCheck=sr29CanonicalAbilityCheck;
@@ -331,22 +356,23 @@ if(typeof sr29CanonicalAbilityCheck==='function'){
 if(typeof sr14AbilityCheck==='function'){
   const sr29PriorRevivalLegacyAbilityCheck=sr14AbilityCheck;
   sr14AbilityCheck=function(character,skill,dc,options={}){
-    const result=sr29PriorRevivalLegacyAbilityCheck.call(this,character,skill,dc,options);
+    const result=sr29PriorRevivalLegacyAbilityCheck.call(this,character,skill,dc,sr29ResurrectionTaxOptions(character,options));
     return sr29ApplyRevivalD20Penalty(character,result,dc);
   };
 }
 if(typeof sr14SavingThrow==='function'){
   const sr29PriorRevivalSavingThrow=sr14SavingThrow;
   sr14SavingThrow=function(character,ability,dc,options={}){
-    const result=sr29PriorRevivalSavingThrow.call(this,character,ability,dc,options);
+    const result=sr29PriorRevivalSavingThrow.call(this,character,ability,dc,sr29ResurrectionTaxOptions(character,options));
     return sr29ApplyRevivalD20Penalty(character,result,dc);
   };
 }
 if(typeof sr133HeroSave==='function'){
   const sr29PriorRevivalHeroSave=sr133HeroSave;
   sr133HeroSave=function(character,ability,player,attacker,options={}){
-    const result=sr29PriorRevivalHeroSave.call(this,character,ability,player,attacker,options);
-    return sr29ApplyRevivalD20Penalty(character,result,result?.dc??options?.dc);
+    const effectiveOptions=sr29ResurrectionTaxOptions(character,options);
+    const result=sr29PriorRevivalHeroSave.call(this,character,ability,player,attacker,effectiveOptions);
+    return sr29ApplyRevivalD20Penalty(character,result,result?.dc??effectiveOptions?.dc);
   };
 }
 if(typeof sr11RollAttack==='function'){
@@ -367,6 +393,11 @@ if(typeof sr14CastSpellComplete==='function'){
     const selectedAlly=allyId?roster.find(p=>String(p?.id)===String(allyId)):null;
     const targetPlayer=selectedAlly||player;
     const target=targetPlayer?.character;
+    const caster=player?.character;
+    if(sr29HasResurrectionCasterTax(caster)){
+      toast('The strain of Resurrection prevents you from casting spells again until you finish a Long Rest.');
+      return false;
+    }
     const spell=typeof SRD52_SPELLS==='object'?SRD52_SPELLS[name]:null;
     const effect=spell&&typeof sr14SpellEffectComplete==='function'?sr14SpellEffectComplete(name,spell):null;
     const wasDowned=!!target&&Number(target.hp)<=0;
@@ -377,18 +408,20 @@ if(typeof sr14CastSpellComplete==='function'){
       toast('Healing cannot restore a creature that has died.');
       return false;
     }
+    const deathElapsedMs=Number.isFinite(Number(target?.deathAt))?Date.now()-Number(target.deathAt):NaN;
     const result=sr29PriorCastBeforeRevivalRules.call(this,playerOrNull,name,allyId,...args);
     if(result&&target&&wasDowned&&Number(target.hp)>0){
       if(name==='Resurrection'||name==='True Resurrection')target.hp=Number(target.maxHp)||target.hp;
       sr29ClearRevivedState(target);
       sr29SetRevivalReturnPenalty(target,name);
+      if(name==='Resurrection'&&deathElapsedMs>=SR29_RESURRECTION_CASTER_TAX_MS)sr29SetResurrectionCasterTax(caster,{deathAt:Date.now()-deathElapsedMs});
     }
     return result;
   };
   if(globalThis.__SR29_TEST?.gameplay)globalThis.__SR29_TEST.gameplay.castSpell=sr14CastSpellComplete;
 }
 globalThis.__SR29_DEATH_TEST={
-  version:SR29_DEATH_SAVES_VERSION,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestPenaltyRecovery:sr29ApplyLongRestPenaltyRecovery,canonicalAbilityCheck:typeof sr29CanonicalAbilityCheck==='function'?sr29CanonicalAbilityCheck:null,attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
+  version:SR29_DEATH_SAVES_VERSION,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestPenaltyRecovery:sr29ApplyLongRestPenaltyRecovery,hasResurrectionCasterTax:sr29HasResurrectionCasterTax,setResurrectionCasterTax:sr29SetResurrectionCasterTax,clearResurrectionCasterTax:sr29ClearResurrectionCasterTax,resurrectionTaxOptions:sr29ResurrectionTaxOptions,canonicalAbilityCheck:typeof sr29CanonicalAbilityCheck==='function'?sr29CanonicalAbilityCheck:null,attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
   clearDowned:sr29SoloClearDowned,damageAtZero:sr29SoloDamageAtZero,hasUnconscious:sr29SoloHasUnconscious,
   heal:typeof heal==='function'?heal:null,damagePlayer:typeof damagePlayer==='function'?damagePlayer:null,
   soloMonsterAttack:typeof sr10EnemyAttack==='function'?sr10EnemyAttack:null,soloHeroAttack:typeof sr11HeroAttack==='function'?sr29TestSoloHeroAttack:null,advanceStableTime:sr29SoloAdvanceStableTime,
