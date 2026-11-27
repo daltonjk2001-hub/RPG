@@ -1,6 +1,6 @@
-/* SOLO REALMS V29.38 — shared solo death-save lifecycle.
+/* SOLO REALMS V29.49 — death-save and revival lifecycle.
    Death saves occur at the downed hero's turn start; three successes stabilize at 0 HP. */
-const SR29_DEATH_SAVES_VERSION='29.38.0';
+const SR29_DEATH_SAVES_VERSION='29.49.0';
 function sr29SoloRemoveUnconscious(c){
   if(!c)return;
   c.unconscious=false;
@@ -215,23 +215,29 @@ function sr29TestSoloHeroAttack(...args){
   finally{render=priorRender;}
 }
 // V29.49 — revival eligibility and post-revival lifecycle cleanup.
-const SR29_REVIVAL_WINDOWS_MS={
-  Revivify:60*1000,
-  'Raise Dead':10*24*60*60*1000,
-  Reincarnate:10*24*60*60*1000,
-  Resurrection:100*365*24*60*60*1000,
-  'True Resurrection':200*365*24*60*60*1000
+const SR29_REVIVAL_WINDOW_RULES={
+  Revivify:{milliseconds:60*1000},
+  'Raise Dead':{milliseconds:10*24*60*60*1000},
+  Reincarnate:{milliseconds:10*24*60*60*1000},
+  Resurrection:{calendarYears:100},
+  'True Resurrection':{calendarYears:200}
 };
 function sr29RevivalEligibility(character,spellName,now=Date.now()){
   if(!character||Number(character.hp)>0)return {ok:false,reason:'The target is not dead.'};
   if(character.mpDead!==true&&character.dead!==true)return {ok:false,reason:'The target is unconscious or stable, not dead.'};
-  const windowMs=SR29_REVIVAL_WINDOWS_MS[spellName];
-  if(!Number.isFinite(windowMs))return {ok:false,reason:'This spell has no configured revival window.'};
+  const rule=SR29_REVIVAL_WINDOW_RULES[spellName];
+  if(!rule)return {ok:false,reason:'This spell has no configured revival window.'};
   const deathAt=Number(character.deathAt);
   if(!Number.isFinite(deathAt)||deathAt<=0)return {ok:false,reason:'The character has no recorded time of death.'};
   const elapsed=now-deathAt;
-  if(elapsed<0||elapsed>windowMs)return {ok:false,reason:'The target has been dead too long for this spell.'};
-  return {ok:true,elapsedMs:elapsed,windowMs};
+  if(elapsed<0)return {ok:false,reason:'The recorded time of death is in the future.'};
+  if(Number.isFinite(rule.milliseconds)&&elapsed>rule.milliseconds)return {ok:false,reason:'The target has been dead too long for this spell.'};
+  if(Number.isFinite(rule.calendarYears)){
+    const oldestAllowed=new Date(now);
+    oldestAllowed.setUTCFullYear(oldestAllowed.getUTCFullYear()-rule.calendarYears);
+    if(deathAt<oldestAllowed.getTime())return {ok:false,reason:'The target has been dead too long for this spell.'};
+  }
+  return {ok:true,elapsedMs:elapsed,...(rule.calendarYears?{calendarYears:rule.calendarYears}:{windowMs:rule.milliseconds})};
 }
 function sr29ClearRevivedState(character){
   if(!character||Number(character.hp)<=0)return false;
@@ -264,7 +270,7 @@ if(typeof sr14CastSpellComplete==='function'){
     if(effect?.kind==='revive'){
       const eligibility=sr29RevivalEligibility(target,name);
       if(!eligibility.ok){toast(eligibility.reason);return false;}
-    }else if(effect?.kind==='heal'&&target?.mpDead===true){
+    }else if(effect?.kind==='heal'&&(target?.mpDead===true||target?.dead===true)){
       toast('Healing cannot restore a creature that has died.');
       return false;
     }
