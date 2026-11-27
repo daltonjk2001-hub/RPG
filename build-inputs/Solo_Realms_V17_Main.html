@@ -4179,11 +4179,11 @@ function sr12CastSpell(player,name,allyId=null){
   c.actionSpent=true;if(!state.combat.enemies.some(e=>e.hp>0))sr12WinCombat();return true;
 }
 function sr12Potion(player,allyId=null){
-  const c=player.character;if(c.actionSpent){toast('Your action is already spent.');return false;}
+  const c=player.character;if(c.bonusActionSpent){toast('Your Bonus Action is already spent.');return false;}
   const i=c.inventory?.findIndex(x=>x.type==='potion'&&x.healing&&x.count>0)??-1;if(i<0){toast('No healing potion available.');return false;}
   const target=allyId?state.campaign.multiplayer.players.find(p=>p.id===allyId):player;if(!target){toast('That ally is unavailable.');return false;}
   if(allyId&&sr12Distance(sr12PlayerPos(player.id),sr12PlayerPos(allyId))>5){toast('Move within 5 feet to use a potion on that ally.');return false;}
-  const item=c.inventory[i],amount=rollDice(item.healing);target.character.hp=Math.min(target.character.maxHp,target.character.hp+amount);target.character.mpDowned=false;target.character.mpDead=false;item.count--;if(!item.count)c.inventory.splice(i,1);log(`${player.name} uses ${item.name} on ${target.name}, restoring ${amount} HP.`,'goodlog');c.actionSpent=true;return true;
+  const item=c.inventory[i],amount=rollDice(item.healing);target.character.hp=Math.min(target.character.maxHp,target.character.hp+amount);target.character.mpDowned=false;target.character.mpDead=false;item.count--;if(!item.count)c.inventory.splice(i,1);log(`${player.name} uses ${item.name} on ${target.name}, restoring ${amount} HP.`,'goodlog');c.bonusActionSpent=true;return true;
 }
 function sr12ClassPower(player){
   const c=player.character,cls=c.classId,level=Number(c.classLevels?.[cls])||c.level||1;
@@ -5476,7 +5476,7 @@ function sr136MoveTiedHero(b,index,direction){
   return true;
 }
 function sr136ActionAvailable(character,action){
-  const actionCost=['attack','defend','dodge','disengage','shove','grapple','help','hide','ready','interact','flee','potion'];
+  const actionCost=['attack','defend','dodge','disengage','shove','grapple','help','hide','ready','interact','flee'];
   if(!actionCost.includes(String(action||'')))return true;
   if(character?.actionSpent){toast('Your Action is already spent.');return false;}
   return true;
@@ -5557,9 +5557,14 @@ function sr136RunTests(){
     ok('Alert uses the acting character level for its proficiency bonus, not the host character',sr13InitiativeModifier({character:{level:9,stats:{DEX:14},feats:['Alert']}},true)===6);
     state=beforeAlertState;
     ok('Monster initiative falls back to its Dexterity score when nullable modifier fields are absent',sr13InitiativeModifier({initiativeModifier:null,dex:null,stats:{DEX:18}},false)===4);
-    const actionNames=['attack','defend','dodge','disengage','shove','grapple','help','hide','ready','interact','flee','potion'];
+    const actionNames=['attack','defend','dodge','disengage','shove','grapple','help','hide','ready','interact','flee'];
     ok('Central Action ledger rejects every Action-costing multiplayer command after the Action is spent',actionNames.every(name=>!sr136ActionAvailable({actionSpent:true},name)));
     ok('Central Action ledger permits Action-costing commands when the Action is available',actionNames.every(name=>sr136ActionAvailable({actionSpent:false},name)));
+    const potionPlayer={id:'potion-test',name:'Potion Hero',character:{hp:1,maxHp:20,actionSpent:true,bonusActionSpent:false,inventory:[{name:'Potion of Healing',type:'potion',healing:'2d4+2',count:1}]}};
+    const potionUsed=sr12Potion(potionPlayer);
+    ok('Potion of Healing uses a Bonus Action and can be used after the Action',potionUsed&&potionPlayer.character.bonusActionSpent&&potionPlayer.character.actionSpent&&potionPlayer.character.inventory.length===0&&potionPlayer.character.hp>1);
+    const potionBlocked={id:'potion-spent',name:'Spent Potion Hero',character:{hp:1,maxHp:20,actionSpent:false,bonusActionSpent:true,inventory:[{name:'Potion of Healing',type:'potion',healing:'2d4+2',count:1}]}};
+    ok('Potion of Healing cannot be used after the Bonus Action is spent',!sr12Potion(potionBlocked)&&potionBlocked.character.inventory[0].count===1);
     const readyAvailable={name:'Ready Hero',character:{actionSpent:false,reactionAvailable:true,readiedAttack:false}};
     ok('Ready consumes the Action while preserving an available Reaction',sr136ReadyAction(readyAvailable)&&readyAvailable.character.actionSpent&&readyAvailable.character.readiedAttack&&readyAvailable.character.reactionAvailable===true);
     const readySpentAction={name:'Spent Hero',character:{actionSpent:true,reactionAvailable:true,readiedAttack:false}};
