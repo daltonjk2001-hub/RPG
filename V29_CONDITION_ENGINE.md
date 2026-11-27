@@ -196,3 +196,14 @@ Verification is pending for the new commit. These changes do not replace the out
 - Automated tests cover the new solo procedure, damage/death transitions, initiative wiring, and multiplayer death timestamp.
 
 This is an integration milestone, not a claim that the entire damage/death/revival lifecycle is complete. Remaining work includes a full source-aware critical/damage audit, persistence/import checks for all death states, and live solo/co-op playtests.
+
+
+## V29.39 — Active solo initiative monster attack parity
+
+- Audited the actual runtime override chain and found that the V11 initiative monster attack replaces the older V10 function. The correction targets the active V11 implementation.
+- Hit success now uses the V25 typed attack resolver. The existing V11 attack-roll adapter continues to provide condition-aware Advantage/Disadvantage.
+- A hit against a Paralyzed or Unconscious target within 5 feet is now an automatic critical, in addition to a natural 20.
+- Critical damage extracts and doubles dice terms only; flat modifiers are applied once.
+- End-to-end regression tests call the active solo monster attack function and verify the 5-foot critical case and `1d6+3` damage result.
+
+The wider attack and damage pipelines remain Partial; this closes one active solo monster-attack path, not every legacy companion, player, or spell attack path.
