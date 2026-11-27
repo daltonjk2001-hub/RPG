@@ -210,6 +210,20 @@ def build_runtime() -> str:
         solo_hero_log,
         "log(`Attack: ${roll.adv?'advantage ':roll.dis?'disadvantage ':''}d20 ${roll.r} + ${bonus} = ${roll.total} vs AC ${ac}${cover?' (cover)':''}. ${critical?'Critical hit':hit?'Hit':'Miss'}.`,hit?'goodlog':'badlog');",
     )
+    solo_hero_sneak = "dmg+=rollDice(`${n}d6`);c.sneakAttackUsed=true;log('Sneak Attack adds extra damage.','goodlog');"
+    if base.count(solo_hero_sneak) != 1:
+        raise SystemExit("Expected one solo V11 Sneak Attack damage expression.")
+    base = base.replace(
+        solo_hero_sneak,
+        "const sneakDamage=rollDice(`${n}d6`);dmg+=critical?sneakDamage*2:sneakDamage;c.sneakAttackUsed=true;log(`Sneak Attack adds ${critical?'critical ':''}extra damage.`,'goodlog');",
+    )
+    solo_hero_mark = "if(c.markRounds>0)dmg+=rollDice('1d6');"
+    if base.count(solo_hero_mark) != 1:
+        raise SystemExit("Expected one solo V11 marked-target damage expression.")
+    base = base.replace(
+        solo_hero_mark,
+        "if(c.markRounds>0){const markDamage=rollDice('1d6');dmg+=critical?markDamage*2:markDamage;}",
+    )
 
     # Multiplayer weapon attacks use the same condition critical rule, and
     # critical bonus damage doubles dice only, never flat weapon modifiers.
@@ -221,7 +235,7 @@ def build_runtime() -> str:
         raise SystemExit("Expected one active multiplayer hero attack result log.")
     base = base.replace(
         mp_hero_log,
-        "log(`${player.name} attacks ${e.name}: ${roll.adv?'advantage ':roll.dis?'disadvantage ':''}d20 ${roll.r} + ${bonus} = ${roll.total} vs AC ${ac}${cover?' (cover)':''}. ${roll.r===20||automaticCritical?'Critical hit':hit?'Hit':'Miss'}.`,hit?'goodlog':'badlog');",
+        "log(`${player.name} attacks ${e.name}: ${roll.adv?'advantage ':roll.dis?'disadvantage ':''}d20 ${roll.r} + ${bonus} = ${roll.total} vs AC ${ac}${cover?' (cover)':''}. ${hit&&(roll.r===20||automaticCritical)?'Critical hit':hit?'Hit':'Miss'}.`,hit?'goodlog':'badlog');",
     )
     mp_hero_critical = "if(critical)dmg+=rollDice(w.damage);"
     if base.count(mp_hero_critical) != 1:
