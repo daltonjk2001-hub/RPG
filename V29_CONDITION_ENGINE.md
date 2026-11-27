@@ -354,3 +354,11 @@ Still incomplete: Reincarnate's complete species-specific trait automation and p
 - The long-cast preflight now runs the existing character-resource normalization before selecting and recording a slot. This migrates older or test-created slot layouts once, so subsequent render/save cycles preserve spent slots instead of refreshing an unversioned map.
 - Reincarnate's regression now declares the rare-oil component as consumed, matching the spell's material rule.
 - All four one-hour resurrection-cast regressions now verify both an exact one-slot decrease and that the final spell-slot map still contains the decreased value after the completion save/render cycle.
+
+
+## V29.63 — V7 spell-slot migration for long casts
+
+- The long-cast preflight now calls the existing V7 `sr7RecalcSlots(caster, false)` for the actual caster when `spellSlotProgressionVersion` is not 3. This matters for remote multiplayer casters: `sr7Ensure()` only migrates the main `state.character`, whereas a long cast may be initiated by a different player in the campaign roster.
+- This advances the slot schema once before slot reservation. Subsequent resolver save/render calls preserve the spent regular or Pact Magic slot instead of rebuilding an older slot map and restoring it.
+- Raise Dead, Reincarnate, Resurrection and True Resurrection regressions now assert that the V3 progression marker is present as soon as each cast starts, then verify the exact one-slot decrease remains after completion and rendering.
+- The prior CI runs passed all other V29 assertions but failed the four post-render slot-persistence checks (408/412).
