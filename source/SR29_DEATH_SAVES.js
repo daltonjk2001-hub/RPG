@@ -1,6 +1,6 @@
-/* SOLO REALMS V29.49 — death-save and revival lifecycle.
+/* SOLO REALMS V29.50 — death-save, revival eligibility and return penalties.
    Death saves occur at the downed hero's turn start; three successes stabilize at 0 HP. */
-const SR29_DEATH_SAVES_VERSION='29.49.0';
+const SR29_DEATH_SAVES_VERSION='29.50.0';
 function sr29SoloRemoveUnconscious(c){
   if(!c)return;
   c.unconscious=false;
@@ -150,8 +150,18 @@ if(typeof sr18AdvanceWorld==='function'){
 if(typeof longRest==='function'){
   const sr29PriorSoloLongRest=longRest;
   longRest=function(...args){
-    const c=state?.character,result=sr29PriorSoloLongRest.apply(this,args);
+    const c=state?.character,beforeDay=Number(state?.campaign?.day)||0;
+    const beforeWorldDay=Number(state?.campaign?.sr18?.clock?.day)||0;
+    const result=sr29PriorSoloLongRest.apply(this,args);
+    const afterDay=Number(state?.campaign?.day)||0,afterWorldDay=Number(state?.campaign?.sr18?.clock?.day)||0;
+    const completed=afterDay>beforeDay||afterWorldDay>beforeWorldDay;
     if(c&&!state?.combat?.mp&&!c.mpDead&&Number(c.hp)>0)sr29SoloClearDowned(c);
+    if(completed){
+      const targets=[c,...(state?.campaign?.multiplayer?.players||[]).map(p=>p?.character),...(state?.campaign?.companions||[])];
+      const seen=new Set();
+      for(const target of targets)if(target&&typeof target==='object'&&!seen.has(target)){seen.add(target);sr29ReduceRevivalPenaltyAfterLongRest(target);}
+      if(typeof save==='function')save();
+    }
     return result;
   };
 }
@@ -256,6 +266,78 @@ function sr29ClearRevivedState(character){
   sr29SoloRemoveUnconscious(character);
   return true;
 }
+function sr29RevivalD20Penalty(character){
+  const value=Number(character?.revivalD20Penalty);
+  return Number.isFinite(value)?Math.max(0,Math.min(4,Math.floor(value))):0;
+}
+function sr29ApplyRevivalD20Penalty(character,result,dc=null){
+  const penalty=sr29RevivalD20Penalty(character);
+  if(!penalty||!result||typeof result!=='object')return result;
+  if(Number.isFinite(Number(result.total)))result.total=Number(result.total)-penalty;
+  if(Number.isFinite(Number(result.bonus)))result.bonus=Number(result.bonus)-penalty;
+  if(Number.isFinite(Number(result.modifier)))result.modifier=Number(result.modifier)-penalty;
+  if(result.d20&&typeof result.d20==='object'){
+    result.d20={...result.d20};
+    if(Number.isFinite(Number(result.d20.total)))result.d20.total=Number(result.d20.total)-penalty;
+    if(Number.isFinite(Number(result.d20.modifier)))result.d20.modifier=Number(result.d20.modifier)-penalty;
+  }
+  const targetNumber=Number(result.dc??result.targetNumber??dc);
+  if(Number.isFinite(targetNumber)&&Number.isFinite(Number(result.total))){
+    result.success=result.autoFail===true||result.chosenToFail===true?false:Number(result.total)>=targetNumber;
+  }
+  result.revivalPenaltyApplied=penalty;
+  return result;
+}
+function sr29SetRevivalReturnPenalty(character,spellName){
+  if(!character||!['Raise Dead','Resurrection'].includes(spellName))return false;
+  character.revivalD20Penalty=4;
+  return true;
+}
+function sr29ReduceRevivalPenaltyAfterLongRest(character){
+  const current=sr29RevivalD20Penalty(character);
+  if(!current)return 0;
+  const next=Math.max(0,current-1);
+  if(next)character.revivalD20Penalty=next;
+  else delete character.revivalD20Penalty;
+  return next;
+}
+if(typeof sr29CanonicalAbilityCheck==='function'){
+  const sr29PriorRevivalAbilityCheck=sr29CanonicalAbilityCheck;
+  sr29CanonicalAbilityCheck=function(target,skill,dc,options={},fatiguePenalty=0){
+    const result=sr29PriorRevivalAbilityCheck.call(this,target,skill,dc,options,fatiguePenalty);
+    return sr29ApplyRevivalD20Penalty(target,result,dc);
+  };
+  if(globalThis.__SR29_TEST)globalThis.__SR29_TEST.canonicalAbilityCheck=sr29CanonicalAbilityCheck;
+}
+if(typeof sr14AbilityCheck==='function'){
+  const sr29PriorRevivalLegacyAbilityCheck=sr14AbilityCheck;
+  sr14AbilityCheck=function(character,skill,dc,options={}){
+    const result=sr29PriorRevivalLegacyAbilityCheck.call(this,character,skill,dc,options);
+    return sr29ApplyRevivalD20Penalty(character,result,dc);
+  };
+}
+if(typeof sr14SavingThrow==='function'){
+  const sr29PriorRevivalSavingThrow=sr14SavingThrow;
+  sr14SavingThrow=function(character,ability,dc,options={}){
+    const result=sr29PriorRevivalSavingThrow.call(this,character,ability,dc,options);
+    return sr29ApplyRevivalD20Penalty(character,result,dc);
+  };
+}
+if(typeof sr133HeroSave==='function'){
+  const sr29PriorRevivalHeroSave=sr133HeroSave;
+  sr133HeroSave=function(character,ability,player,attacker,options={}){
+    const result=sr29PriorRevivalHeroSave.call(this,character,ability,player,attacker,options);
+    return sr29ApplyRevivalD20Penalty(character,result,result?.dc??options?.dc);
+  };
+}
+if(typeof sr11RollAttack==='function'){
+  const sr29PriorRevivalAttackRoll=sr11RollAttack;
+  sr11RollAttack=function(base,actor,target,melee=false){
+    const result=sr29PriorRevivalAttackRoll.call(this,base,actor,target,melee);
+    return sr29ApplyRevivalD20Penalty(actor,result,target?.ac);
+  };
+  if(globalThis.__SR29_TEST)globalThis.__SR29_TEST.attackRoll=sr11RollAttack;
+}
 if(typeof sr14CastSpellComplete==='function'){
   const sr29PriorCastBeforeRevivalRules=sr14CastSpellComplete;
   sr14CastSpellComplete=function(playerOrNull,name,allyId=null,...args){
@@ -280,13 +362,14 @@ if(typeof sr14CastSpellComplete==='function'){
     if(result&&target&&wasDowned&&Number(target.hp)>0){
       if(name==='Resurrection'||name==='True Resurrection')target.hp=Number(target.maxHp)||target.hp;
       sr29ClearRevivedState(target);
+      sr29SetRevivalReturnPenalty(target,name);
     }
     return result;
   };
   if(globalThis.__SR29_TEST?.gameplay)globalThis.__SR29_TEST.gameplay.castSpell=sr14CastSpellComplete;
 }
 globalThis.__SR29_DEATH_TEST={
-  version:SR29_DEATH_SAVES_VERSION,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
+  version:SR29_DEATH_SAVES_VERSION,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestRecovery:typeof longRest==='function'?longRest:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
   clearDowned:sr29SoloClearDowned,damageAtZero:sr29SoloDamageAtZero,hasUnconscious:sr29SoloHasUnconscious,
   heal:typeof heal==='function'?heal:null,damagePlayer:typeof damagePlayer==='function'?damagePlayer:null,
   soloMonsterAttack:typeof sr10EnemyAttack==='function'?sr10EnemyAttack:null,soloHeroAttack:typeof sr11HeroAttack==='function'?sr29TestSoloHeroAttack:null,advanceStableTime:sr29SoloAdvanceStableTime,
