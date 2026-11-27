@@ -226,14 +226,14 @@ def build_runtime() -> str:
         raise SystemExit("Expected one legacy multiplayer spell-attack damage path.")
     base = base.replace(
         legacy_spell_attack,
-        "const spellOrigin=sr12PlayerPos(SR12.activePlayerId||SR4.myPlayerId),distance=spellOrigin&&enemy.pos?sr12Distance(spellOrigin,enemy.pos):null,hit=sr25AttackSuccess(r,ac),critical=r.r===20||(hit&&distance!==null&&sr29CriticalOnHit(enemy,{hit,distance}));if(!hit){log(`${sp.name||'Spell'} misses ${enemy.name}.`,'rolllog');return 0;}if(critical){const criticalDice=sr18CriticalExtraDice(sp.dice||'1d6');if(criticalDice)damage+=rollDice(criticalDice);log(`${sp.name||'Spell'} critically hits ${enemy.name}.`,'rolllog');}",
+        "const spellOrigin=sr12PlayerPos(SR12.activePlayerId||SR4.myPlayerId),distance=spellOrigin&&enemy.pos?sr12Distance(spellOrigin,enemy.pos):null,hit=sr25AttackSuccess(r,ac),critical=r.r===20||(hit&&distance!==null&&sr29CriticalOnHit(enemy,{hit,distance}));enemy._sr29LastSpellAttackRoll=r.r;enemy._sr29LastSpellAttackCritical=critical;if(!hit){log(`${sp.name||'Spell'} misses ${enemy.name}.`,'rolllog');return 0;}if(critical){const criticalDice=sr18CriticalExtraDice(sp.dice||'1d6');if(criticalDice)damage+=rollDice(criticalDice);log(`${sp.name||'Spell'} critically hits ${enemy.name} on d20 ${r.r}.`,'rolllog');}",
     )
     srd_spell_attack = "const r=sr11RollAttack(sr12SpellAttack(c)+(c.spellAttackBonus||0),c,e,false),hit=sr25AttackSuccess(r,e.ac);if(!hit){log(`${name} misses ${e.name}.`,'rolllog');continue;}if(r.r===20)amount+=sr14RollSpellDamage(formula);"
     if base.count(srd_spell_attack) != 1:
         raise SystemExit("Expected one complete SRD spell-attack damage path.")
     base = base.replace(
         srd_spell_attack,
-        "const r=sr11RollAttack(sr12SpellAttack(c)+(c.spellAttackBonus||0),c,e,false),distance=origin&&e.pos?sr12Distance(origin,e.pos):null,hit=sr25AttackSuccess(r,e.ac),critical=r.r===20||(hit&&distance!==null&&sr29CriticalOnHit(e,{hit,distance}));if(!hit){log(`${name} misses ${e.name}.`,'rolllog');continue;}if(critical){const criticalDice=sr18CriticalExtraDice(formula);if(criticalDice)amount+=sr14RollSpellDamage(criticalDice);log(`${name} critically hits ${e.name}.`,'rolllog');}",
+        "const r=sr11RollAttack(sr12SpellAttack(c)+(c.spellAttackBonus||0),c,e,false),distance=origin&&e.pos?sr12Distance(origin,e.pos):null,hit=sr25AttackSuccess(r,e.ac),critical=r.r===20||(hit&&distance!==null&&sr29CriticalOnHit(e,{hit,distance}));e._sr29LastSpellAttackRoll=r.r;e._sr29LastSpellAttackCritical=critical;if(!hit){log(`${name} misses ${e.name}.`,'rolllog');continue;}if(critical){const criticalDice=sr18CriticalExtraDice(formula);if(criticalDice)amount+=sr14RollSpellDamage(criticalDice);log(`${name} critically hits ${e.name} on d20 ${r.r}.`,'rolllog');}",
     )
 
     # The active solo V11 weapon attack must define its condition-based critical
