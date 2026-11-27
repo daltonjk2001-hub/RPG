@@ -97,3 +97,12 @@ This dashboard maps the D&D reference PDF's Parts I–III and Appendices A–B t
 - Updated the canonical V17 build input so Petrified and Unconscious also impose Initiative Disadvantage. Invisible still grants Advantage, and Advantage/Disadvantage cancel normally.
 - Added five multiplayer regression assertions covering direct Incapacitated, Petrified, Unconscious, Invisible, and Invisible plus Petrified cancellation.
 - The initiative/turn-order system remains **Partial**: this correction does not certify every solo tie path or physical multiplayer disconnect/reconnect and concurrent-host behavior.
+
+
+## V29.27 multiplayer tied-turn handoff
+
+- The V13.6 multiplayer initiative system already supports party-selected ordering for tied player characters and Director-resolved ordering for monster or mixed ties.
+- Auditing the host message path found that changing the first tied hero could change the active actor without invalidating the cached active-turn key. That could leave the newly active hero with the previous hero's turn initialization state.
+- Added an explicit active-actor comparison after a tie reorder. When the active hero changes, the host clears the cached turn key and re-enters the authoritative actor processor so the new hero receives their own turn reset. Reordering later tied heroes leaves the current hero's resources untouched.
+- Added two regression assertions for active-actor-change detection and preserving the active turn when only later tied heroes are reordered.
+- Full device-level verification remains outstanding; automated tests do not substitute for two-device turn handoff/reconnect testing.
