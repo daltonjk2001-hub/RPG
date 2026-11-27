@@ -63,6 +63,15 @@ try{
  const reincarnateDruid=actor({id:'reincarnate-druid',name:'Reincarnate Druid',classId:'Druid',level:9,classLevels:{Druid:9},spells:['Reincarnate'],preparedSpells:['Reincarnate'],spellSlotsByLevel:{5:1}});
  const reincarnateDiagnostics=T.gameplay.spellDiagnostics(reincarnateDruid,'Reincarnate');
  assert('Reincarnate enters the shared revival pipeline despite its new-body description',reincarnateDiagnostics.exists&&reincarnateDiagnostics.effect?.kind==='revive',JSON.stringify(reincarnateDiagnostics));
+ T.gameplay.setSpellData('Raise Dead',{name:'Raise Dead',level:5,classes:['Cleric'],kind:'revive',range:'Touch',castingTime:'1 hour',components:'V, S',description:'Return a dead creature to life.'});
+ const raiseCaster=actor({id:'raise-caster',name:'Raise Dead Cleric',classId:'Cleric',level:9,classLevels:{Cleric:9},spells:['Raise Dead'],preparedSpells:['Raise Dead'],spellSlotsByLevel:{5:1},spellSlotSpentThisTurn:false});
+ const raiseCasterPlayer={id:'raise-caster',name:'Raise Dead Cleric',connected:true,character:raiseCaster};
+ const raiseTarget=actor({id:'raise-target',name:'Raise Dead Target',hp:0,maxHp:40,mpDead:true,dead:true,deathAt:Date.now()-24*60*60*1000,deathFailure:3});
+ const raiseTargetPlayer={id:'raise-target',name:'Raise Dead Target',connected:true,character:raiseTarget};
+ T18.state={character:raiseCaster,campaign:{day:1,region:'Long Cast Revival',location:'Long Cast Revival',visited:['Long Cast Revival'],companions:[],npcs:[],sideQuests:[],story:{},flags:{},mainQuest:{kind:'test',title:'Long Cast Revival',goal:'Validate remote out-of-combat revival'},multiplayer:{active:true,players:[raiseCasterPlayer,raiseTargetPlayer]}},combat:null,log:[]};
+ const raiseDeadCast=T.gameplay.castSpell(raiseCasterPlayer,'Raise Dead','raise-target',true);
+ assert('Raise Dead can target a remote campaign member outside combat and applies the four-point return penalty',raiseDeadCast===true&&raiseTarget.hp===1&&raiseTarget.mpDead===false&&raiseTarget.revivalD20Penalty===4,JSON.stringify({raiseDeadCast,target:{hp:raiseTarget.hp,dead:raiseTarget.mpDead,penalty:raiseTarget.revivalD20Penalty},casterSlots:raiseCaster.spellSlotsByLevel}));
+ T18.state={character:actor(),campaign:{},combat:null,log:[]};
  const centuryEligibility=RV.revivalEligibility(revivalProbe(centuryCutoff.getTime()),'Resurrection',revivalClock),centuryBeforeEligibility=RV.revivalEligibility(revivalProbe(centuryCutoff.getTime()-1),'Resurrection',revivalClock);
  assert('Resurrection eligibility uses the exact 100-calendar-year boundary, including leap-year spans',centuryEligibility.ok&&!centuryBeforeEligibility.ok,JSON.stringify({cutoff:centuryCutoff.toISOString(),now:new Date(revivalClock).toISOString(),at:centuryEligibility,before:centuryBeforeEligibility,character:revivalProbe(centuryCutoff.getTime())}));
  const bicenturyEligibility=RV.revivalEligibility(revivalProbe(bicenturyCutoff.getTime()),'True Resurrection',revivalClock),bicenturyBeforeEligibility=RV.revivalEligibility(revivalProbe(bicenturyCutoff.getTime()-1),'True Resurrection',revivalClock);
