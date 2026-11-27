@@ -1087,11 +1087,11 @@ try{
   const soloCriticalEnemy={id:'solo-critical-enemy',name:'Solo Critical Monster',attack:100,damage:'1d6',pos:{x:2,y:1}};
   T18.state={character:soloCriticalHero,campaign:{companions:[]},combat:{mp:null,heroPos:{x:1,y:1},enemies:[soloCriticalEnemy],map:{width:8,height:6,terrain:[]},round:1},log:[]};
   T.apply(soloCriticalHero,'paralyzed','permanent','solo initiative critical regression');
-  assert('Solo V10 critical fixture is Paralyzed and meets the 5-foot automatic-critical rule',T.has(soloCriticalHero,'paralyzed')&&T.criticalOnHit(soloCriticalHero,{hit:true,distance:5}));
+  assert('Solo V11 critical fixture is Paralyzed and meets the 5-foot automatic-critical rule',T.has(soloCriticalHero,'paralyzed')&&T.criticalOnHit(soloCriticalHero,{hit:true,distance:5}));
   const priorSoloCriticalRandom=math.random;math.random=()=>0.5;
   try{D.soloMonsterAttack(soloCriticalEnemy);}finally{math.random=priorSoloCriticalRandom;}
-  assert('V10 solo initiative monster attacks gain Advantage and automatic critical damage against a Paralyzed target within 5 feet',soloCriticalHero.hp===22&&T18.state.log.some(x=>/Critical hit/.test(x.msg)),JSON.stringify({hp:soloCriticalHero.hp,log:T18.state.log}));
-  assert('V10 solo initiative monster attacks use the canonical condition attack and critical resolvers',html.includes('sr29CriticalOnHit(c,{hit,distance:dist})')&&html.includes('sr18CriticalExtraDice(e.damage||'));
+  assert('V11 solo initiative monster attacks gain Advantage and automatic critical damage against a Paralyzed target within 5 feet',soloCriticalHero.hp===22&&T18.state.log.some(x=>/Critical hit/.test(x.msg)),JSON.stringify({hp:soloCriticalHero.hp,log:T18.state.log}));
+  assert('V11 solo initiative monster attacks use the canonical condition attack and critical resolvers',html.includes('sr29CriticalOnHit(c,{hit,distance:dist})')&&html.includes('sr18CriticalExtraDice(e.damage||'));
 
   const soloFlatCriticalHero=actor({id:'solo-flat-critical-hero',name:'Solo Flat Critical Hero',hp:30,maxHp:30,armor:'Traveler’s clothes'});
   const soloFlatCriticalEnemy={id:'solo-flat-critical-enemy',name:'Solo Flat Critical Monster',attack:100,damage:'1d6+3',pos:{x:2,y:1}};
@@ -1099,7 +1099,7 @@ try{
   T.apply(soloFlatCriticalHero,'paralyzed','permanent','solo flat critical regression');
   const priorSoloFlatRandom=math.random;math.random=()=>0.5;
   try{D.soloMonsterAttack(soloFlatCriticalEnemy);}finally{math.random=priorSoloFlatRandom;}
-  assert('V10 solo monster critical damage doubles dice without doubling flat modifiers',soloFlatCriticalHero.hp===19&&T18.state.log.some(x=>/Critical hit/.test(x.msg)),JSON.stringify({hp:soloFlatCriticalHero.hp,log:T18.state.log}));
+  assert('V11 solo monster critical damage doubles dice without doubling flat modifiers',soloFlatCriticalHero.hp===19&&T18.state.log.some(x=>/Critical hit/.test(x.msg)),JSON.stringify({hp:soloFlatCriticalHero.hp,log:T18.state.log}));
   const deathHero=actor({id:'solo-death-hero',name:'Solo Death Hero',hp:0,maxHp:20,deathSuccess:2,deathFailure:0,stable:false,unconscious:true,conditions:[{name:'unconscious',duration:999}]});
   T18.state={character:deathHero,campaign:{companions:[],day:1},combat:{mp:null,downed:true,round:2,enemies:[]},log:[]};
   const priorDeathRandom=math.random;math.random=()=>0.5;
