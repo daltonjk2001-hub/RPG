@@ -420,8 +420,8 @@ try{
  assert('Attacks against Paralyzed targets have Advantage',T.attackState(attacker,target,{melee:true,distance:5}).mode==='advantage');
  const grappled=actor();T.apply(grappled,'grappled',2,'grab',{grapplerId:'grappler-1'});
  assert('Grappled sets Speed to zero',T.status(grappled).speedOverride===0);
- assert('Grappled attackers have Disadvantage against targets other than their grappler',T.attackState(grappled,actor({id:'another-target'}),{melee:true,distance:5}).mode==='disadvantage');
- assert('Grappled attackers do not suffer this penalty against their grappler',T.attackState(grappled,actor({id:'grappler-1'}),{melee:true,distance:5}).mode==='normal');
+ assert('Grappled does not impose Disadvantage on attacks against other creatures',T.attackState(grappled,actor({id:'another-target'}),{melee:true,distance:5}).mode==='normal');
+ assert('Grappled does not impose Disadvantage on attacks against its grappler',T.attackState(grappled,actor({id:'grappler-1'}),{melee:true,distance:5}).mode==='normal');
 
  const eligibleHolder=actor({id:'legal-holder',size:'medium'}),eligibleTarget=actor({id:'legal-target',size:'large'});
  assert('Grapple eligibility accepts a target one size larger with a free hand and valid reach',T.grappleEligibility(eligibleHolder,eligibleTarget,{grapplerSize:'medium',targetSize:'large',freeHands:1,activeGrapples:[],distance:5,reach:5}).legal);
@@ -512,7 +512,7 @@ try{
  assert('Actual attack rolls apply Frightened Disadvantage while the source is visible',frightenedAttack.dis&&!frightenedAttack.adv);
  const grappledAttacker=actor({id:'grappled-attacker'});T.apply(grappledAttacker,'grappled',2,'grab',{grapplerId:'grappler'});
  const grappleAttack=T.attackRoll(5,grappledAttacker,actor({id:'not-grappler'}),true);
- assert('Actual attack rolls apply Grappled Disadvantage against other targets',grappleAttack.dis&&!grappleAttack.adv);
+ assert('Actual attack rolls do not add Disadvantage solely because the attacker is Grappled',!grappleAttack.dis&&!grappleAttack.adv);
  const closeProne=actor({id:'close-prone',distance:5});T.apply(closeProne,'prone',2,'trip');
  const closeProneAttack=T.attackRoll(5,actor(),closeProne,false);
  assert('Actual ranged attacks from within 5 feet gain Advantage against Prone targets',closeProneAttack.adv&&!closeProneAttack.dis);
