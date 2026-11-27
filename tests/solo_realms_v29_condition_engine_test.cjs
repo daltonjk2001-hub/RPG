@@ -93,6 +93,34 @@ try{
  const penaltyNaturalTwenty=actor({revivalD20Penalty:4}),penaltyHighAC=actor({id:'penalty-high-ac',name:'Penalty High AC',ac:25});
  const priorNaturalTwentyRandom=math.random;let naturalTwentyAttack;try{math.random=()=>0.999999;naturalTwentyAttack=RV.attackRoll(0,penaltyNaturalTwenty,penaltyHighAC,false);}finally{math.random=priorNaturalTwentyRandom;}
  assert('A natural 20 remains an automatic hit even when the return penalty lowers its total below AC',naturalTwentyAttack.r===20&&naturalTwentyAttack.total===16&&naturalTwentyAttack.success===true,JSON.stringify(naturalTwentyAttack));
+ const resurrectionTaxCaster=actor({resurrectionCasterTax:true});
+ const taxCheck=T.canonicalAbilityCheck(resurrectionTaxCaster,'Athletics',10,{roll:18,secondRoll:3,bonusOverride:0});
+ assert('Resurrection caster tax imposes Disadvantage on canonical ability checks',taxCheck.roll===3&&taxCheck.disadvantage===true&&taxCheck.success===false,JSON.stringify(taxCheck));
+ const taxAttackTarget=actor({id:'tax-attack-target',name:'Tax Attack Target',ac:10});
+ const taxAttackRandom=math.random;let taxAttack;const taxAttackRolls=[0.9,0.1];
+ try{math.random=()=>taxAttackRolls.shift()??0.1;taxAttack=RV.attackRoll(0,resurrectionTaxCaster,taxAttackTarget,false);}finally{math.random=taxAttackRandom;}
+ assert('Resurrection caster tax imposes Disadvantage on weapon attacks',taxAttack.r===3&&taxAttack.dis===true&&taxAttack.success===false,JSON.stringify(taxAttack));
+ const taxSaveRandom=math.random;let taxSave;const taxSaveRolls=[0.9,0.1];
+ try{math.random=()=>taxSaveRolls.shift()??0.1;taxSave=RV.savingThrow(resurrectionTaxCaster,'CON',10);}finally{math.random=taxSaveRandom;}
+ assert('Resurrection caster tax imposes Disadvantage on saving throws',taxSave.roll===3&&taxSave.disadvantage===true&&taxSave.success===false,JSON.stringify(taxSave));
+ const resurrectionCasterProbe=actor(),resurrectionDayProbe=actor({hp:0,mpDead:true,deathAt:Date.now()-365*24*60*60*1000});
+ assert('The Resurrection caster drawback begins at exactly 365 days and not one day earlier',RV.setResurrectionCasterTax(resurrectionCasterProbe,resurrectionDayProbe)&&resurrectionCasterProbe.resurrectionCasterTax===true&&!RV.setResurrectionCasterTax(actor(),{deathAt:Date.now()-364*24*60*60*1000},Date.now()));
+ T.gameplay.setSpellData('Resurrection',{name:'Resurrection',level:7,classes:['Cleric'],kind:'revive',range:'Touch',castingTime:'1 hour',components:'V, S',description:'Return a dead creature to life.'});
+ T.gameplay.setSpellData('Cure Wounds',{name:'Cure Wounds',level:1,classes:['Cleric'],kind:'heal',range:'Touch',castingTime:'Action',components:'V, S',description:'A creature regains hit points.'});
+ const resurrectionCaster=actor({id:'resurrection-caster',name:'Resurrection Cleric',classId:'Cleric',level:13,classLevels:{Cleric:13},spells:['Resurrection','Cure Wounds'],preparedSpells:['Resurrection','Cure Wounds'],spellSlotsByLevel:{1:2,7:1},spellSlotSpentThisTurn:false});
+ const resurrectionCasterPlayer={id:'resurrection-caster',name:'Resurrection Cleric',connected:true,character:resurrectionCaster};
+ const resurrectionTarget=actor({id:'resurrection-target',name:'Resurrection Target',hp:0,maxHp:48,mpDead:true,dead:true,deathAt:Date.now()-365*24*60*60*1000,deathFailure:3});
+ const resurrectionTargetPlayer={id:'resurrection-target',name:'Resurrection Target',connected:true,character:resurrectionTarget};
+ T18.state={character:resurrectionCaster,campaign:{day:1,region:'Resurrection Tax Test',location:'Resurrection Tax Test',visited:['Resurrection Tax Test'],companions:[],npcs:[],sideQuests:[],story:{},flags:{},mainQuest:{kind:'test',title:'Resurrection Tax Test',goal:'Validate the caster tax'},multiplayer:{active:true,players:[resurrectionCasterPlayer,resurrectionTargetPlayer]}},combat:null,log:[]};
+ const resurrectionCast=T.gameplay.castSpell(resurrectionCasterPlayer,'Resurrection','resurrection-target',true);
+ assert('Resurrection of a target dead at least 365 days restores the target and taxes the caster',resurrectionCast===true&&resurrectionTarget.hp===48&&resurrectionTarget.revivalD20Penalty===4&&resurrectionCaster.resurrectionCasterTax===true,JSON.stringify({resurrectionCast,caster:resurrectionCaster,target:{hp:resurrectionTarget.hp,penalty:resurrectionTarget.revivalD20Penalty}}));
+ const slotsBeforeTaxedCast={...resurrectionCaster.spellSlotsByLevel};
+ const lockedCast=T.gameplay.castSpell(resurrectionCasterPlayer,'Cure Wounds',null,true);
+ assert('A taxed Resurrection caster cannot cast another spell before a Long Rest',lockedCast===false&&JSON.stringify(resurrectionCaster.spellSlotsByLevel)===JSON.stringify(slotsBeforeTaxedCast),JSON.stringify({lockedCast,slots:resurrectionCaster.spellSlotsByLevel,toast:toast.textContent}));
+ const taxRestedCompanion=actor({resurrectionCasterTax:true});
+ RV.applyLongRestPenaltyRecovery({multiplayer:{players:[resurrectionCasterPlayer]},companions:[taxRestedCompanion]},resurrectionCaster);
+ assert('The Long Rest recovery transaction clears the caster drawback for the whole resting party',!resurrectionCaster.resurrectionCasterTax&&!resurrectionTarget.resurrectionCasterTax&&!taxRestedCompanion.resurrectionCasterTax);
+ T18.state={character:actor(),campaign:{},combat:null,log:[]};
  const penaltyRecoveryHero=actor({revivalD20Penalty:4});
  const firstPenaltyRecovery=RV.reduceRevivalPenaltyAfterLongRest(penaltyRecoveryHero),secondPenaltyRecovery=RV.reduceRevivalPenaltyAfterLongRest(penaltyRecoveryHero);
  const thirdPenaltyRecovery=RV.reduceRevivalPenaltyAfterLongRest(penaltyRecoveryHero),fourthPenaltyRecovery=RV.reduceRevivalPenaltyAfterLongRest(penaltyRecoveryHero);
