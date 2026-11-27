@@ -176,3 +176,10 @@ This dashboard maps the D&D reference PDF's Parts I–III and Appendices A–B t
 - The solo combat potion path also treated drinking a Potion of Healing as an immediate turn-ending action. Updated it to consume only the Bonus Action during combat, preserve the current turn, and leave the Action available; outside combat it remains usable without a combat action cost.
 - Solo use now rejects a potion after the Bonus Action is spent and does not consume the item on rejection.
 - Added two V10 regression assertions for same-turn continuation and Bonus Action exhaustion.
+
+
+## V29.36 Potion use while incapacitated
+
+- Both solo and multiplayer potion paths now reject self-use by a creature at 0 HP, marked Unconscious, or carrying an Incapacitated condition (including inherited conditions).
+- A conscious ally can still administer a potion to an unconscious target; the actor's condition, not the recipient's, governs whether the Bonus Action can be taken.
+- Added regression assertions for incapacitated self-use in both combat modes.
