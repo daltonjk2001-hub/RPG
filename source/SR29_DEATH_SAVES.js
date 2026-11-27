@@ -1,7 +1,7 @@
-/* SOLO REALMS V29.55 — Dragonborn character-creation lineage selection.
-   V29.54 lineage resistance integration; V29.53 Reincarnate species and trait replacement.
+/* SOLO REALMS V29.56 — Resurrection material-component consumption.
+   V29.55 Dragonborn character-creation lineage selection; V29.54 lineage resistance integration.
    Death saves occur at the downed hero's turn start; three successes stabilize at 0 HP. */
-const SR29_DEATH_SAVES_VERSION='29.55.0';
+const SR29_DEATH_SAVES_VERSION='29.56.0';
 function sr29SoloRemoveUnconscious(c){
   if(!c)return;
   c.unconscious=false;
@@ -734,6 +734,40 @@ function sr29InjectDragonbornLineageField(markup){
   const field='<div class="field" id="draconicAncestryField" style="display:none"><label>Draconic ancestry / resistance</label><select name="draconicAncestryChoice" id="draconicAncestryChoice" disabled><option value="">Choose a lineage…</option>'+options+'</select><p id="draconicAncestryInfo" class="smalltext muted">Choose the dragon lineage that shapes your Breath Weapon and resistance.</p></div>';
   return html.replace(anchor,field+anchor);
 }
+function sr29MaterialComponentText(sp){
+  return [sp?.components,sp?.materialComponent,sp?.material,sp?.description,sp?.desc]
+    .map(value=>typeof value==='string'?value:Array.isArray(value)?value.join(' '):'').filter(Boolean).join(' ');
+}
+function sr29MaterialComponentCost(sp){
+  const text=sr29MaterialComponentText(sp);
+  const match=text.match(/\bworth\s+(?:at\s+least\s+)?(\d[\d,]*)\s*gp\b/i);
+  const declared=Number(sp?.materialCost??sp?.material_cost??0);
+  return match?Number(match[1].replace(/,/g,'')):Number.isFinite(declared)&&declared>0?declared:0;
+}
+function sr29ConsumeMaterialComponent(character,spell){
+  if(!character||typeof character!=='object')return false;
+  const cost=sr29MaterialComponentCost(spell);
+  if(!cost)return true;
+  const inventory=Array.isArray(character.inventory)?character.inventory:[];
+  const item=inventory.find(entry=>{
+    const type=String(entry?.type||'').toLowerCase(),name=String(entry?.name||'');
+    const qualifying=type==='gem'||type==='material'||/diamond|ruby|pearl|ivory/i.test(name);
+    return qualifying&&Number(entry?.value)>=cost&&Number(entry?.count)>0;
+  });
+  if(!item){toast(`${spell?.name||'This spell'} requires a material component worth at least ${cost.toLocaleString('en-US')} gp.`);return false;}
+  const components=[spell?.components,spell?.materialComponent,spell?.material].map(x=>typeof x==='string'?x:Array.isArray(x)?x.join(' '):'').join(' ');
+  const descriptions=[spell?.description,spell?.desc].filter(x=>typeof x==='string').join(' ');
+  const consumed=/\bconsum(?:e|ed|es|ption)\b/i.test(components)||
+    /\b(?:consum(?:e|ed|es|ption).{0,100}(?:diamond|gem|pearl|ruby|ivory|material)|(?:diamond|gem|pearl|ruby|ivory|material).{0,100}consum(?:e|ed|es|ption))\b/i.test(descriptions);
+  if(consumed){
+    item.count=Math.max(0,Number(item.count)-1);
+    if(item.count===0)inventory.splice(inventory.indexOf(item),1);
+  }
+  return true;
+}
+// Prefer the component declaration; descriptions are fallback text, never the sole source of a consume marker.
+if(typeof sr14ConsumeMaterial==='function')sr14ConsumeMaterial=sr29ConsumeMaterialComponent;
+
 // Add a lineage selector to the existing creator without changing other ancestry forms.
 if(typeof renderCreator==='function'){
   const sr29PriorRenderCreator=renderCreator;
@@ -792,7 +826,7 @@ if(typeof createCharacter==='function'){
 }
 
 globalThis.__SR29_DEATH_TEST={
-  version:SR29_DEATH_SAVES_VERSION,creatorMarkup:typeof renderCreator==='function'?renderCreator:null,injectDragonbornLineageField:sr29InjectDragonbornLineageField,isValidDraconicAncestry:sr29DraconicAncestryIsValid,reincarnateSpecies:SR29_REINCARNATE_SPECIES,reincarnateSpeciesFromRoll:sr29ReincarnateSpeciesFromRoll,applyReincarnateSpecies:sr29ApplyReincarnateSpecies,recordDeathSnapshot:sr29RecordDeathSnapshot,isOldAgeDeath:sr29IsOldAgeDeath,wasUndeadAtDeath:sr29WasUndeadAtDeath,isHumanoidAtDeath:sr29IsHumanoidAtDeath,missingBodyParts:sr29MissingBodyParts,hasMissingVitalParts:sr29HasMissingVitalParts,clearRevivalDeathMetadata:sr29ClearRevivalDeathMetadata,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestPenaltyRecovery:sr29ApplyLongRestPenaltyRecovery,hasResurrectionCasterTax:sr29HasResurrectionCasterTax,setResurrectionCasterTax:sr29SetResurrectionCasterTax,setDraconicAncestry:sr29SetDraconicAncestry,damageMultiplier:typeof sr14DamageMultiplier==='function'?sr14DamageMultiplier:null,dragonbornBreath:sr29DragonbornBreath,dragonbornBreathDamageDice:sr29DragonbornBreathDamageDice,dragonbornProficiencyBonus:sr29DragonbornProficiencyBonus,clearResurrectionCasterTax:sr29ClearResurrectionCasterTax,applyResurrectionTaxD20Result:sr29ApplyResurrectionTaxD20Result,rejectCastDuringResurrectionTax:sr29RejectCastDuringResurrectionTax,canonicalAbilityCheck:typeof sr29CanonicalAbilityCheck==='function'?sr29CanonicalAbilityCheck:null,attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
+  version:SR29_DEATH_SAVES_VERSION,consumeMaterialComponent:sr29ConsumeMaterialComponent,materialComponentCost:sr29MaterialComponentCost,creatorMarkup:typeof renderCreator==='function'?renderCreator:null,injectDragonbornLineageField:sr29InjectDragonbornLineageField,isValidDraconicAncestry:sr29DraconicAncestryIsValid,reincarnateSpecies:SR29_REINCARNATE_SPECIES,reincarnateSpeciesFromRoll:sr29ReincarnateSpeciesFromRoll,applyReincarnateSpecies:sr29ApplyReincarnateSpecies,recordDeathSnapshot:sr29RecordDeathSnapshot,isOldAgeDeath:sr29IsOldAgeDeath,wasUndeadAtDeath:sr29WasUndeadAtDeath,isHumanoidAtDeath:sr29IsHumanoidAtDeath,missingBodyParts:sr29MissingBodyParts,hasMissingVitalParts:sr29HasMissingVitalParts,clearRevivalDeathMetadata:sr29ClearRevivalDeathMetadata,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestPenaltyRecovery:sr29ApplyLongRestPenaltyRecovery,hasResurrectionCasterTax:sr29HasResurrectionCasterTax,setResurrectionCasterTax:sr29SetResurrectionCasterTax,setDraconicAncestry:sr29SetDraconicAncestry,damageMultiplier:typeof sr14DamageMultiplier==='function'?sr14DamageMultiplier:null,dragonbornBreath:sr29DragonbornBreath,dragonbornBreathDamageDice:sr29DragonbornBreathDamageDice,dragonbornProficiencyBonus:sr29DragonbornProficiencyBonus,clearResurrectionCasterTax:sr29ClearResurrectionCasterTax,applyResurrectionTaxD20Result:sr29ApplyResurrectionTaxD20Result,rejectCastDuringResurrectionTax:sr29RejectCastDuringResurrectionTax,canonicalAbilityCheck:typeof sr29CanonicalAbilityCheck==='function'?sr29CanonicalAbilityCheck:null,attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
   clearDowned:sr29SoloClearDowned,damageAtZero:sr29SoloDamageAtZero,hasUnconscious:sr29SoloHasUnconscious,
   heal:typeof heal==='function'?heal:null,damagePlayer:typeof damagePlayer==='function'?damagePlayer:null,
   soloMonsterAttack:typeof sr10EnemyAttack==='function'?sr10EnemyAttack:null,soloHeroAttack:typeof sr11HeroAttack==='function'?sr29TestSoloHeroAttack:null,advanceStableTime:sr29SoloAdvanceStableTime,

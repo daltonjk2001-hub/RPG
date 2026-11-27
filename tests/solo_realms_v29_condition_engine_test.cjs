@@ -105,6 +105,18 @@ try{
  const supportedLineages=['Black','Blue','Brass','Bronze','Copper','Gold','Green','Red','Silver','White'];
  assert('The new-character creator presents a Draconic Ancestry selector containing all ten lineages',creatorMarkup.includes('name="draconicAncestryChoice"')&&supportedLineages.every(name=>creatorMarkup.includes(`value="${name}"`)),creatorMarkup.includes('id="draconicAncestryField"'));
  assert('Dragonborn creation requires a supported lineage and rejects blank or unknown choices',!RV.isValidDraconicAncestry('')&&!RV.isValidDraconicAncestry('Purple')&&supportedLineages.every(name=>RV.isValidDraconicAncestry(name)));
+ const consumedDiamond=actor({inventory:[{id:'revivify-diamond',name:'Diamond',type:'gem',value:300,count:1}]});
+ const consumedDiamondResult=RV.consumeMaterialComponent(consumedDiamond,{name:'Revivify',components:'V, S, M (diamond worth 300 gp, consumed)'});
+ assert('A consumed material component is removed after a successful material check even when its consume marker exists only in components',consumedDiamondResult&&consumedDiamond.inventory.length===0);
+ const reusableGem=actor({inventory:[{id:'reusable-gem',name:'Pearl',type:'gem',value:1000,count:2}]});
+ const reusableGemResult=RV.consumeMaterialComponent(reusableGem,{name:'Focus Spell',components:'V, S, M (pearl worth 1,000 gp)'});
+ assert('A priced but reusable material component is validated without reducing its quantity',reusableGemResult&&reusableGem.inventory.length===1&&reusableGem.inventory[0].count===2);
+ const insufficientGem=actor({inventory:[{id:'cheap-diamond',name:'Diamond',type:'gem',value:299,count:1}]});
+ const insufficientGemResult=RV.consumeMaterialComponent(insufficientGem,{name:'Revivify',components:'V, S, M (diamond worth at least 300 gp, consumed)'});
+ assert('A material item below the spell minimum is rejected and remains in inventory',insufficientGemResult===false&&insufficientGem.inventory.length===1&&insufficientGem.inventory[0].count===1);
+ const descriptionDiamond=actor({inventory:[{id:'description-diamond',name:'Diamond',type:'gem',value:1000,count:2}]});
+ const descriptionDiamondResult=RV.consumeMaterialComponent(descriptionDiamond,{name:'Resurrection',components:'V, S, M (diamond)',description:'A diamond worth at least 1,000 gp is consumed by this spell.'});
+ assert('Material value and consumption can also be read from the supported description fallback',descriptionDiamondResult&&descriptionDiamond.inventory[0].count===1&&RV.materialComponentCost({components:'M (diamond)',desc:'Diamond worth 1,000 gp.'})===1000);
  const humanToDragonkin=actor({ancestry:'Human',level:5,maxHp:40,stats:{STR:11,DEX:11,CON:11,INT:11,WIS:11,CHA:11},spells:[]});
  RV.applyReincarnateSpecies(humanToDragonkin,2,'Dragonkin');
  assert('A DM species override may choose another supported playable species while preserving the rolled 1d10 result',humanToDragonkin.ancestry==='Dragonkin'&&humanToDragonkin.dragonBreathUsed===false);
@@ -1281,7 +1293,7 @@ try{
   assert('Monster critical bonus dice preserve flat attack damage modifiers',T18.criticalExtraDice('2d6+4')==='2d6'&&T18.criticalExtraDice('1d8 + 1d6 + 3')==='1d8+1d6'&&T18.criticalExtraDice('1d10-2')==='1d10');
 
   const D=context.__SR29_DEATH_TEST;
-  assert('V29.55 Dragonborn creation and lineage resistance integration is installed',!!D&&D.version==='29.55.0'&&typeof D.deathSave==='function');
+  assert('V29.56 material-component consumption and Dragonborn lineage integration is installed',!!D&&D.version==='29.56.0'&&typeof D.deathSave==='function');
 
   const soloCriticalHero=actor({id:'solo-critical-hero',name:'Solo Critical Hero',hp:30,maxHp:30,armor:'Traveler’s clothes'});
   const soloCriticalEnemy={id:'solo-critical-enemy',name:'Solo Critical Monster',attack:100,damage:'1d6',pos:{x:2,y:1}};

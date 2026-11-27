@@ -298,3 +298,12 @@ Still incomplete: Reincarnate's complete species-specific trait automation and p
 - A Dragonborn cannot be created with a blank or unsupported lineage. The chosen lineage is copied into the character's data and converted into the stored damage type used by V29.54 resistance resolution.
 - Non-Dragonborn creator flows are unchanged; the hidden lineage input is disabled and is not included in their character data.
 - Regressions verify that the rendered creator includes all ten choices and that blank/unsupported lineage names are rejected.
+
+
+## V29.56 — Resurrection material-component consumption
+
+- Material price lookup now reads the spell's component declaration first, with description/legacy description and explicit numeric material-cost fallbacks.
+- The consume marker is read from component text. Description text is a fallback only when it explicitly links consumption to the material component.
+- Casting requires one qualifying inventory item whose recorded value meets the full minimum; a consumed component loses exactly one item, while a reusable component remains in inventory.
+- Regressions cover a 300 gp consumed diamond, a reusable priced pearl, an under-valued diamond rejection, and a description-only price/consumption fallback.
+- The app still does not provide a complete priced-material catalog for all resurrection spells, nor does this implement hour-long casting progression or interruption. Death/recovery remains **Partial**.
