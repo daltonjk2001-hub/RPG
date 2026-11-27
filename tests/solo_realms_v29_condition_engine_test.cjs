@@ -875,7 +875,7 @@ try{
  const masteryTerrain=[];for(let x=0;x<8;x++)for(let y=0;y<6;y++)masteryTerrain.push({x,y,kind:'floor'});
  T18.state={character:masteryHero,campaign:{multiplayer:{players:[masteryPlayer]},companions:[]},combat:{round:1,mp:{heroPositions:{'mastery-hero':{x:1,y:1}},turnOrder:[{kind:'hero',id:'mastery-hero'}],index:0},enemies:[masteryEnemy],map:{width:8,height:6,terrain:masteryTerrain}},log:[]};
  T.apply(masteryEnemy,'grappled','permanent','Mastery Hero',{grapplerId:'mastery-hero',sourceId:'mastery-hero',grappleRange:5,escapeDC:12});
- math.random=()=>0.99;
+ math.random=()=>0.5;
  let masteryAttackResult=false;
  try{masteryAttackResult=T.gameplay.heroAttack(masteryPlayer,masteryEnemy,false);}finally{math.random=priorMasteryRandom;}
  assert('A successful multiplayer Warhammer Push hit displaces the enemy and releases an out-of-reach grapple',masteryAttackResult===true&&masteryEnemy.pos.x>=4&&!T.has(masteryEnemy,'grappled'),JSON.stringify({masteryAttackResult,masteryLookup:T.gameplay.weaponMasteryFor(masteryHero,'Warhammer'),pushable:T.gameplay.canPushTarget(masteryEnemy),pos:masteryEnemy.pos,conditions:masteryEnemy.conditions,log:T18.state.log.slice(0,6)}));
