@@ -1110,7 +1110,7 @@ try{
   const massiveDeath=D.damageAtZero(20);
   assert('Massive damage at 0 HP causes instant death and records a revival timestamp',massiveDeath.dead&&massiveDeath.massive&&massiveDeathHero.mpDead&&Number(massiveDeathHero.deathAt)>0&&T18.state.combat===null);
   context.render=originalDeathRender;
-  assert('Solo initiative now rolls death saves at the downed hero turn and continues processing the initiative order',html.includes('sr29SoloDeathSave();if(!state.combat)return;if(state.character.hp>0){sr10RenderTurn();return;')&&!html.includes('if(!state.combat)return;if(state.character.hp<=0)return;const next=b.turnIndex+1;'));
+  assert('Solo initiative now rolls death saves at the downed hero turn and continues processing the initiative order',html.includes('sr29SoloDeathSave();if(!state.combat){render();return;}if(state.character.hp>0){sr10RenderTurn();return;}')&&!html.includes('if(!state.combat)return;if(state.character.hp<=0)return;const next=b.turnIndex+1;'));
 
   const healedDeathHero=actor({id:'healed-death-hero',name:'Healed Death Hero',hp:0,maxHp:20,stable:true,unconscious:true,deathSuccess:3,deathFailure:1,conditions:[{name:'unconscious',duration:999}]});
   T18.state={character:healedDeathHero,campaign:{companions:[],day:1},combat:{mp:null,downed:true,round:1,enemies:[]},log:[]};
