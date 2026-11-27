@@ -178,8 +178,19 @@ def build_runtime() -> str:
     # typed attack resolver. The legacy roll function still owns condition,
     # advantage/disadvantage and feature bonuses; this adapter owns the final
     # hit/critical/miss rule against the already computed AC.
+    # The multiplayer enemy-turn attack is a separate active V17 path. Patch it
+    # before the general V25 attack-check inventory so the exact-count migration
+    # remains explicit and its downed-target critical marker is carried to damage.
+    mp_enemy_attack_raw = "const roll=sr11RollAttack(base+(pack?2:0),enemy,c,true),cover=sr11Cover(target.pos,enemy.pos),ac=sr4WithCharRead(player,computeAC)+(c.buffRounds>0?2:0)+cover,hit=roll.r===20||(roll.r!==1&&roll.total>=ac);"
+    if base.count(mp_enemy_attack_raw) != 1:
+        raise SystemExit("Expected one raw multiplayer enemy attack resolver.")
+    base = base.replace(
+        mp_enemy_attack_raw,
+        "const roll=sr11RollAttack(base+(pack?2:0),enemy,c,true),cover=sr11Cover(target.pos,enemy.pos),ac=sr4WithCharRead(player,computeAC)+(c.buffRounds>0?2:0)+cover,hit=sr25AttackSuccess(roll,ac),critical=roll.r===20||(hit&&sr29CriticalOnHit(c,{hit,distance}));",
+    )
+
     attack_checks = [
-        ("roll.r===20||(roll.r!==1&&roll.total>=ac)", "sr25AttackSuccess(roll,ac)", 4),
+        ("roll.r===20||(roll.r!==1&&roll.total>=ac)", "sr25AttackSuccess(roll,ac)", 3),
         ("roll.r===20||(roll.r!==1&&roll.total>=e.ac)", "sr25AttackSuccess(roll,e.ac)", 2),
         ("r.r===20||(r.r!==1&&r.total>=ac)", "sr25AttackSuccess(r,ac)", 3),
         ("r.r===20||(r.r!==1&&r.total>=e.ac)", "sr25AttackSuccess(r,e.ac)", 3),
@@ -338,13 +349,6 @@ def build_runtime() -> str:
 
     # Multiplayer enemy attacks use the same condition-based critical rule and
     # carry a one-shot critical marker into the downed-hero damage adapter.
-    mp_enemy_attack = "const roll=sr11RollAttack(base+(pack?2:0),enemy,c,true),cover=sr11Cover(target.pos,enemy.pos),ac=sr4WithCharRead(player,computeAC)+(c.buffRounds>0?2:0)+cover,hit=sr25AttackSuccess(roll,ac);"
-    if base.count(mp_enemy_attack) != 1:
-        raise SystemExit("Expected one active multiplayer enemy attack resolver.")
-    base = base.replace(
-        mp_enemy_attack,
-        "const roll=sr11RollAttack(base+(pack?2:0),enemy,c,true),cover=sr11Cover(target.pos,enemy.pos),ac=sr4WithCharRead(player,computeAC)+(c.buffRounds>0?2:0)+cover,hit=sr25AttackSuccess(roll,ac),critical=roll.r===20||(hit&&sr29CriticalOnHit(c,{hit,distance}));",
-    )
     mp_enemy_log = "log(`${enemy.name} ${roll.adv?'attacks with advantage':roll.dis?'attacks with disadvantage':'attacks'} ${player.name}: d20 ${roll.r} + ${base+(pack?2:0)} = ${roll.total} vs AC ${ac}. ${hit?'Hit':'Miss'}.`,hit?'badlog':'goodlog');"
     if base.count(mp_enemy_log) != 1:
         raise SystemExit("Expected one multiplayer enemy attack result log.")
