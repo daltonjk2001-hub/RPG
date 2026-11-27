@@ -1165,10 +1165,10 @@ try{
   assert('Damage that reduces a solo hero to 0 HP enters the downed state for the next initiative turn',newlyDownedHero.hp===0&&appliedDamage===9&&T18.state.combat.downed===true&&newlyDownedHero.unconscious===true&&D.hasUnconscious(newlyDownedHero));
   assert('Multiplayer massive-damage death records the timestamp needed by Revivify',html.includes('c.deathFailure=3;c.deathAt=Date.now();log(`${player.name} suffers massive damage and dies instantly.`'));
 
-  const persistedDeathHero=actor({id:'persisted-death-hero',name:'Persisted Death Hero',hp:0,maxHp:20,classId:'Fighter',ancestry:'Human',level:5,inventory:[],proficiencies:[],deathSuccess:2,deathFailure:1,stable:true,unconscious:true,mpDead:false,deathAt:123456,conditions:[{name:'unconscious',duration:999}]});
+  const persistedDeathHero=actor({id:'persisted-death-hero',name:'Persisted Death Hero',hp:0,maxHp:20,classId:'Fighter',ancestry:'Human',level:5,inventory:[],proficiencies:[],deathSuccess:2,deathFailure:1,stable:true,stableRecoveryHours:3,stableElapsedHours:2,unconscious:true,mpDead:false,deathAt:123456,conditions:[{name:'unconscious',duration:999}]});
   const deathSavePayload={character:persistedDeathHero,campaign:{companions:[],npcs:[],sideQuests:[]},combat:{downed:true,mp:null},log:[]};
   const validatedDeathSave=T18.validateSave(JSON.parse(JSON.stringify(deathSavePayload)));
-  assert('Save validation and JSON round-trip preserve downed, stable and death timestamp fields',validatedDeathSave.ok&&validatedDeathSave.state.character.deathSuccess===2&&validatedDeathSave.state.character.deathFailure===1&&validatedDeathSave.state.character.stable===true&&validatedDeathSave.state.character.deathAt===123456&&validatedDeathSave.state.combat.downed===true);
+  assert('Save validation and JSON round-trip preserve downed, stable and death timestamp fields',validatedDeathSave.ok&&validatedDeathSave.state.character.deathSuccess===2&&validatedDeathSave.state.character.deathFailure===1&&validatedDeathSave.state.character.stable===true&&validatedDeathSave.state.character.stableRecoveryHours===3&&validatedDeathSave.state.character.stableElapsedHours===2&&validatedDeathSave.state.character.deathAt===123456&&validatedDeathSave.state.combat.downed===true);
 
   const mpStableHero=actor({id:'mp-stable-hero',name:'MP Stable Hero',hp:0,maxHp:20,mpDowned:true,mpDead:false,stable:false,deathSuccess:2,deathFailure:0,unconscious:true,conditions:[{name:'unconscious',duration:999}]});
   const mpStablePlayer={id:'mp-stable-hero',name:'MP Stable Hero',connected:true,character:mpStableHero};
