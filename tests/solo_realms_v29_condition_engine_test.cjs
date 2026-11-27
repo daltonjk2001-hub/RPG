@@ -20,7 +20,7 @@ const context={console,document,window:{},location:{protocol:'https:',search:'',
  fetch:async()=>{throw Error('Unexpected network request in V29 condition tests.');}};
 context.globalThis=context;
 vm.runInNewContext(scripts[0],context,{timeout:60000,filename:'Solo_Realms_V29_Condition_Engine'});
-const T=context.__SR29_TEST,T25=context.__SR25_TEST,T21=context.__SR21_TEST,T18=context.__SR18_TEST;
+const T=context.__SR29_TEST,T25=context.__SR25_TEST,T21=context.__SR21_TEST,T18=context.__SR18_TEST,D=context.__SR29_DEATH_TEST;
 if(!T||!T25||T.version!=='29.0.0')throw new Error('V29 condition engine or typed-save integration is missing.');
 const checks=[];
 function assert(name,value,detail=''){checks.push({name,pass:!!value,detail:String(detail||'')});}
@@ -52,7 +52,18 @@ try{
  T18.state={character:actor(),campaign:{},combat:null,log:[]};
  context.render=revivalPriorRender;
 
- assert('Registry contains all 15 SRD conditions',T.names.length===15&&['blinded','charmed','deafened','exhaustion','frightened','grappled','incapacitated','invisible','paralyzed','petrified','poisoned','prone','restrained','stunned','unconscious'].every(n=>T.names.includes(n)));
+ const revivalClock=Date.UTC(2026,10,27,12,0,0);
+ const revivalProbe=deathAt=>actor({hp:0,mpDead:true,deathAt});
+ const centuryCutoff=new Date(revivalClock);centuryCutoff.setUTCFullYear(centuryCutoff.getUTCFullYear()-100);
+ const bicenturyCutoff=new Date(revivalClock);bicenturyCutoff.setUTCFullYear(bicenturyCutoff.getUTCFullYear()-200);
+ const tenDays=10*24*60*60*1000;
+ assert('Revivify eligibility includes the exact one-minute boundary and rejects one millisecond beyond it',D.revivalEligibility(revivalProbe(revivalClock-60000),'Revivify',revivalClock).ok&&!D.revivalEligibility(revivalProbe(revivalClock-60001),'Revivify',revivalClock).ok);
+ assert('Raise Dead and Reincarnate eligibility includes the exact ten-day boundary',D.revivalEligibility(revivalProbe(revivalClock-tenDays),'Raise Dead',revivalClock).ok&&D.revivalEligibility(revivalProbe(revivalClock-tenDays),'Reincarnate',revivalClock).ok&&!D.revivalEligibility(revivalProbe(revivalClock-tenDays-1),'Raise Dead',revivalClock).ok);
+ assert('Resurrection eligibility uses the exact 100-calendar-year boundary, including leap-year spans',D.revivalEligibility(revivalProbe(centuryCutoff.getTime()),'Resurrection',revivalClock).ok&&!D.revivalEligibility(revivalProbe(centuryCutoff.getTime()-1),'Resurrection',revivalClock).ok);
+ assert('True Resurrection eligibility uses the exact 200-calendar-year boundary, including leap-year spans',D.revivalEligibility(revivalProbe(bicenturyCutoff.getTime()),'True Resurrection',revivalClock).ok&&!D.revivalEligibility(revivalProbe(bicenturyCutoff.getTime()-1),'True Resurrection',revivalClock).ok);
+ assert('An unconscious or stable creature at 0 HP is not classified as a dead resurrection target',!D.revivalEligibility(actor({hp:0,mpDead:false,dead:false,deathAt:revivalClock-1000}),'Revivify',revivalClock).ok);
+ assert('A missing or future death timestamp cannot satisfy revival eligibility',!D.revivalEligibility(actor({hp:0,mpDead:true}),'Revivify',revivalClock).ok&&!D.revivalEligibility(revivalProbe(revivalClock+1),'Revivify',revivalClock).ok);
+\n assert('Registry contains all 15 SRD conditions',T.names.length===15&&['blinded','charmed','deafened','exhaustion','frightened','grappled','incapacitated','invisible','paralyzed','petrified','poisoned','prone','restrained','stunned','unconscious'].every(n=>T.names.includes(n)));
 
  assert('Monster displacement planner pushes the requested 10 feet',T18.displacementPlan({x:2,y:2},{x:0,y:2},'push',10,()=>true)?.to.x===4);
  assert('Monster displacement planner pulls toward the source',T18.displacementPlan({x:3,y:2},{x:0,y:2},'pull',5,()=>true)?.to.x===2);
