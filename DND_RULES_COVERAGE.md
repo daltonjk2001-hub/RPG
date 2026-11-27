@@ -131,3 +131,10 @@ This dashboard maps the D&D reference PDF's Parts I–III and Appendices A–B t
 - Added one shared incapacitation predicate covering Incapacitated, Stunned, Paralyzed, Petrified, and Unconscious, and applied it to player, grouped-monster, and legacy single-monster turn processing.
 - Monster Reactions still refresh at the start of their own turn before the incapacitation gate skips their actions.
 - Added two regression assertions covering all five incapacitating conditions and ensuring ordinary conditions such as Poisoned/Prone do not suppress a turn.
+
+
+## V29.31 initiative modifier isolation
+
+- Alert's Initiative bonus now falls back to the acting character's own level when a character record lacks a cached proficiency-bonus field. It no longer risks borrowing the host/local character's proficiency bonus for a remote party member.
+- Monster Initiative modifier resolution now ignores explicit null modifier fields and correctly falls back to the monster's Dexterity score.
+- Added two regression assertions for remote Alert proficiency calculation and nullable monster modifier fallback.
