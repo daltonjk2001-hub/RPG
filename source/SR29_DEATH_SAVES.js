@@ -331,6 +331,35 @@ function sr29ResurrectionTaxOptions(character,options={}){
   next.disadvantage=true;
   return next;
 }
+function sr29ApplyResurrectionTaxD20Result(character,result,dc=null){
+  if(!sr29HasResurrectionCasterTax(character)||!result||typeof result!=='object')return result;
+  const advantage=result.advantage===true||result.adv===true||result.mode==='advantage';
+  const disadvantage=result.disadvantage===true||result.dis===true||result.mode==='disadvantage';
+  const first=Number(result.d1??result.r1??result.rolls?.[0]??result.roll??result.r);
+  if(!Number.isInteger(first)||first<1||first>20)return result;
+  let selected=first,second=null;
+  if(advantage&&!disadvantage){
+    // Disadvantage from the caster tax cancels pre-existing Advantage.
+    selected=first;
+    result.advantage=false;result.adv=false;result.disadvantage=false;result.dis=false;result.mode='normal';
+  }else if(!disadvantage){
+    second=die(20);selected=Math.min(first,second);
+    result.advantage=false;result.adv=false;result.disadvantage=true;result.dis=true;result.mode='disadvantage';
+  }
+  if(second!==null){result.r2=second;result.d2=second;}
+  result.r1=first;result.d1=first;
+  result.roll=selected;result.r=selected;
+  if(Array.isArray(result.rolls))result.rolls=second===null?[first]:[first,second];
+  const bonus=Number(result.bonus||0)+Number(result.cover||0);
+  const total=selected+bonus;
+  if(Number.isFinite(Number(result.total)))result.total=total;
+  const targetNumber=Number(result.dc??result.targetNumber??dc);
+  if(Number.isFinite(targetNumber)&&Number.isFinite(total)){
+    result.success=result.autoFail===true||result.chosenToFail===true?false:total>=targetNumber;
+  }
+  result.resurrectionTaxDisadvantage=true;
+  return result;
+}
 function sr29ClearResurrectionCasterTax(character){
   if(!character||!sr29HasResurrectionCasterTax(character))return false;
   delete character.resurrectionCasterTax;
@@ -356,23 +385,25 @@ if(typeof sr29CanonicalAbilityCheck==='function'){
 if(typeof sr14AbilityCheck==='function'){
   const sr29PriorRevivalLegacyAbilityCheck=sr14AbilityCheck;
   sr14AbilityCheck=function(character,skill,dc,options={}){
-    const result=sr29PriorRevivalLegacyAbilityCheck.call(this,character,skill,dc,sr29ResurrectionTaxOptions(character,options));
+    const result=sr29PriorRevivalLegacyAbilityCheck.call(this,character,skill,dc,options);
+    sr29ApplyResurrectionTaxD20Result(character,result,dc);
     return sr29ApplyRevivalD20Penalty(character,result,dc);
   };
 }
 if(typeof sr14SavingThrow==='function'){
   const sr29PriorRevivalSavingThrow=sr14SavingThrow;
   sr14SavingThrow=function(character,ability,dc,options={}){
-    const result=sr29PriorRevivalSavingThrow.call(this,character,ability,dc,sr29ResurrectionTaxOptions(character,options));
+    const result=sr29PriorRevivalSavingThrow.call(this,character,ability,dc,options);
+    sr29ApplyResurrectionTaxD20Result(character,result,dc);
     return sr29ApplyRevivalD20Penalty(character,result,dc);
   };
 }
 if(typeof sr133HeroSave==='function'){
   const sr29PriorRevivalHeroSave=sr133HeroSave;
   sr133HeroSave=function(character,ability,player,attacker,options={}){
-    const effectiveOptions=sr29ResurrectionTaxOptions(character,options);
-    const result=sr29PriorRevivalHeroSave.call(this,character,ability,player,attacker,effectiveOptions);
-    return sr29ApplyRevivalD20Penalty(character,result,result?.dc??effectiveOptions?.dc);
+    const result=sr29PriorRevivalHeroSave.call(this,character,ability,player,attacker,options);
+    sr29ApplyResurrectionTaxD20Result(character,result,result?.dc??options?.dc);
+    return sr29ApplyRevivalD20Penalty(character,result,result?.dc??options?.dc);
   };
 }
 if(typeof sr11RollAttack==='function'){
@@ -382,6 +413,33 @@ if(typeof sr11RollAttack==='function'){
     return sr29ApplyRevivalD20Penalty(actor,result,target?.ac);
   };
   if(globalThis.__SR29_TEST)globalThis.__SR29_TEST.attackRoll=sr11RollAttack;
+}
+function sr29RejectCastDuringResurrectionTax(character){
+  if(!sr29HasResurrectionCasterTax(character))return false;
+  toast('The strain of Resurrection prevents you from casting spells again until you finish a Long Rest.');
+  return true;
+}
+if(typeof castSpell==='function'){
+  const sr29PriorLegacyCastForResurrectionTax=castSpell;
+  castSpell=function(...args){
+    const character=args[0]?.character||state?.character;
+    if(sr29RejectCastDuringResurrectionTax(character))return false;
+    return sr29PriorLegacyCastForResurrectionTax.apply(this,args);
+  };
+}
+if(typeof sr7CastSpell==='function'){
+  const sr29PriorV7CastForResurrectionTax=sr7CastSpell;
+  sr7CastSpell=function(...args){
+    if(sr29RejectCastDuringResurrectionTax(state?.character))return false;
+    return sr29PriorV7CastForResurrectionTax.apply(this,args);
+  };
+}
+if(typeof sr12CastSpell==='function'){
+  const sr29PriorMultiplayerCastForResurrectionTax=sr12CastSpell;
+  sr12CastSpell=function(player,...args){
+    if(sr29RejectCastDuringResurrectionTax(player?.character||state?.character))return false;
+    return sr29PriorMultiplayerCastForResurrectionTax.call(this,player,...args);
+  };
 }
 if(typeof sr14CastSpellComplete==='function'){
   const sr29PriorCastBeforeRevivalRules=sr14CastSpellComplete;
@@ -411,17 +469,17 @@ if(typeof sr14CastSpellComplete==='function'){
     const deathElapsedMs=Number.isFinite(Number(target?.deathAt))?Date.now()-Number(target.deathAt):NaN;
     const result=sr29PriorCastBeforeRevivalRules.call(this,playerOrNull,name,allyId,...args);
     if(result&&target&&wasDowned&&Number(target.hp)>0){
+      if(name==='Resurrection'&&deathElapsedMs>=SR29_RESURRECTION_CASTER_TAX_MS)sr29SetResurrectionCasterTax(caster,target);
       if(name==='Resurrection'||name==='True Resurrection')target.hp=Number(target.maxHp)||target.hp;
       sr29ClearRevivedState(target);
       sr29SetRevivalReturnPenalty(target,name);
-      if(name==='Resurrection'&&deathElapsedMs>=SR29_RESURRECTION_CASTER_TAX_MS)sr29SetResurrectionCasterTax(caster,{deathAt:Date.now()-deathElapsedMs});
     }
     return result;
   };
   if(globalThis.__SR29_TEST?.gameplay)globalThis.__SR29_TEST.gameplay.castSpell=sr14CastSpellComplete;
 }
 globalThis.__SR29_DEATH_TEST={
-  version:SR29_DEATH_SAVES_VERSION,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestPenaltyRecovery:sr29ApplyLongRestPenaltyRecovery,hasResurrectionCasterTax:sr29HasResurrectionCasterTax,setResurrectionCasterTax:sr29SetResurrectionCasterTax,clearResurrectionCasterTax:sr29ClearResurrectionCasterTax,resurrectionTaxOptions:sr29ResurrectionTaxOptions,canonicalAbilityCheck:typeof sr29CanonicalAbilityCheck==='function'?sr29CanonicalAbilityCheck:null,attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
+  version:SR29_DEATH_SAVES_VERSION,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestPenaltyRecovery:sr29ApplyLongRestPenaltyRecovery,hasResurrectionCasterTax:sr29HasResurrectionCasterTax,setResurrectionCasterTax:sr29SetResurrectionCasterTax,clearResurrectionCasterTax:sr29ClearResurrectionCasterTax,applyResurrectionTaxD20Result:sr29ApplyResurrectionTaxD20Result,rejectCastDuringResurrectionTax:sr29RejectCastDuringResurrectionTax,canonicalAbilityCheck:typeof sr29CanonicalAbilityCheck==='function'?sr29CanonicalAbilityCheck:null,attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
   clearDowned:sr29SoloClearDowned,damageAtZero:sr29SoloDamageAtZero,hasUnconscious:sr29SoloHasUnconscious,
   heal:typeof heal==='function'?heal:null,damagePlayer:typeof damagePlayer==='function'?damagePlayer:null,
   soloMonsterAttack:typeof sr10EnemyAttack==='function'?sr10EnemyAttack:null,soloHeroAttack:typeof sr11HeroAttack==='function'?sr29TestSoloHeroAttack:null,advanceStableTime:sr29SoloAdvanceStableTime,
