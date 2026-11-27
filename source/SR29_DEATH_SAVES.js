@@ -104,7 +104,7 @@ if(typeof heal==='function'){
   const sr29SoloPriorHeal=heal;
   heal=function(amount,...args){
     const c=state?.character,b=state?.combat,before=Number(c?.hp)||0;
-    if(c?.mpDead&&b&&!b.mp)return 0;
+    if(c?.mpDead)return 0;
     const result=sr29SoloPriorHeal.call(this,amount,...args);
     if(c&&!b?.mp&&!c.mpDead&&before<=0&&Number(c.hp)>0)sr29SoloClearDowned(c);
     return result;
