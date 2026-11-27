@@ -1,6 +1,6 @@
-/* SOLO REALMS V29.52 — spell-specific revival eligibility.
+/* SOLO REALMS V29.53 — Reincarnate species and trait replacement.
    Death saves occur at the downed hero's turn start; three successes stabilize at 0 HP. */
-const SR29_DEATH_SAVES_VERSION='29.52.0';
+const SR29_DEATH_SAVES_VERSION='29.53.0';
 function sr29SoloRemoveUnconscious(c){
   if(!c)return;
   c.unconscious=false;
@@ -309,6 +309,82 @@ function sr29ClearRevivalDeathMetadata(character,spellName){
   }
   return true;
 }
+const SR29_REINCARNATE_SPECIES=Object.freeze([
+  'Aasimar','Dragonborn','Dwarf','Elf','Gnome','Goliath','Halfling','Human','Orc','Tiefling'
+]);
+const SR29_DRACONIC_ANCESTRY_TYPES=Object.freeze({
+  Black:'acid',Blue:'lightning',Brass:'fire',Bronze:'lightning',Copper:'acid',
+  Gold:'fire',Green:'poison',Red:'fire',Silver:'cold',White:'cold'
+});
+function sr29ReincarnateSpeciesFromRoll(roll){
+  const value=Number(roll);
+  return Number.isInteger(value)&&value>=1&&value<=10?SR29_REINCARNATE_SPECIES[value-1]:null;
+}
+function sr29ClearOldAncestryState(character){
+  if(!character)return;
+  for(const key of ['dragonBreathUsed','dragonbornBreathUses','dragonbornFlightUsed','draconicAncestryChoice','draconicDamageType',
+    'radiantTouchUsed','radiantBurst','escapeUsed','relentlessUsed','relentlessEnduranceUsed']){
+    delete character[key];
+  }
+  const flags=state?.campaign?.flags;
+  if(flags&&typeof flags==='object'){
+    for(const key of ['elfSense','lucky','halfElfCharm','gnomeSense'])delete flags[key];
+    if(flags.sceneTraitUses&&typeof flags.sceneTraitUses==='object'){
+      for(const key of ['elf','gnome','halfelf'])delete flags.sceneTraitUses[key];
+    }
+  }
+}
+function sr29ApplyReincarnateSpecies(character,roll=die(10),speciesChoice=null,draconicChoice=null){
+  if(!character||typeof character!=='object'||!character.stats||typeof character.stats!=='object')
+    return {ok:false,reason:'The target has no character ability record.'};
+  const resultRoll=Number(roll),rolledSpecies=sr29ReincarnateSpeciesFromRoll(resultRoll);
+  if(!rolledSpecies)return {ok:false,reason:'Reincarnate requires a valid 1d10 species result.'};
+  const oldSpecies=String(character.ancestry||'');
+  const requested=typeof speciesChoice==='string'?speciesChoice.trim():'';
+  const newSpecies=requested&&Object.prototype.hasOwnProperty.call(ANCESTRIES,requested)?requested:rolledSpecies;
+  const oldData=ANCESTRIES[oldSpecies]||{bonus:{}},newData=ANCESTRIES[newSpecies];
+  if(!newData)return {ok:false,reason:'The selected reincarnated species is not supported by this character builder.'};
+  const abilities=Array.isArray(ABILITIES)?ABILITIES:Object.keys(character.stats);
+  for(const ability of abilities){
+    const current=Number(character.stats[ability]);
+    if(!Number.isFinite(current))continue;
+    const oldBonus=Number(oldData.bonus?.[ability])||0,newBonus=Number(newData.bonus?.[ability])||0;
+    character.stats[ability]=Math.max(1,Math.min(30,current-oldBonus+newBonus));
+  }
+  const level=Math.max(1,Math.min(20,Math.floor(Number(character.level)||1)));
+  const dwarfDelta=(newSpecies==='Dwarf'?2*level:0)-(oldSpecies==='Dwarf'?2*level:0);
+  if(Number.isFinite(Number(character.maxHp)))character.maxHp=Math.max(1,Number(character.maxHp)+dwarfDelta);
+  character.ancestry=newSpecies;
+  sr29ClearOldAncestryState(character);
+  const spells=Array.isArray(character.spells)?character.spells:(character.spells=[]);
+  const ancestryGranted=new Set(Array.isArray(character.ancestryGrantedSpells)?character.ancestryGrantedSpells:[]);
+  if(oldSpecies==='Tiefling'&&newSpecies!=='Tiefling'&&spells.includes('Ember Bolt')){
+    const nativeClasses=Array.isArray(SPELLS?.['Ember Bolt']?.classes)?SPELLS['Ember Bolt'].classes:[];
+    if(ancestryGranted.has('Ember Bolt')||!nativeClasses.includes(character.classId)){
+      character.spells=spells.filter(name=>name!=='Ember Bolt');
+      if(Array.isArray(character.preparedSpells))character.preparedSpells=character.preparedSpells.filter(name=>name!=='Ember Bolt');
+      ancestryGranted.delete('Ember Bolt');
+    }
+  }
+  if(newSpecies==='Tiefling'&&!spells.includes('Ember Bolt')){
+    spells.push('Ember Bolt');ancestryGranted.add('Ember Bolt');
+  }
+  if(ancestryGranted.size)character.ancestryGrantedSpells=[...ancestryGranted];
+  else delete character.ancestryGrantedSpells;
+  if(newSpecies==='Aasimar')character.radiantTouchUsed=false;
+  if(newSpecies==='Dragonkin')character.dragonBreathUsed=false;
+  if(newSpecies==='Dragonborn'){
+    const requestedDraconic=typeof draconicChoice==='string'?draconicChoice.trim():'';
+    character.draconicAncestryChoice=Object.prototype.hasOwnProperty.call(SR29_DRACONIC_ANCESTRY_TYPES,requestedDraconic)?requestedDraconic:null;
+    character.dragonbornBreathUses=0;
+    character.dragonbornBreathUsesMax=2+Math.floor((level-1)/4);
+    character.dragonbornFlightUsed=false;
+  }
+  const campaignFlags=state?.campaign?.flags;
+  if(campaignFlags&&typeof campaignFlags==='object'&&campaignFlags.sceneTraitUses===undefined)campaignFlags.sceneTraitUses={};
+  return {ok:true,roll:resultRoll,rolledSpecies,species:newSpecies,oldSpecies,usedSpeciesChoice:newSpecies!==rolledSpecies,
+    statChanges:abilities.reduce((out,ability)=>{const before=Number(oldData.bonus?.[ability])||0,after=Number(newData.bonus?.[ability])||0;if(before!==after)out[ability]=after-before;return out;},{})};
+}
 function sr29RevivalEligibility(character,spellName,now=Date.now()){
   if(!character||Number(character.hp)>0)return {ok:false,reason:'The target is not dead.'};
   if(character.mpDead!==true&&character.dead!==true)return {ok:false,reason:'The target is unconscious or stable, not dead.'};
@@ -545,6 +621,15 @@ if(typeof sr14CastSpellComplete==='function'){
       if(name==='Resurrection'||name==='True Resurrection')target.hp=Number(target.maxHp)||target.hp;
       sr29ClearRevivedState(target);
       sr29ClearRevivalDeathMetadata(target,name);
+      if(name==='Reincarnate'){
+        const castOptions=args[1]&&typeof args[1]==='object'?args[1]:{};
+        const speciesRoll=Number.isInteger(Number(castOptions.speciesRoll))?Number(castOptions.speciesRoll):die(10);
+        const speciesChoice=castOptions.speciesChoice??castOptions.reincarnateSpecies??null;
+        const draconicChoice=castOptions.draconicAncestryChoice??null;
+        const transformation=sr29ApplyReincarnateSpecies(target,speciesRoll,speciesChoice,draconicChoice);
+        if(!transformation.ok)log('Reincarnate restored the target, but species transformation needs a supported character record.','badlog');
+        else log(`Reincarnate forms a new ${transformation.species} body for ${target.name||'the target'} (d10 ${transformation.roll}).`,'goodlog');
+      }
       sr29SetRevivalReturnPenalty(target,name);
     }
     return result;
@@ -552,7 +637,7 @@ if(typeof sr14CastSpellComplete==='function'){
   if(globalThis.__SR29_TEST?.gameplay)globalThis.__SR29_TEST.gameplay.castSpell=sr14CastSpellComplete;
 }
 globalThis.__SR29_DEATH_TEST={
-  version:SR29_DEATH_SAVES_VERSION,recordDeathSnapshot:sr29RecordDeathSnapshot,isOldAgeDeath:sr29IsOldAgeDeath,wasUndeadAtDeath:sr29WasUndeadAtDeath,isHumanoidAtDeath:sr29IsHumanoidAtDeath,missingBodyParts:sr29MissingBodyParts,hasMissingVitalParts:sr29HasMissingVitalParts,clearRevivalDeathMetadata:sr29ClearRevivalDeathMetadata,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestPenaltyRecovery:sr29ApplyLongRestPenaltyRecovery,hasResurrectionCasterTax:sr29HasResurrectionCasterTax,setResurrectionCasterTax:sr29SetResurrectionCasterTax,clearResurrectionCasterTax:sr29ClearResurrectionCasterTax,applyResurrectionTaxD20Result:sr29ApplyResurrectionTaxD20Result,rejectCastDuringResurrectionTax:sr29RejectCastDuringResurrectionTax,canonicalAbilityCheck:typeof sr29CanonicalAbilityCheck==='function'?sr29CanonicalAbilityCheck:null,attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
+  version:SR29_DEATH_SAVES_VERSION,reincarnateSpecies:SR29_REINCARNATE_SPECIES,reincarnateSpeciesFromRoll:sr29ReincarnateSpeciesFromRoll,applyReincarnateSpecies:sr29ApplyReincarnateSpecies,recordDeathSnapshot:sr29RecordDeathSnapshot,isOldAgeDeath:sr29IsOldAgeDeath,wasUndeadAtDeath:sr29WasUndeadAtDeath,isHumanoidAtDeath:sr29IsHumanoidAtDeath,missingBodyParts:sr29MissingBodyParts,hasMissingVitalParts:sr29HasMissingVitalParts,clearRevivalDeathMetadata:sr29ClearRevivalDeathMetadata,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestPenaltyRecovery:sr29ApplyLongRestPenaltyRecovery,hasResurrectionCasterTax:sr29HasResurrectionCasterTax,setResurrectionCasterTax:sr29SetResurrectionCasterTax,clearResurrectionCasterTax:sr29ClearResurrectionCasterTax,applyResurrectionTaxD20Result:sr29ApplyResurrectionTaxD20Result,rejectCastDuringResurrectionTax:sr29RejectCastDuringResurrectionTax,canonicalAbilityCheck:typeof sr29CanonicalAbilityCheck==='function'?sr29CanonicalAbilityCheck:null,attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
   clearDowned:sr29SoloClearDowned,damageAtZero:sr29SoloDamageAtZero,hasUnconscious:sr29SoloHasUnconscious,
   heal:typeof heal==='function'?heal:null,damagePlayer:typeof damagePlayer==='function'?damagePlayer:null,
   soloMonsterAttack:typeof sr10EnemyAttack==='function'?sr10EnemyAttack:null,soloHeroAttack:typeof sr11HeroAttack==='function'?sr29TestSoloHeroAttack:null,advanceStableTime:sr29SoloAdvanceStableTime,
