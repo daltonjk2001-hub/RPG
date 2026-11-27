@@ -116,19 +116,20 @@ if(typeof sr12DamageHero==='function'){
   const sr29PriorMultiplayerDamageHero=sr12DamageHero;
   sr12DamageHero=function(player,...args){
     const c=player?.character,hpBefore=Number(c?.hp)||0,wasStable=!!c?.stable;
-    const downedBefore=!!(c&&hpBefore<=0&&!c.mpDead&&(c.mpDowned||c.stable||sr29SoloHasUnconscious(c)));
+    const downedBefore=!!(c&&hpBefore<=0&&!c.mpDead);
     const amount=Math.max(0,Number(args[0])||0),damageType=args[1]||'physical';
     const resistanceAdjusted=c?.rageRounds>0&&c?.rageResist&&['physical','bludgeoning','piercing','slashing'].includes(damageType)?Math.ceil(amount/2):amount;
     const damageAfterGuard=Math.max(0,resistanceAdjusted-Math.max(0,Number(c?.guard)||0));
     const source=args[2]&&typeof args[2]==='object'?args[2]:null;
     const hasCriticalMarker=!!source&&Object.prototype.hasOwnProperty.call(source,'_sr29AttackCriticalPending');
     const pendingCritical=source?._sr29AttackCriticalPending===true;
+    const criticalSource=pendingCritical||source?.lastAttackCritical===true;
     const result=sr29PriorMultiplayerDamageHero.call(this,player,...args);
     if(c&&wasStable&&!c.stable){delete c.stableRecoveryHours;delete c.stableElapsedHours;}
     if(c&&downedBefore&&damageAfterGuard>0&&!c.mpDead){
       delete c.stableRecoveryHours;delete c.stableElapsedHours;
       c.stable=false;c.mpDowned=true;c.unconscious=true;
-      const critical=pendingCritical||source?.lastAttackCritical===true;
+      const critical=criticalSource;
       const massive=damageAfterGuard>=Math.max(1,Number(c.maxHp)||Infinity);
       const failures=massive?3:(critical?2:1);
       c.deathFailure=Math.min(3,(Number(c.deathFailure)||0)+failures);
