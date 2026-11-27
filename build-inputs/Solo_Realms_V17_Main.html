@@ -4628,8 +4628,8 @@ function sr13ProcessEnemyGroup(actor){
   const indexes=Array.isArray(actor.indexes)?actor.indexes:[Number(actor.index)];let acted=0;
   for(const index of indexes){
     const e=b.enemies?.[index];if(!e||e.hp<=0)continue;
-    if(sr13HasCondition(e,'incapacitated')||sr13HasCondition(e,'stunned')||sr13HasCondition(e,'paralyzed')||sr13HasCondition(e,'unconscious')){log(`${e.name} cannot act while incapacitated.`,'rolllog');continue;}
     sr136RefreshEnemyReaction(e);
+    if(sr13HasCondition(e,'incapacitated')||sr13HasCondition(e,'stunned')||sr13HasCondition(e,'paralyzed')||sr13HasCondition(e,'unconscious')){log(`${e.name} cannot act while incapacitated.`,'rolllog');continue;}
     sr12EnemyTurn(e);acted++;
     if(!state.combat?.mp)break;
   }
