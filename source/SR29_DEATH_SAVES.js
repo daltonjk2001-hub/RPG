@@ -32,7 +32,6 @@ function sr29SoloEndFromDeath(reason){
   log(reason||'Three failed death saves. Your character has died.','badlog');
   if(typeof setScene==='function')setScene({title:'The Chronicle Falls Silent',text:`${c.name||'Your hero'} has died. The companions who survive carry the story onward. Your character may be restored by an appropriate revival effect, or you can begin another chronicle.`,choices:[{label:'Begin a new chronicle',sub:'Keep this character and start a new story',action:'new-campaign'},{label:'Create a new character',sub:'Return to character creation',action:'new-character'}]});
   if(typeof save==='function')save();
-  if(typeof render==='function')render();
   return true;
 }
 function sr29SoloDeathSave(){
