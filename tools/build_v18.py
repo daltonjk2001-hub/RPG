@@ -67,6 +67,15 @@ def inject_ui_theme(template: str, css: str) -> str:
 
 def build_runtime() -> str:
     base = SRC.read_text(encoding="utf-8")
+    # Long-casting recovery spells must select an explicitly chosen remote
+    # campaign member even outside tactical multiplayer combat.
+    multiplayer_ally_target = "const targetPlayer=allyId&&isMP?state.campaign.multiplayer.players.find(p=>p.id===allyId):player;"
+    if base.count(multiplayer_ally_target) != 1:
+        raise SystemExit("Expected one SRD52 explicit multiplayer spell target selector.")
+    base = base.replace(
+        multiplayer_ally_target,
+        "const targetPlayer=allyId?(state.campaign?.multiplayer?.players||[]).find(p=>String(p?.id)===String(allyId))||player:player;",
+    )
     # Keep V13 downed-damage regressions diagnostically useful when a lifecycle
     # adapter changes their result; this is test output only, not runtime behavior.
     v13_critical_damage_test = "ok('V13.2 critical damage to a downed hero causes two death-save failures',testHero.character.deathFailure===2);"
