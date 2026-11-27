@@ -59,8 +59,10 @@ try{
  const tenDays=10*24*60*60*1000;
  assert('Revivify eligibility includes the exact one-minute boundary and rejects one millisecond beyond it',RV.revivalEligibility(revivalProbe(revivalClock-60000),'Revivify',revivalClock).ok&&!RV.revivalEligibility(revivalProbe(revivalClock-60001),'Revivify',revivalClock).ok);
  assert('Raise Dead and Reincarnate eligibility includes the exact ten-day boundary',RV.revivalEligibility(revivalProbe(revivalClock-tenDays),'Raise Dead',revivalClock).ok&&RV.revivalEligibility(revivalProbe(revivalClock-tenDays),'Reincarnate',revivalClock).ok&&!RV.revivalEligibility(revivalProbe(revivalClock-tenDays-1),'Raise Dead',revivalClock).ok);
- assert('Resurrection eligibility uses the exact 100-calendar-year boundary, including leap-year spans',RV.revivalEligibility(revivalProbe(centuryCutoff.getTime()),'Resurrection',revivalClock).ok&&!RV.revivalEligibility(revivalProbe(centuryCutoff.getTime()-1),'Resurrection',revivalClock).ok);
- assert('True Resurrection eligibility uses the exact 200-calendar-year boundary, including leap-year spans',RV.revivalEligibility(revivalProbe(bicenturyCutoff.getTime()),'True Resurrection',revivalClock).ok&&!RV.revivalEligibility(revivalProbe(bicenturyCutoff.getTime()-1),'True Resurrection',revivalClock).ok);
+ const centuryEligibility=RV.revivalEligibility(revivalProbe(centuryCutoff.getTime()),'Resurrection',revivalClock),centuryBeforeEligibility=RV.revivalEligibility(revivalProbe(centuryCutoff.getTime()-1),'Resurrection',revivalClock);
+ assert('Resurrection eligibility uses the exact 100-calendar-year boundary, including leap-year spans',centuryEligibility.ok&&!centuryBeforeEligibility.ok,JSON.stringify({cutoff:centuryCutoff.toISOString(),now:new Date(revivalClock).toISOString(),at:centuryEligibility,before:centuryBeforeEligibility,character:revivalProbe(centuryCutoff.getTime())}));
+ const bicenturyEligibility=RV.revivalEligibility(revivalProbe(bicenturyCutoff.getTime()),'True Resurrection',revivalClock),bicenturyBeforeEligibility=RV.revivalEligibility(revivalProbe(bicenturyCutoff.getTime()-1),'True Resurrection',revivalClock);
+ assert('True Resurrection eligibility uses the exact 200-calendar-year boundary, including leap-year spans',bicenturyEligibility.ok&&!bicenturyBeforeEligibility.ok,JSON.stringify({cutoff:bicenturyCutoff.toISOString(),now:new Date(revivalClock).toISOString(),at:bicenturyEligibility,before:bicenturyBeforeEligibility,character:revivalProbe(bicenturyCutoff.getTime())}));
  assert('An unconscious or stable creature at 0 HP is not classified as a dead resurrection target',!RV.revivalEligibility(actor({hp:0,mpDead:false,dead:false,deathAt:revivalClock-1000}),'Revivify',revivalClock).ok);
  assert('A missing or future death timestamp cannot satisfy revival eligibility',!RV.revivalEligibility(actor({hp:0,mpDead:true}),'Revivify',revivalClock).ok&&!RV.revivalEligibility(revivalProbe(revivalClock+1),'Revivify',revivalClock).ok);
 
@@ -1118,7 +1120,7 @@ try{
   assert('Monster critical bonus dice preserve flat attack damage modifiers',T18.criticalExtraDice('2d6+4')==='2d6'&&T18.criticalExtraDice('1d8 + 1d6 + 3')==='1d8+1d6'&&T18.criticalExtraDice('1d10-2')==='1d10');
 
   const D=context.__SR29_DEATH_TEST;
-  assert('V29.38 canonical solo death-save service is installed',!!D&&D.version==='29.38.0'&&typeof D.deathSave==='function');
+  assert('V29.49 canonical death-save and revival service is installed',!!D&&D.version==='29.49.0'&&typeof D.deathSave==='function');
 
   const soloCriticalHero=actor({id:'solo-critical-hero',name:'Solo Critical Hero',hp:30,maxHp:30,armor:'Traveler’s clothes'});
   const soloCriticalEnemy={id:'solo-critical-enemy',name:'Solo Critical Monster',attack:100,damage:'1d6',pos:{x:2,y:1}};
