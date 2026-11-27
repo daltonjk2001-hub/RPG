@@ -1028,6 +1028,17 @@ try{
  assert('Solo grappled monsters spend their action on a source-specific canonical escape check',html.includes('sr7EnemySpecial=function(enemy)')&&html.includes('sr29EscapeGrapple(enemy,{instanceId:grapple.id')&&html.includes('bonusOverride:skillBonus'));
  assert('Monster-initiated grapples retain parsed escape DC, reach, size and action appendage metadata',html.includes('escape\\s+DC\\s*(\\d+)')&&html.includes('escapeDC,grapplerSize:sr29MpSize(enemy),targetSize:sr29MpSize(creature),handSlot}'));
  assert('Monster grapple appendage capacity uses explicit anatomy or a conservative creature default',T.gameplay.appendageCapacity(actor({type:'humanoid'}))===2&&T.gameplay.appendageCapacity(actor({type:'ooze'}))===1&&T.gameplay.appendageCapacity(actor({appendages:['tentacle-1','tentacle-2','tentacle-3']}))===3&&html.includes('if(!handSlot)')&&html.includes('sr29NextMonsterAppendageSlot(enemy,active)'));
+ assert('Creature anatomy excludes locomotion-only appendages from grapple capacity',T.gameplay.appendageCapacity(actor({appendages:[{type:'wing'},{type:'leg'},{type:'tentacle',grappleCapable:true},{type:'arm',canGrapple:true}]}))===2);
+ assert('Explicit grapple appendage lists honor disabled and unusable entries',T.gameplay.appendageCapacity(actor({grappleAppendages:[{type:'tentacle'},{type:'tentacle',canGrapple:false},'pseudopod',false]}))===2);
+ assert('Unknown anatomy does not count every appendage as a hand',T.gameplay.appendageCapacity(actor({type:'aberration',appendages:[{type:'wing'},{type:'tail'},{type:'leg'}]}))===1);
+ assert('Unarmed character has two free hands',T.gameplay.freeHands(actor())===2);
+ assert('One-handed weapon leaves one free hand',T.gameplay.freeHands(actor({weapon:'Longsword'}))===1);
+ assert('Two-handed custom main-hand configuration occupies both hands',T.gameplay.freeHands(actor({equipment:{mainHand:{name:'Custom Greatblade',equipped:true,hands:2}}}))===0);
+ assert('Hand crossbow is not treated as automatically two-handed',T.gameplay.freeHands(actor({weapon:'Hand Crossbow'}))===1);
+ assert('Unequipped off-hand item does not consume a hand',T.gameplay.freeHands(actor({weapon:'Longsword',equipment:{offHand:{name:'Dagger',equipped:false}}}))===1);
+ assert('Unequipped shield inventory record does not consume a hand',T.gameplay.freeHands(actor({weapon:'Longsword',inventory:[{name:'Shield',type:'shield',equipped:false}]}))===1);
+ assert('Equipped shield inventory record consumes the off-hand',T.gameplay.freeHands(actor({weapon:'Longsword',inventory:[{name:'Shield',type:'shield',equipped:true}]}))===0);
+ assert('Off-hand shield is counted once rather than double-counted',T.gameplay.freeHands(actor({weapon:'Longsword',offHandWeapon:{name:'Shield',type:'shield',equipped:true},shieldEquipped:true}))===0);
  const appendageMonster=actor({type:'humanoid'});
  assert('Monster grapple allocation reuses the first genuinely free appendage slot after a grapple ends',T.gameplay.nextAppendageSlot(appendageMonster,[{handSlot:'monster-appendage-1'},{handSlot:'monster-appendage-3'}])==='monster-appendage-2');
  assert('Monster grapple allocation does not duplicate a surviving non-first appendage slot',T.gameplay.nextAppendageSlot(appendageMonster,[{handSlot:'monster-appendage-2'}])==='monster-appendage-1');
