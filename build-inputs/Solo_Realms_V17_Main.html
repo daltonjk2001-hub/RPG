@@ -4559,7 +4559,7 @@ function sr13InitiativeModifier(actor,isHero){
 function sr13InitiativeMode(actor,isHero){
   const c=isHero?(actor?.character||actor):actor;
   const invisible=sr13HasCondition(c,'invisible')||!!c?.invisible;
-  const incapacitated=sr13HasCondition(c,'incapacitated')||sr13HasCondition(c,'stunned')||sr13HasCondition(c,'paralyzed');
+  const incapacitated=sr13HasCondition(c,'incapacitated')||sr13HasCondition(c,'stunned')||sr13HasCondition(c,'paralyzed')||sr13HasCondition(c,'petrified')||sr13HasCondition(c,'unconscious');
   const surprised=!!(actor?.surprised||c?.surprised||sr13HasCondition(c,'surprised'));
   const advantage=!!(actor?.initiativeAdvantage||c?.initiativeAdvantage||invisible);
   const disadvantage=!!(actor?.initiativeDisadvantage||c?.initiativeDisadvantage||incapacitated||surprised);
