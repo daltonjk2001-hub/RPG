@@ -184,3 +184,15 @@ Verification is pending for the new commit. These changes do not replace the out
 - The combat log identifies these results as critical hits, and the extra damage dice are rolled using the attack's damage expression without doubling flat modifiers.
 - Added end-to-end regression coverage for a monster melee hit against a Paralyzed target at 5 feet and a monster ranged hit against an Unconscious target at 10 feet.
 - The broader damage pipeline and death-save lifecycle remain Partial; this closes one identified monster-side critical-hit integration gap only.
+
+
+## V29.38 — Solo death-save lifecycle
+
+- Added `SR29_DEATH_SAVES.js` as the canonical solo death-save service and wired it into the V10 initiative turn loop.
+- Downed heroes now roll at the start of their own turns; a natural 20 restores 1 HP, a natural 1 adds two failures, three successes stabilize at 0 HP, and three failures end the chronicle with a death timestamp.
+- Stable heroes remain unconscious at 0 HP and are skipped until healing or another effect restores HP. The healing adapter clears downed state and death-save counters when HP rises above 0.
+- Damage received at 0 HP causes one failed save, or two on a critical hit; damage equal to maximum HP causes instant death. The multiplayer massive-damage branch now records the timestamp required by Revivify.
+- The initiative adapter no longer returns early after an enemy drops the hero to 0 HP; it advances the remaining actors and resolves the death save on the hero's next turn.
+- Automated tests cover the new solo procedure, damage/death transitions, initiative wiring, and multiplayer death timestamp.
+
+This is an integration milestone, not a claim that the entire damage/death/revival lifecycle is complete. Remaining work includes a full source-aware critical/damage audit, persistence/import checks for all death states, and live solo/co-op playtests.
