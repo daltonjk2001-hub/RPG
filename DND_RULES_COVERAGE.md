@@ -216,6 +216,14 @@ This dashboard maps the D&D reference PDF's Parts I–III and Appendices A–B t
 
 
 
+
+
+## V29.42 — Cancel solo stable recovery on damage
+
+- Damage to a solo hero who is already stable at 0 HP now clears the stored 1d4-hour recovery interval before recording the failed death save.
+- This prevents a stale recovery timer from remaining on a hero whose stabilization has been interrupted.
+- Added a regression with partially elapsed stable recovery, verifying that damage clears both timer fields and resumes the death-save failure count.
+
 ## V29.41 — Solo monster critical damage against downed heroes
 
 - The active V11 solo monster attack path now carries a one-shot critical-hit marker into the canonical solo damage handler.
