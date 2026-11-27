@@ -290,3 +290,11 @@ Still incomplete: Reincarnate's complete species-specific trait automation and p
 - The wrapper applies resistance only for a matching incoming type and restores the original resistance array immediately, preserving separate equipment, spell, immunity, and vulnerability data.
 - Selecting a lineage also initializes the Breath Weapon use maximum from proficiency bonus and clamps saved use counts to that maximum.
 - Added an end-to-end regression: a Red-lineage Dragonborn takes half fire damage, takes normal cold damage, and retains its pre-existing necrotic resistance list.
+
+
+## V29.55 — Dragonborn character-creation lineage selection
+
+- The existing character creator now displays a Draconic Ancestry dropdown only when Dragonborn is selected. It lists all ten supported lineages and their damage types.
+- A Dragonborn cannot be created with a blank or unsupported lineage. The chosen lineage is copied into the character's data and converted into the stored damage type used by V29.54 resistance resolution.
+- Non-Dragonborn creator flows are unchanged; the hidden lineage input is disabled and is not included in their character data.
+- Regressions verify that the rendered creator includes all ten choices and that blank/unsupported lineage names are rejected.

@@ -1,7 +1,7 @@
-/* SOLO REALMS V29.54 — Dragonborn lineage resistance integration.
-   V29.53 Reincarnate species and trait replacement.
+/* SOLO REALMS V29.55 — Dragonborn character-creation lineage selection.
+   V29.54 lineage resistance integration; V29.53 Reincarnate species and trait replacement.
    Death saves occur at the downed hero's turn start; three successes stabilize at 0 HP. */
-const SR29_DEATH_SAVES_VERSION='29.54.0';
+const SR29_DEATH_SAVES_VERSION='29.55.0';
 function sr29SoloRemoveUnconscious(c){
   if(!c)return;
   c.unconscious=false;
@@ -721,8 +721,78 @@ if(typeof sr14CastSpellComplete==='function'){
   };
   if(globalThis.__SR29_TEST?.gameplay)globalThis.__SR29_TEST.gameplay.castSpell=sr14CastSpellComplete;
 }
+function sr29DraconicAncestryIsValid(choice){
+  const name=String(choice||'').trim();
+  return Object.prototype.hasOwnProperty.call(SR29_DRACONIC_ANCESTRY_TYPES,name);
+}
+function sr29InjectDragonbornLineageField(markup){
+  const html=String(markup??'');
+  if(!html||html.includes('id="draconicAncestryField"'))return html;
+  const anchor='<div class="field"><label>Class / calling</label>';
+  if(!html.includes(anchor))return html;
+  const options=Object.keys(SR29_DRACONIC_ANCESTRY_TYPES).map(name=>`<option value="${name}">${name} — ${SR29_DRACONIC_ANCESTRY_TYPES[name]}</option>`).join('');
+  const field='<div class="field" id="draconicAncestryField" style="display:none"><label>Draconic ancestry / resistance</label><select name="draconicAncestryChoice" id="draconicAncestryChoice" disabled><option value="">Choose a lineage…</option>'+options+'</select><p id="draconicAncestryInfo" class="smalltext muted">Choose the dragon lineage that shapes your Breath Weapon and resistance.</p></div>';
+  return html.replace(anchor,field+anchor);
+}
+// Add a lineage selector to the existing creator without changing other ancestry forms.
+if(typeof renderCreator==='function'){
+  const sr29PriorRenderCreator=renderCreator;
+  renderCreator=function(...args){return sr29InjectDragonbornLineageField(sr29PriorRenderCreator.apply(this,args));};
+}
+if(typeof creatorData==='function'){
+  const sr29PriorCreatorData=creatorData;
+  creatorData=function(...args){
+    const data=sr29PriorCreatorData.apply(this,args);
+    if(data&&data.ancestry==='Dragonborn'){
+      const form=typeof $==='function'?$('creatorForm'):null;
+      data.draconicAncestryChoice=String(form?.elements?.draconicAncestryChoice?.value||'').trim();
+    }
+    return data;
+  };
+}
+if(typeof updateCreatorInfo==='function'){
+  const sr29PriorUpdateCreatorInfo=updateCreatorInfo;
+  updateCreatorInfo=function(...args){
+    const result=sr29PriorUpdateCreatorInfo.apply(this,args);
+    const form=typeof $==='function'?$('creatorForm'):null;
+    const ancestry=form?.elements?.ancestry?.value;
+    const field=typeof $==='function'?$('draconicAncestryField'):null;
+    const selector=form?.elements?.draconicAncestryChoice;
+    const active=ancestry==='Dragonborn';
+    if(field)field.style.display=active?'':'none';
+    if(selector){selector.disabled=!active;selector.required=active;}
+    const valid=!active||sr29DraconicAncestryIsValid(selector?.value);
+    const createButton=typeof $==='function'?$('createBtn'):null;
+    if(createButton&&!valid)createButton.disabled=true;
+    const info=typeof $==='function'?$('draconicAncestryInfo'):null;
+    if(info){const name=String(selector?.value||'');info.textContent=sr29DraconicAncestryIsValid(name)?`${name} lineage: resistance to ${SR29_DRACONIC_ANCESTRY_TYPES[name]} damage.`:'Choose a draconic lineage to set your damage resistance.';}
+    return result;
+  };
+}
+if(typeof app!=='undefined'&&app&&typeof app.addEventListener==='function'){
+  app.addEventListener('change',function(event){if(event?.target?.name==='draconicAncestryChoice')updateCreatorInfo();});
+}
+if(typeof createCharacter==='function'){
+  const sr29PriorCreateCharacter=createCharacter;
+  createCharacter=function(data,...args){
+    if(data?.ancestry==='Dragonborn'&&!sr29DraconicAncestryIsValid(data.draconicAncestryChoice)){
+      toast('Choose a Draconic Ancestry before creating your Dragonborn character.');
+      return false;
+    }
+    const priorCharacter=state?.character;
+    const result=sr29PriorCreateCharacter.call(this,data,...args);
+    const created=state?.character&&state.character!==priorCharacter&&state.character.ancestry==='Dragonborn';
+    if(created){
+      sr29SetDraconicAncestry(state.character,data.draconicAncestryChoice);
+      if(typeof save==='function')save();
+      if(typeof render==='function')render();
+    }
+    return result;
+  };
+}
+
 globalThis.__SR29_DEATH_TEST={
-  version:SR29_DEATH_SAVES_VERSION,reincarnateSpecies:SR29_REINCARNATE_SPECIES,reincarnateSpeciesFromRoll:sr29ReincarnateSpeciesFromRoll,applyReincarnateSpecies:sr29ApplyReincarnateSpecies,recordDeathSnapshot:sr29RecordDeathSnapshot,isOldAgeDeath:sr29IsOldAgeDeath,wasUndeadAtDeath:sr29WasUndeadAtDeath,isHumanoidAtDeath:sr29IsHumanoidAtDeath,missingBodyParts:sr29MissingBodyParts,hasMissingVitalParts:sr29HasMissingVitalParts,clearRevivalDeathMetadata:sr29ClearRevivalDeathMetadata,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestPenaltyRecovery:sr29ApplyLongRestPenaltyRecovery,hasResurrectionCasterTax:sr29HasResurrectionCasterTax,setResurrectionCasterTax:sr29SetResurrectionCasterTax,setDraconicAncestry:sr29SetDraconicAncestry,damageMultiplier:typeof sr14DamageMultiplier==='function'?sr14DamageMultiplier:null,dragonbornBreath:sr29DragonbornBreath,dragonbornBreathDamageDice:sr29DragonbornBreathDamageDice,dragonbornProficiencyBonus:sr29DragonbornProficiencyBonus,clearResurrectionCasterTax:sr29ClearResurrectionCasterTax,applyResurrectionTaxD20Result:sr29ApplyResurrectionTaxD20Result,rejectCastDuringResurrectionTax:sr29RejectCastDuringResurrectionTax,canonicalAbilityCheck:typeof sr29CanonicalAbilityCheck==='function'?sr29CanonicalAbilityCheck:null,attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
+  version:SR29_DEATH_SAVES_VERSION,creatorMarkup:typeof renderCreator==='function'?renderCreator:null,injectDragonbornLineageField:sr29InjectDragonbornLineageField,isValidDraconicAncestry:sr29DraconicAncestryIsValid,reincarnateSpecies:SR29_REINCARNATE_SPECIES,reincarnateSpeciesFromRoll:sr29ReincarnateSpeciesFromRoll,applyReincarnateSpecies:sr29ApplyReincarnateSpecies,recordDeathSnapshot:sr29RecordDeathSnapshot,isOldAgeDeath:sr29IsOldAgeDeath,wasUndeadAtDeath:sr29WasUndeadAtDeath,isHumanoidAtDeath:sr29IsHumanoidAtDeath,missingBodyParts:sr29MissingBodyParts,hasMissingVitalParts:sr29HasMissingVitalParts,clearRevivalDeathMetadata:sr29ClearRevivalDeathMetadata,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestPenaltyRecovery:sr29ApplyLongRestPenaltyRecovery,hasResurrectionCasterTax:sr29HasResurrectionCasterTax,setResurrectionCasterTax:sr29SetResurrectionCasterTax,setDraconicAncestry:sr29SetDraconicAncestry,damageMultiplier:typeof sr14DamageMultiplier==='function'?sr14DamageMultiplier:null,dragonbornBreath:sr29DragonbornBreath,dragonbornBreathDamageDice:sr29DragonbornBreathDamageDice,dragonbornProficiencyBonus:sr29DragonbornProficiencyBonus,clearResurrectionCasterTax:sr29ClearResurrectionCasterTax,applyResurrectionTaxD20Result:sr29ApplyResurrectionTaxD20Result,rejectCastDuringResurrectionTax:sr29RejectCastDuringResurrectionTax,canonicalAbilityCheck:typeof sr29CanonicalAbilityCheck==='function'?sr29CanonicalAbilityCheck:null,attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
   clearDowned:sr29SoloClearDowned,damageAtZero:sr29SoloDamageAtZero,hasUnconscious:sr29SoloHasUnconscious,
   heal:typeof heal==='function'?heal:null,damagePlayer:typeof damagePlayer==='function'?damagePlayer:null,
   soloMonsterAttack:typeof sr10EnemyAttack==='function'?sr10EnemyAttack:null,soloHeroAttack:typeof sr11HeroAttack==='function'?sr29TestSoloHeroAttack:null,advanceStableTime:sr29SoloAdvanceStableTime,

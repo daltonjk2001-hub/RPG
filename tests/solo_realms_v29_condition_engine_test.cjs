@@ -101,6 +101,10 @@ try{
  const resistedFire=T18.monsterDamage({player:dragonbornPlayer},10,'fire',{name:'Fire attacker'});
  const ordinaryCold=T18.monsterDamage({player:dragonbornPlayer},10,'cold',{name:'Cold attacker'});
  assert('Dragonborn lineage resistance halves matching damage in the live monster damage path without changing unrelated damage or stored resistances',lineageSet&&resistedFire===5&&ordinaryCold===10&&dragonbornDefense.hp===15&&JSON.stringify(dragonbornDefense.resistances)===JSON.stringify(['necrotic']),JSON.stringify({lineageSet,resistedFire,ordinaryCold,hp:dragonbornDefense.hp,resistances:dragonbornDefense.resistances}));
+ const creatorMarkup=RV.creatorMarkup();
+ const supportedLineages=['Black','Blue','Brass','Bronze','Copper','Gold','Green','Red','Silver','White'];
+ assert('The new-character creator presents a Draconic Ancestry selector containing all ten lineages',creatorMarkup.includes('name="draconicAncestryChoice"')&&supportedLineages.every(name=>creatorMarkup.includes(`value="${name}"`)),creatorMarkup.includes('id="draconicAncestryField"'));
+ assert('Dragonborn creation requires a supported lineage and rejects blank or unknown choices',!RV.isValidDraconicAncestry('')&&!RV.isValidDraconicAncestry('Purple')&&supportedLineages.every(name=>RV.isValidDraconicAncestry(name)));
  const humanToDragonkin=actor({ancestry:'Human',level:5,maxHp:40,stats:{STR:11,DEX:11,CON:11,INT:11,WIS:11,CHA:11},spells:[]});
  RV.applyReincarnateSpecies(humanToDragonkin,2,'Dragonkin');
  assert('A DM species override may choose another supported playable species while preserving the rolled 1d10 result',humanToDragonkin.ancestry==='Dragonkin'&&humanToDragonkin.dragonBreathUsed===false);
@@ -1277,7 +1281,7 @@ try{
   assert('Monster critical bonus dice preserve flat attack damage modifiers',T18.criticalExtraDice('2d6+4')==='2d6'&&T18.criticalExtraDice('1d8 + 1d6 + 3')==='1d8+1d6'&&T18.criticalExtraDice('1d10-2')==='1d10');
 
   const D=context.__SR29_DEATH_TEST;
-  assert('V29.54 Dragonborn lineage resistance and revival lifecycle is installed',!!D&&D.version==='29.54.0'&&typeof D.deathSave==='function');
+  assert('V29.55 Dragonborn creation and lineage resistance integration is installed',!!D&&D.version==='29.55.0'&&typeof D.deathSave==='function');
 
   const soloCriticalHero=actor({id:'solo-critical-hero',name:'Solo Critical Hero',hp:30,maxHp:30,armor:'Traveler’s clothes'});
   const soloCriticalEnemy={id:'solo-critical-enemy',name:'Solo Critical Monster',attack:100,damage:'1d6',pos:{x:2,y:1}};
