@@ -1080,6 +1080,37 @@ try{
   assert('A monster ranged hit from beyond 5 feet does not gain the automatic Unconscious critical',distantAttackResult===true&&distantUnconsciousHero.hp===26&&!T18.state.log.some(x=>/critical hit/.test(x.msg)),JSON.stringify({hp:distantUnconsciousHero.hp,log:T18.state.log}));
   assert('Monster critical bonus dice preserve flat attack damage modifiers',T18.criticalExtraDice('2d6+4')==='2d6'&&T18.criticalExtraDice('1d8 + 1d6 + 3')==='1d8+1d6'&&T18.criticalExtraDice('1d10-2')==='1d10');
 
+  const D=context.__SR29_DEATH_TEST;
+  assert('V29.38 canonical solo death-save service is installed',!!D&&D.version==='29.38.0'&&typeof D.deathSave==='function');
+  const deathHero=actor({id:'solo-death-hero',name:'Solo Death Hero',hp:0,maxHp:20,deathSuccess:2,deathFailure:0,stable:false,unconscious:true,conditions:[{name:'unconscious',duration:999}]});
+  T18.state={character:deathHero,campaign:{companions:[],day:1},combat:{mp:null,downed:true,round:2,enemies:[]},log:[]};
+  const priorDeathRandom=math.random;math.random=()=>0.5;
+  let stableRoll=false;try{stableRoll=D.deathSave();}finally{math.random=priorDeathRandom;}
+  assert('Three solo death-save successes stabilize at 0 HP and remain unconscious',stableRoll&&deathHero.hp===0&&deathHero.stable===true&&deathHero.deathSuccess===3&&D.hasUnconscious(deathHero)&&T18.state.combat.downed===true,JSON.stringify({hp:deathHero.hp,stable:deathHero.stable,success:deathHero.deathSuccess,conditions:deathHero.conditions}));
+  deathHero.stable=false;deathHero.deathSuccess=0;deathHero.deathFailure=0;deathHero.mpDead=false;T18.state.combat.downed=true;
+  const priorNat20Random=math.random;math.random=()=>0.9999;
+  try{D.deathSave();}finally{math.random=priorNat20Random;}
+  assert('Natural 20 on a solo death save restores exactly 1 HP and clears unconscious/downed state',deathHero.hp===1&&!deathHero.stable&&!deathHero.unconscious&&deathHero.deathSuccess===0&&deathHero.deathFailure===0&&!T18.state.combat.downed);
+  deathHero.hp=0;deathHero.unconscious=true;deathHero.stable=false;deathHero.deathSuccess=0;deathHero.deathFailure=0;deathHero.mpDead=false;T18.state.combat.downed=true;
+  const priorNat1Random=math.random;math.random=()=>0;
+  try{D.deathSave();}finally{math.random=priorNat1Random;}
+  assert('Natural 1 on a solo death save adds two failures',deathHero.deathFailure===2&&!deathHero.mpDead);
+  deathHero.deathFailure=0;deathHero.deathSuccess=0;deathHero.hp=0;deathHero.stable=true;deathHero.unconscious=true;T18.state.combat.downed=true;
+  const stableBefore=T18.state.log.length;const stableNoRoll=D.deathSave();
+  assert('A stable solo hero skips further death saves until damaged or healed',stableNoRoll===false&&deathHero.deathSuccess===0&&T18.state.log.length===stableBefore);
+  deathHero.stable=false;deathHero.deathFailure=1;deathHero.mpDead=false;deathHero.deathAt=null;deathHero.hp=0;T18.state.combat.downed=true;
+  const ordinaryDownedDamage=D.damageAtZero(1);
+  assert('Damage to a solo hero at 0 HP adds one failed death save',ordinaryDownedDamage.failures===1&&!ordinaryDownedDamage.dead&&deathHero.deathFailure===2);
+  deathHero.deathFailure=1;deathHero.mpDead=false;deathHero.deathAt=null;deathHero.hp=0;T18.state.combat.downed=true;
+  const criticalDownedDamage=D.damageAtZero(1,{lastAttackCritical:true});
+  assert('Critical damage to a solo hero at 0 HP adds two failed saves and records death time',criticalDownedDamage.dead&&deathHero.mpDead&&deathHero.deathFailure===3&&Number(deathHero.deathAt)>0);
+  const massiveDeathHero=actor({id:'massive-death-hero',name:'Massive Death Hero',hp:0,maxHp:20,stable:false,unconscious:true});
+  T18.state={character:massiveDeathHero,campaign:{companions:[],day:1},combat:{mp:null,downed:true,round:1,enemies:[]},log:[]};
+  const massiveDeath=D.damageAtZero(20);
+  assert('Massive damage at 0 HP causes instant death and records a revival timestamp',massiveDeath.dead&&massiveDeath.massive&&massiveDeathHero.mpDead&&Number(massiveDeathHero.deathAt)>0&&T18.state.combat===null);
+  assert('Solo initiative now rolls death saves at the downed hero turn and continues processing the initiative order',html.includes('sr29SoloDeathSave();if(!state.combat)return;if(state.character.hp>0){sr10RenderTurn();return;')&&!html.includes('if(!state.combat)return;if(state.character.hp<=0)return;const next=b.turnIndex+1;'));
+  assert('Multiplayer massive-damage death records the timestamp needed by Revivify',html.includes('c.deathFailure=3;c.deathAt=Date.now();log(`${player.name} suffers massive damage and dies instantly.`'));
+
 
 
 
