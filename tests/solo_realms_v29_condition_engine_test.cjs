@@ -1087,6 +1087,7 @@ try{
   const soloCriticalEnemy={id:'solo-critical-enemy',name:'Solo Critical Monster',attack:100,damage:'1d6',pos:{x:2,y:1}};
   T18.state={character:soloCriticalHero,campaign:{companions:[]},combat:{mp:null,heroPos:{x:1,y:1},enemies:[soloCriticalEnemy],map:{width:8,height:6,terrain:[]},round:1},log:[]};
   T.apply(soloCriticalHero,'paralyzed','permanent','solo initiative critical regression');
+  assert('Solo V10 critical fixture is Paralyzed and meets the 5-foot automatic-critical rule',T.has(soloCriticalHero,'paralyzed')&&T.criticalOnHit(soloCriticalHero,{hit:true,distance:5}));
   const priorSoloCriticalRandom=math.random;math.random=()=>0.5;
   try{D.soloMonsterAttack(soloCriticalEnemy);}finally{math.random=priorSoloCriticalRandom;}
   assert('V10 solo initiative monster attacks gain Advantage and automatic critical damage against a Paralyzed target within 5 feet',soloCriticalHero.hp===22&&T18.state.log.some(x=>/Critical hit/.test(x.msg)),JSON.stringify({hp:soloCriticalHero.hp,log:T18.state.log}));
