@@ -2,6 +2,16 @@
  * Built as an additive layer over V17 so earlier campaign/rules/multiplayer/save data remains readable.
  */
 const SR18_VERSION='18.0.0';
+if(typeof ANCESTRIES==='object'&&!ANCESTRIES.Dragonborn){
+  ANCESTRIES.Dragonborn={
+    bonus:{},
+    creatureType:'Humanoid',
+    size:'Medium',
+    speed:30,
+    draconicAncestors:{Black:'acid',Blue:'lightning',Brass:'fire',Bronze:'lightning',Copper:'acid',Gold:'fire',Green:'poison',Red:'fire',Silver:'cold',White:'cold'},
+    trait:'Draconic ancestry: choose a dragon lineage for Breath Weapon and matching Damage Resistance; Darkvision 60 ft.; Draconic Flight at level 5.'
+  };
+}
 const SR18_WATCHES_PER_DAY=6;
 const SR18_SAVE_DB='solo-realms-v18-save-archive';
 const SR18_SLOT_PREFIX='sr18-save-slot-';
