@@ -70,6 +70,27 @@ try{
  assert('An unconscious or stable creature at 0 HP is not classified as a dead resurrection target',!RV.revivalEligibility(actor({hp:0,mpDead:false,dead:false,deathAt:revivalClock-1000}),'Revivify',revivalClock).ok);
  assert('A missing or future death timestamp cannot satisfy revival eligibility',!RV.revivalEligibility(actor({hp:0,mpDead:true}),'Revivify',revivalClock).ok&&!RV.revivalEligibility(revivalProbe(revivalClock+1),'Revivify',revivalClock).ok);
 
+ const raiseReturn=actor({hp:1}),resurrectionReturn=actor({hp:1}),revivifyReturn=actor({hp:1});
+ assert('Raise Dead and Resurrection impose a four-point return penalty but Revivify does not',RV.setRevivalReturnPenalty(raiseReturn,'Raise Dead')&&RV.setRevivalReturnPenalty(resurrectionReturn,'Resurrection')&&RV.setRevivalReturnPenalty(revivifyReturn,'Revivify')===false&&raiseReturn.revivalD20Penalty===4&&resurrectionReturn.revivalD20Penalty===4&&!Object.prototype.hasOwnProperty.call(revivifyReturn,'revivalD20Penalty'));
+ const penaltyCheckHero=actor({revivalD20Penalty:4});
+ const penaltyCheck=RV.canonicalAbilityCheck(penaltyCheckHero,'Athletics',15,{roll:18,bonusOverride:0});
+ assert('The Raise Dead/Resurrection penalty applies to canonical ability checks',penaltyCheck.roll===18&&penaltyCheck.bonus===-4&&penaltyCheck.total===14&&penaltyCheck.success===false,JSON.stringify(penaltyCheck));
+ const penaltySaveHero=actor({revivalD20Penalty:4});
+ const priorPenaltySaveRandom=math.random;let penaltySave;try{math.random=()=>0.9;penaltySave=RV.savingThrow(penaltySaveHero,'CON',16);}finally{math.random=priorPenaltySaveRandom;}
+ assert('The return penalty applies to saving throws after the natural roll',penaltySave.roll===19&&penaltySave.bonus===-4&&penaltySave.total===15&&penaltySave.success===false,JSON.stringify(penaltySave));
+ const penaltyAttackHero=actor({revivalD20Penalty:4}),penaltyAttackTarget=actor({id:'penalty-attack-target',name:'Penalty Attack Target',ac:16});
+ const priorPenaltyAttackRandom=math.random;let penaltyAttack;try{math.random=()=>0.9;penaltyAttack=RV.attackRoll(0,penaltyAttackHero,penaltyAttackTarget,false);}finally{math.random=priorPenaltyAttackRandom;}
+ assert('The return penalty applies to weapon attack-roll totals',penaltyAttack.r===19&&penaltyAttack.total===15,JSON.stringify(penaltyAttack));
+ const penaltyRecoveryHero=actor({revivalD20Penalty:4});
+ const firstPenaltyRecovery=RV.reduceRevivalPenaltyAfterLongRest(penaltyRecoveryHero),secondPenaltyRecovery=RV.reduceRevivalPenaltyAfterLongRest(penaltyRecoveryHero);
+ const thirdPenaltyRecovery=RV.reduceRevivalPenaltyAfterLongRest(penaltyRecoveryHero),fourthPenaltyRecovery=RV.reduceRevivalPenaltyAfterLongRest(penaltyRecoveryHero);
+ assert('Each completed Long Rest removes one point from the return penalty until it reaches zero',firstPenaltyRecovery===3&&secondPenaltyRecovery===2&&thirdPenaltyRecovery===1&&fourthPenaltyRecovery===0&&!Object.prototype.hasOwnProperty.call(penaltyRecoveryHero,'revivalD20Penalty'));
+ const restedPenaltyHero=actor({id:'rested-penalty-hero',name:'Rested Penalty Hero',classId:'Fighter',level:3,gold:50,inventory:[],revivalD20Penalty:4});
+ T18.state={character:restedPenaltyHero,campaign:{day:1,region:'Revival Rest Test',location:'Revival Rest Test',visited:['Revival Rest Test'],companions:[],npcs:[],sideQuests:[],story:{},flags:{},mainQuest:{kind:'test',title:'Rest Test',goal:'Validate penalty recovery'},multiplayer:{active:false,players:[]}},combat:null,log:[]};
+ RV.applyLongRestRecovery();
+ assert('The solo Long Rest gameplay path also reduces the revival penalty after a successful rest',T18.state.campaign.day>1&&restedPenaltyHero.revivalD20Penalty===3,JSON.stringify({day:T18.state.campaign.day,penalty:restedPenaltyHero.revivalD20Penalty,gold:restedPenaltyHero.gold}));
+ T18.state={character:actor(),campaign:{},combat:null,log:[]};
+
  assert('Registry contains all 15 SRD conditions',T.names.length===15&&['blinded','charmed','deafened','exhaustion','frightened','grappled','incapacitated','invisible','paralyzed','petrified','poisoned','prone','restrained','stunned','unconscious'].every(n=>T.names.includes(n)));
 
  assert('Monster displacement planner pushes the requested 10 feet',T18.displacementPlan({x:2,y:2},{x:0,y:2},'push',10,()=>true)?.to.x===4);
@@ -1124,7 +1145,7 @@ try{
   assert('Monster critical bonus dice preserve flat attack damage modifiers',T18.criticalExtraDice('2d6+4')==='2d6'&&T18.criticalExtraDice('1d8 + 1d6 + 3')==='1d8+1d6'&&T18.criticalExtraDice('1d10-2')==='1d10');
 
   const D=context.__SR29_DEATH_TEST;
-  assert('V29.49 canonical death-save and revival service is installed',!!D&&D.version==='29.49.0'&&typeof D.deathSave==='function');
+  assert('V29.50 revival return-penalty lifecycle is installed',!!D&&D.version==='29.50.0'&&typeof D.deathSave==='function');
 
   const soloCriticalHero=actor({id:'solo-critical-hero',name:'Solo Critical Hero',hp:30,maxHp:30,armor:'Traveler’s clothes'});
   const soloCriticalEnemy={id:'solo-critical-enemy',name:'Solo Critical Monster',attack:100,damage:'1d6',pos:{x:2,y:1}};
