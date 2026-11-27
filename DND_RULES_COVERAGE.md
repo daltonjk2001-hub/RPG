@@ -114,3 +114,12 @@ This dashboard maps the D&D reference PDF's Parts I–III and Appendices A–B t
 - Added both resets to the canonical solo hero-turn initializer. This prevents a spent Bonus Action from remaining unavailable across later rounds and allows Sneak Attack to be used again on a later turn.
 - Expanded the existing V10 initiative regression to begin with the Bonus Action and Sneak Attack already spent, then verify both refresh alongside movement, Action, and Reaction.
 - This corrects the solo turn-start ledger only; exhaustive class-feature-specific timing and all action/bonus-action/reaction edge cases remain Partial.
+
+
+## V29.29 multiplayer Reaction timing
+
+- The multiplayer round-boundary routine previously restored every hero and monster Reaction together. This could restore a Reaction before that creature reached the start of its next turn.
+- Removed the blanket round-boundary refresh. Heroes refresh Reaction in their own turn initializer; monsters now refresh immediately when their own initiative actor/group begins, including when the creature is then skipped for Incapacitated.
+- Defeated monsters are not granted a refreshed Reaction.
+- Added regression assertions for active monster refresh, defeated-monster exclusion, and no premature hero/monster refresh at round boundaries.
+- The action-economy audit remains Partial pending full feature-specific timing and live multiplayer testing.
