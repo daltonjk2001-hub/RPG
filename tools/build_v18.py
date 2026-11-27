@@ -217,12 +217,12 @@ def build_runtime() -> str:
         solo_hero_sneak,
         "const sneakDamage=rollDice(`${n}d6`);dmg+=critical?sneakDamage*2:sneakDamage;c.sneakAttackUsed=true;log(`Sneak Attack adds ${critical?'critical ':''}extra damage.`,'goodlog');",
     )
-    solo_hero_mark = "if(c.markRounds>0)dmg+=rollDice('1d6');"
+    solo_hero_mark = "if(c.markRounds>0)dmg+=rollDice('1d6');e.hp=Math.max(0,e.hp-dmg);"
     if base.count(solo_hero_mark) != 1:
-        raise SystemExit("Expected one solo V11 marked-target damage expression.")
+        raise SystemExit("Expected one solo V11 marked-target damage and HP application sequence.")
     base = base.replace(
         solo_hero_mark,
-        "if(c.markRounds>0){const markDamage=rollDice('1d6');dmg+=critical?markDamage*2:markDamage;}",
+        "if(c.markRounds>0){const markDamage=rollDice('1d6');dmg+=critical?markDamage*2:markDamage;}e.hp=Math.max(0,e.hp-dmg);",
     )
 
     # Multiplayer weapon attacks use the same condition critical rule, and
