@@ -3958,8 +3958,9 @@ function sr12BeginHeroTurn(player){
 function sr12EndRound(){
   const b=state.combat;if(!b?.mp)return;
   b.round=(b.round||1)+1;
-  for(const p of state.campaign.multiplayer.players||[]){const c=p.character;if(!c)continue;sr11Tick(c);if(c.rageRounds>0)c.rageRounds--;if(c.markRounds>0)c.markRounds--;if(c.buffRounds>0)c.buffRounds--;if(c.wildShapeRounds>0)c.wildShapeRounds--;c.reactionAvailable=true;}
-  for(const e of b.enemies||[]){sr11Tick(e);e.reactionAvailable=true;if(e.debuffRounds>0&&--e.debuffRounds===0)e.attackDebuff=0;if(e.role==='regenerator'&&e.hp>0&&!e.regenerationStopped&&e.lastDamageType!=='fire'&&e.lastDamageType!=='acid')e.hp=Math.min(e.maxHp,e.hp+10);}
+  // Reactions refresh at the start of each creature's own turn, not at a shared round boundary.
+  for(const p of state.campaign.multiplayer.players||[]){const c=p.character;if(!c)continue;sr11Tick(c);if(c.rageRounds>0)c.rageRounds--;if(c.markRounds>0)c.markRounds--;if(c.buffRounds>0)c.buffRounds--;if(c.wildShapeRounds>0)c.wildShapeRounds--;}
+  for(const e of b.enemies||[]){sr11Tick(e);if(e.debuffRounds>0&&--e.debuffRounds===0)e.attackDebuff=0;if(e.role==='regenerator'&&e.hp>0&&!e.regenerationStopped&&e.lastDamageType!=='fire'&&e.lastDamageType!=='acid')e.hp=Math.min(e.maxHp,e.hp+10);}
   for(const ally of state.campaign.companions||[])sr11Tick(ally);
   log(`Round ${b.round} begins.`,'rolllog');
 }
@@ -4628,6 +4629,7 @@ function sr13ProcessEnemyGroup(actor){
   for(const index of indexes){
     const e=b.enemies?.[index];if(!e||e.hp<=0)continue;
     if(sr13HasCondition(e,'incapacitated')||sr13HasCondition(e,'stunned')||sr13HasCondition(e,'paralyzed')||sr13HasCondition(e,'unconscious')){log(`${e.name} cannot act while incapacitated.`,'rolllog');continue;}
+    sr136RefreshEnemyReaction(e);
     sr12EnemyTurn(e);acted++;
     if(!state.combat?.mp)break;
   }
@@ -4654,7 +4656,7 @@ function sr13ProcessActors(){
         SR12.activeTurnKey='';sr12AdvanceIndex();continue;
       }
       if(a.kind==='enemy'){
-        const enemy=state.combat.enemies[Number(a.index)];if(enemy&&enemy.hp>0)sr12EnemyTurn(enemy);
+        const enemy=state.combat.enemies[Number(a.index)];if(enemy&&enemy.hp>0){sr136RefreshEnemyReaction(enemy);sr12EnemyTurn(enemy);}
         if(!state.combat?.mp)return;
         SR12.activeTurnKey='';sr12AdvanceIndex();continue;
       }
@@ -5469,6 +5471,11 @@ function sr136MoveTiedHero(b,index,direction){
   b.initiativeOrder=order.map(x=>({...x,indexes:x.indexes?[...x.indexes]:undefined}));
   return true;
 }
+function sr136RefreshEnemyReaction(enemy){
+  if(!enemy||Number(enemy.hp)<=0)return false;
+  enemy.reactionAvailable=true;
+  return true;
+}
 function sr136ReorderTie(b,index,direction,activeActorId){
   const changed=sr136MoveTiedHero(b,index,direction);
   const activeActor=b?.mp?.turnOrder?.[Number(b?.mp?.index)||0]?.id||null;
@@ -5522,6 +5529,10 @@ function sr136RunTests(){
     ok('Party can move a tied hero earlier before either tied turn begins',sr136MoveTiedHero(combat,1,'up')&&combat.mp.turnOrder[0].id==='b');
     ok('Party can move a tied hero later within the same Initiative count',sr136MoveTiedHero(combat,0,'down')&&combat.mp.turnOrder[1].id==='b');
     combat.mp.index=1;ok('Party cannot rewrite a tie after the tied group has begun acting',!sr136MoveTiedHero(combat,1,'up'));
+    const enemyReaction={hp:10,reactionAvailable:false};
+    ok('Enemy Reaction refreshes at the start of its own initiative turn',sr136RefreshEnemyReaction(enemyReaction)&&enemyReaction.reactionAvailable===true);
+    const deadEnemyReaction={hp:0,reactionAvailable:false};
+    ok('Defeated enemies do not receive a refreshed Reaction',!sr136RefreshEnemyReaction(deadEnemyReaction)&&deadEnemyReaction.reactionAvailable===false);
     const activeSwap={mp:{index:0,turnOrder:[{kind:'hero',id:'active-a',initiative:12,tieMode:'party-choice'},{kind:'hero',id:'active-b',initiative:12,tieMode:'party-choice'}]}};
     const activeChanged=sr136ReorderTie(activeSwap,1,'up','active-a');
     ok('Changing the first tied hero is detected so the host can initialize the newly active turn',activeChanged.changed&&activeChanged.activeActorChanged&&activeChanged.activeActor==='active-b');
@@ -5537,7 +5548,7 @@ function sr136RunTests(){
 }
 const sr136OldTestV13=sr13RunTests;
 sr13RunTests=function(){return [...sr136OldTestV13(),...sr136RunTests()];};
-globalThis.__SR13_TEST={...globalThis.__SR13_TEST,version:SR136_VERSION,moveTiedHero:sr136MoveTiedHero,reorderTie:sr136ReorderTie,tests:sr13RunTests};
+globalThis.__SR13_TEST={...globalThis.__SR13_TEST,version:SR136_VERSION,moveTiedHero:sr136MoveTiedHero,reorderTie:sr136ReorderTie,refreshEnemyReaction:sr136RefreshEnemyReaction,tests:sr13RunTests};
 
 
 
