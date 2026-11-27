@@ -1345,7 +1345,7 @@ if(typeof sr12HeroAttack==='function'){
     if(result&&state?.combat?.mp&&mastery==='Push'&&target&&origin){
       const prefix=`${player?.name||character?.name||''} attacks ${target.name}:`,logs=state.log||[],headIndex=beforeLogHead?logs.indexOf(beforeLogHead):logs.length;
       const newEntries=headIndex>=0?logs.slice(0,headIndex):logs.slice(0,Math.max(0,logs.length-beforeLog));
-      const hits=newEntries.filter(entry=>{const message=String(entry?.msg??entry??'');return message.startsWith(prefix)&&/\bHit\./.test(message);}).length;
+      const hits=newEntries.filter(entry=>{const message=String(entry?.msg??entry??'');return message.startsWith(prefix)&&/\b(?:Critical )?Hit\./i.test(message);}).length;
       for(let i=0;i<hits;i++)sr29ApplyMasteryPush(target,player,origin,weapon);
     }
     return result;
