@@ -27,7 +27,29 @@ function assert(name,value,detail=''){checks.push({name,pass:!!value,detail:Stri
 function actor(extra={}){return {id:'v29-target',name:'V29 Target',hp:30,maxHp:30,baseSpeed:30,speed:30,
  stats:{STR:10,DEX:10,CON:10,INT:10,WIS:10,CHA:10},conditions:[],activeEffects:[],...extra};}
 try{
- assert('Registry contains all 15 SRD conditions',T.names.length===15&&['blinded','charmed','deafened','exhaustion','frightened','grappled','incapacitated','invisible','paralyzed','petrified','poisoned','prone','restrained','stunned','unconscious'].every(n=>T.names.includes(n)));
+ const revivalCaster=actor({id:'revival-caster',name:'Revival Caster',classId:'Cleric',level:5,classLevels:{Cleric:5},spells:['Revivify'],preparedSpells:['Revivify'],spellSlotsByLevel:{3:1},actionSpent:false,bonusActionSpent:false,reactionAvailable:true,spellSlotSpentThisTurn:false});
+ const revivalCasterPlayer={id:'revival-caster',name:'Revival Caster',connected:true,character:revivalCaster};
+ const revivalTarget=actor({id:'revival-target',name:'Revival Target',hp:0,maxHp:24,mpDead:true,mpDowned:true,dead:true,stable:true,unconscious:true,deathAt:Date.now()-30000,deathSaves:3,deathSuccess:0,deathFailure:3,stableRecoveryHours:3,stableElapsedHours:2,conditions:[{name:'unconscious',duration:999}]});
+ const revivalTargetPlayer={id:'revival-target',name:'Revival Target',connected:true,character:revivalTarget};
+ T.gameplay.setSpellData('Revivify',{name:'Revivify',level:3,classes:['Cleric'],kind:'revive',range:'Touch',castingTime:'Action',components:'V, S',description:'Return the target to life.'});
+ T18.state={character:revivalCaster,campaign:{day:1,companions:[],multiplayer:{active:true,players:[revivalCasterPlayer,revivalTargetPlayer]}},combat:{mp:{heroPositions:{'revival-caster':{x:1,y:1},'revival-target':{x:2,y:1}}},heroPos:{x:1,y:1},enemies:[],map:{width:8,height:6,terrain:[]}},log:[]};
+ T18.setActivePlayerId('revival-caster');
+ const revivalCast=T.gameplay.castSpell(revivalCasterPlayer,'Revivify','revival-target',true);
+ assert('Revivify on a valid dead multiplayer target restores 1 HP and clears the prior death timestamp, stable timer, death saves, and unconscious condition',revivalCast===true&&revivalTarget.hp===1&&revivalTarget.mpDead===false&&revivalTarget.mpDowned===false&&revivalTarget.dead===false&&revivalTarget.stable===false&&revivalTarget.unconscious===false&&revivalTarget.deathSaves===0&&revivalTarget.deathSuccess===0&&revivalTarget.deathFailure===0&&!Object.prototype.hasOwnProperty.call(revivalTarget,'deathAt')&&!Object.prototype.hasOwnProperty.call(revivalTarget,'stableRecoveryHours')&&!Object.prototype.hasOwnProperty.call(revivalTarget,'stableElapsedHours')&&!revivalTarget.conditions.some(x=>(typeof x==='string'?x:x.name)==='unconscious'),JSON.stringify({revivalCast,target:revivalTarget,slots:revivalCaster.spellSlotsByLevel,actionSpent:revivalCaster.actionSpent}));
+ revivalTarget.hp=0;revivalTarget.mpDead=true;revivalTarget.dead=true;revivalTarget.deathAt=Date.now()-61000;
+ revivalCaster.spellSlotsByLevel[3]=1;revivalCaster.actionSpent=false;revivalCaster.spellSlotSpentThisTurn=false;
+ const expiredRevivify=T.gameplay.castSpell(revivalCasterPlayer,'Revivify','revival-target',true);
+ assert('Revivify rejects a death older than one minute before spending a spell slot or Action',expiredRevivify===false&&revivalTarget.hp===0&&revivalTarget.mpDead===true&&Number(revivalCaster.spellSlotsByLevel[3])===1&&revivalCaster.actionSpent===false,JSON.stringify({expiredRevivify,targetHp:revivalTarget.hp,dead:revivalTarget.mpDead,slots:revivalCaster.spellSlotsByLevel,actionSpent:revivalCaster.actionSpent}));
+ revivalTarget.mpDead=false;revivalTarget.dead=false;revivalTarget.stable=true;revivalTarget.deathAt=Date.now()-1000;
+ const stableNotDead=T.gameplay.castSpell(revivalCasterPlayer,'Revivify','revival-target',true);
+ assert('Revivify does not treat a stable or unconscious 0-HP creature as dead',stableNotDead===false&&revivalTarget.hp===0&&revivalCaster.spellSlotsByLevel[3]===1&&revivalCaster.actionSpent===false);
+ revivalTarget.mpDead=true;revivalTarget.dead=true;revivalTarget.stable=false;revivalTarget.deathAt=Date.now()-1000;
+ T.gameplay.setSpellData('Healing Word',{name:'Healing Word',level:1,classes:['Cleric'],kind:'heal',range:'60 feet',castingTime:'Bonus Action',components:'V',description:'Restore hit points to a creature.'});
+ revivalCaster.spells.push('Healing Word');revivalCaster.preparedSpells.push('Healing Word');revivalCaster.spellSlotsByLevel[1]=1;revivalCaster.bonusActionSpent=false;
+ const healingDeadTarget=T.gameplay.castSpell(revivalCasterPlayer,'Healing Word','revival-target',true);
+ assert('Ordinary healing cannot revive a character whose multiplayer death flag is set',healingDeadTarget===false&&revivalTarget.hp===0&&revivalTarget.mpDead===true&&revivalCaster.spellSlotsByLevel[1]===1&&revivalCaster.bonusActionSpent===false);
+ T18.state={character:actor(),campaign:{},combat:null,log:[]};
+\n assert('Registry contains all 15 SRD conditions',T.names.length===15&&['blinded','charmed','deafened','exhaustion','frightened','grappled','incapacitated','invisible','paralyzed','petrified','poisoned','prone','restrained','stunned','unconscious'].every(n=>T.names.includes(n)));
 
  assert('Monster displacement planner pushes the requested 10 feet',T18.displacementPlan({x:2,y:2},{x:0,y:2},'push',10,()=>true)?.to.x===4);
  assert('Monster displacement planner pulls toward the source',T18.displacementPlan({x:3,y:2},{x:0,y:2},'pull',5,()=>true)?.to.x===2);
