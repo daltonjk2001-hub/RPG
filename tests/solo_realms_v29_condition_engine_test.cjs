@@ -71,6 +71,34 @@ try{
  T18.state={character:actor(),campaign:{},combat:null,log:[]};
  context.render=revivalPriorRender;
 
+ assert('Dragonborn is a distinct supported ancestry and is not merged with homebrew Dragonkin',T18.ancestryNames.includes('Dragonborn')&&T18.ancestryNames.includes('Dragonkin')&&T18.ancestryData.Dragonborn.creatureType==='Humanoid');
+ const expectedReincarnateSpecies=['Aasimar','Dragonborn','Dwarf','Elf','Gnome','Goliath','Halfling','Human','Orc','Tiefling'];
+ assert('The Reincarnate 1d10 table maps every official result to its 2024 species in order',expectedReincarnateSpecies.every((species,index)=>RV.reincarnateSpeciesFromRoll(index+1)===species)&&RV.reincarnateSpecies.every((species,index)=>species===expectedReincarnateSpecies[index]));
+ assert('Invalid Reincarnate die results are rejected rather than silently remapped',RV.reincarnateSpeciesFromRoll(0)===null&&RV.reincarnateSpeciesFromRoll(11)===null&&RV.reincarnateSpeciesFromRoll(1.5)===null);
+ const reincarnatedElf=actor({id:'reincarnated-elf',name:'Reincarnated Elf',ancestry:'Elf',classId:'Fighter',background:'Soldier',level:5,xp:1200,maxHp:42,hp:1,stats:{STR:10,DEX:16,CON:12,INT:10,WIS:10,CHA:12},spells:['Longsword Mastery'],feats:['Alert'],proficiencies:['Athletics','Perception'],revivalD20Penalty:0});
+ const oldSpeciesFlags={elfSense:true,lucky:true,halfElfCharm:true,sceneTraitUses:{elf:true,gnome:true,halfelf:true}};
+ T18.state={character:reincarnatedElf,campaign:{flags:oldSpeciesFlags},combat:null,log:[]};
+ const tieflingTransformation=RV.applyReincarnateSpecies(reincarnatedElf,10);
+ assert('Reincarnate replaces ancestry bonuses while retaining class, level, background, XP, skills, feats and unrelated capabilities',tieflingTransformation.ok&&reincarnatedElf.ancestry==='Tiefling'&&reincarnatedElf.stats.DEX===14&&reincarnatedElf.stats.CHA===14&&reincarnatedElf.classId==='Fighter'&&reincarnatedElf.background==='Soldier'&&reincarnatedElf.level===5&&reincarnatedElf.xp===1200&&reincarnatedElf.feats.includes('Alert')&&reincarnatedElf.proficiencies.includes('Athletics'),JSON.stringify({tieflingTransformation,character:reincarnatedElf}));
+ assert('Tiefling ancestry grants Ember Bolt and clears the former Elf/Gnome/Halfling/Half-Elf trait-use flags',reincarnatedElf.spells.includes('Ember Bolt')&&reincarnatedElf.ancestryGrantedSpells?.includes('Ember Bolt')&&!oldSpeciesFlags.elfSense&&!oldSpeciesFlags.lucky&&!oldSpeciesFlags.halfElfCharm&&Object.keys(oldSpeciesFlags.sceneTraitUses).length===0);
+ const humanToDragonborn=actor({ancestry:'Human',level:5,maxHp:40,stats:{STR:11,DEX:11,CON:11,INT:11,WIS:11,CHA:11},spells:[]});
+ const dragonbornTransformation=RV.applyReincarnateSpecies(humanToDragonborn,2,null,'Red');
+ assert('Reincarnate can create a Dragonborn body with its own draconic ancestry choice and no legacy Dragonkin ability-score bonus',dragonbornTransformation.ok&&humanToDragonborn.ancestry==='Dragonborn'&&humanToDragonborn.stats.STR===10&&humanToDragonborn.stats.DEX===10&&humanToDragonborn.draconicAncestryChoice==='Red'&&humanToDragonborn.dragonbornBreathUsesMax===3,JSON.stringify({dragonbornTransformation,character:humanToDragonborn}));
+ const humanToDragonkin=actor({ancestry:'Human',level:5,maxHp:40,stats:{STR:11,DEX:11,CON:11,INT:11,WIS:11,CHA:11},spells:[]});
+ RV.applyReincarnateSpecies(humanToDragonkin,2,'Dragonkin');
+ assert('A DM species override may choose another supported playable species while preserving the rolled 1d10 result',humanToDragonkin.ancestry==='Dragonkin'&&humanToDragonkin.dragonBreathUsed===false);
+ const dwarfToElf=actor({ancestry:'Dwarf',level:4,maxHp:48,stats:{STR:10,DEX:10,CON:14,INT:10,WIS:10,CHA:10}});
+ RV.applyReincarnateSpecies(dwarfToElf,4);
+ assert('Leaving Dwarf removes the app’s ancestry-derived two-HP-per-level maximum bonus',dwarfToElf.ancestry==='Elf'&&dwarfToElf.maxHp===40&&dwarfToElf.stats.CON===12);
+ const elfToDwarf=actor({ancestry:'Elf',level:4,maxHp:40,stats:{STR:10,DEX:12,CON:12,INT:10,WIS:10,CHA:10}});
+ RV.applyReincarnateSpecies(elfToDwarf,3);
+ assert('Becoming Dwarf applies the app’s ancestry-derived two-HP-per-level maximum bonus',elfToDwarf.ancestry==='Dwarf'&&elfToDwarf.maxHp===48&&elfToDwarf.stats.CON===14);
+ const tieflingToElf=actor({ancestry:'Tiefling',classId:'Fighter',level:4,stats:{STR:10,DEX:10,CON:10,INT:10,WIS:10,CHA:12},spells:['Ember Bolt'],ancestryGrantedSpells:['Ember Bolt']});
+ RV.applyReincarnateSpecies(tieflingToElf,4);
+ assert('Leaving Tiefling removes only the ancestry-granted Ember Bolt from a non-caster',tieflingToElf.ancestry==='Elf'&&!tieflingToElf.spells.includes('Ember Bolt'));
+ const tieflingCaster=actor({ancestry:'Tiefling',classId:'Sorcerer',level:4,stats:{STR:10,DEX:10,CON:10,INT:10,WIS:10,CHA:12},spells:['Ember Bolt']});
+ RV.applyReincarnateSpecies(tieflingCaster,4);
+ assert('Leaving Tiefling preserves Ember Bolt when it is also a native class spell',tieflingCaster.ancestry==='Elf'&&tieflingCaster.spells.includes('Ember Bolt'));
  const revivalClock=Date.UTC(2026,10,27,12,0,0);
  const revivalProbe=deathAt=>actor({hp:0,mpDead:true,creatureTypeAtDeath:'Humanoid',deathAt});
  const centuryCutoff=new Date(revivalClock);centuryCutoff.setUTCFullYear(centuryCutoff.getUTCFullYear()-100);
@@ -1224,7 +1252,7 @@ try{
   assert('Monster critical bonus dice preserve flat attack damage modifiers',T18.criticalExtraDice('2d6+4')==='2d6'&&T18.criticalExtraDice('1d8 + 1d6 + 3')==='1d8+1d6'&&T18.criticalExtraDice('1d10-2')==='1d10');
 
   const D=context.__SR29_DEATH_TEST;
-  assert('V29.52 spell-specific revival eligibility and caster-tax lifecycle is installed',!!D&&D.version==='29.52.0'&&typeof D.deathSave==='function');
+  assert('V29.53 Reincarnate species transformation and revival lifecycle is installed',!!D&&D.version==='29.53.0'&&typeof D.deathSave==='function');
 
   const soloCriticalHero=actor({id:'solo-critical-hero',name:'Solo Critical Hero',hp:30,maxHp:30,armor:'Traveler’s clothes'});
   const soloCriticalEnemy={id:'solo-critical-enemy',name:'Solo Critical Monster',attack:100,damage:'1d6',pos:{x:2,y:1}};
