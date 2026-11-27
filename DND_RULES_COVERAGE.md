@@ -123,3 +123,11 @@ This dashboard maps the D&D reference PDF's Parts I–III and Appendices A–B t
 - Defeated monsters are not granted a refreshed Reaction.
 - Added regression assertions for active monster refresh, defeated-monster exclusion, and no premature hero/monster refresh at round boundaries.
 - The action-economy audit remains Partial pending full feature-specific timing and live multiplayer testing.
+
+
+## V29.30 multiplayer Incapacitated turn eligibility
+
+- Audited the multiplayer actor processor for conditions that inherit Incapacitated. The previous turn-skip gate recognized direct Incapacitated, Stunned, and Paralyzed records but omitted Petrified and Unconscious records stored under their own names.
+- Added one shared incapacitation predicate covering Incapacitated, Stunned, Paralyzed, Petrified, and Unconscious, and applied it to player, grouped-monster, and legacy single-monster turn processing.
+- Monster Reactions still refresh at the start of their own turn before the incapacitation gate skips their actions.
+- Added two regression assertions covering all five incapacitating conditions and ensuring ordinary conditions such as Poisoned/Prone do not suppress a turn.
