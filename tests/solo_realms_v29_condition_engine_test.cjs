@@ -63,7 +63,8 @@ try{
  assert('True Resurrection eligibility uses the exact 200-calendar-year boundary, including leap-year spans',D.revivalEligibility(revivalProbe(bicenturyCutoff.getTime()),'True Resurrection',revivalClock).ok&&!D.revivalEligibility(revivalProbe(bicenturyCutoff.getTime()-1),'True Resurrection',revivalClock).ok);
  assert('An unconscious or stable creature at 0 HP is not classified as a dead resurrection target',!D.revivalEligibility(actor({hp:0,mpDead:false,dead:false,deathAt:revivalClock-1000}),'Revivify',revivalClock).ok);
  assert('A missing or future death timestamp cannot satisfy revival eligibility',!D.revivalEligibility(actor({hp:0,mpDead:true}),'Revivify',revivalClock).ok&&!D.revivalEligibility(revivalProbe(revivalClock+1),'Revivify',revivalClock).ok);
-\n assert('Registry contains all 15 SRD conditions',T.names.length===15&&['blinded','charmed','deafened','exhaustion','frightened','grappled','incapacitated','invisible','paralyzed','petrified','poisoned','prone','restrained','stunned','unconscious'].every(n=>T.names.includes(n)));
+
+ assert('Registry contains all 15 SRD conditions',T.names.length===15&&['blinded','charmed','deafened','exhaustion','frightened','grappled','incapacitated','invisible','paralyzed','petrified','poisoned','prone','restrained','stunned','unconscious'].every(n=>T.names.includes(n)));
 
  assert('Monster displacement planner pushes the requested 10 feet',T18.displacementPlan({x:2,y:2},{x:0,y:2},'push',10,()=>true)?.to.x===4);
  assert('Monster displacement planner pulls toward the source',T18.displacementPlan({x:3,y:2},{x:0,y:2},'pull',5,()=>true)?.to.x===2);
