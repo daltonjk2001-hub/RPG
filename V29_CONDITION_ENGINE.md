@@ -393,3 +393,10 @@ Still incomplete: Reincarnate's complete species-specific trait automation and p
 - Added a Save Center snapshot regression while a multiplayer Raise Dead cast is six seconds into its one-minute test duration. The snapshot must retain elapsed/required seconds, selected regular slot level/type, target ID, caster state, world-clock second, and the full multiplayer roster.
 - The regression invokes the existing local autosave wrapper through the V18 test harness, finds the saved campaign JSON in the local storage fixture, restores that JSON into the runtime, and verifies that the pending cast resumes at exactly six seconds with the same slot pool and spent Action. The test harness exposes the existing save wrapper; no gameplay save schema or second save format is introduced.
 - This validates the generic V18 campaign snapshot and autosave serialization paths without introducing a parallel save format or a special-case copy of long-cast data.
+
+
+## V29.66 — 600-turn combat casting stress test
+
+- Added a deterministic end-to-end combat stress test using the real multiplayer initiative processor. Raise Dead begins with its first Magic action, then the caster takes the required Magic action on each subsequent initiative turn.
+- After 599 actions, the spell must still be pending at exactly 3,594 seconds (59 minutes, 54 seconds), the target must remain dead, and the fifth-level slot must remain reserved. The 600th Magic action must complete at exactly 3,600 seconds, revive the target, spend one slot, and clear the pending cast.
+- The fixture uses a harmless high-AC training dummy and deterministic attack rolls so the 600-turn test isolates cast timing and initiative progression. This complements, but does not replace, live solo/two-device playtests.

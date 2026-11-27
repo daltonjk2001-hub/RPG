@@ -1370,6 +1370,25 @@ try{
  assert('The solo combat screen provides the same six-second Magic-action continuation control',soloTurnPanel.includes('data-sr29-long-cast="combat-continue"')&&soloTurnPanel.includes('6 seconds'));
  context.render=turnCastRender;T18.state=soloStateBefore;T18.setActivePlayerId('');
  T18.state.combat=null;T18.state.campaign.sr29.pendingLongCast=null;
+ T.gameplay.setSpellData('Raise Dead',{name:'Raise Dead',level:5,classes:['Cleric'],kind:'revive',range:'Touch',castingTime:'1 hour',components:'V, S',description:'Return a dead creature to life.'});
+ const sixtyMinuteCaster=actor({id:'six-hundred-turn-caster',name:'Six Hundred Turn Cleric',classId:'Cleric',level:9,classLevels:{Cleric:9},spells:['Raise Dead'],preparedSpells:['Raise Dead'],spellSlotsByLevel:{5:1},spellSlotProgressionVersion:3,spellSlotSpentThisTurn:false,hp:5000,maxHp:5000,stats:{STR:10,DEX:12,CON:30,INT:10,WIS:18,CHA:10}});
+ const sixtyMinutePlayer={id:'six-hundred-turn-caster',name:'Six Hundred Turn Cleric',connected:true,character:sixtyMinuteCaster};
+ const sixtyMinuteTarget=actor({id:'six-hundred-turn-target',name:'Six Hundred Turn Target',hp:0,maxHp:40,mpDead:true,dead:true,creatureTypeAtDeath:'Humanoid',deathAt:Date.now()-24*60*60*1000,deathFailure:3});
+ const sixtyMinuteTargetPlayer={id:'six-hundred-turn-target',name:'Six Hundred Turn Target',connected:true,character:sixtyMinuteTarget};
+ const sixtyMinuteStateBefore=T18.state;
+ T18.state={character:sixtyMinuteCaster,campaign:{day:1,region:'600 Turn Cast Stress',location:'600 Turn Cast Stress',companions:[],npcs:[],sideQuests:[],story:{},flags:{},mainQuest:{kind:'test',title:'600 Turn Cast Stress',goal:'Validate 600 consecutive Magic actions'},multiplayer:{active:true,players:[sixtyMinutePlayer,sixtyMinuteTargetPlayer]},sr18:{clock:{day:1,watch:1,actionTicks:0,minuteOfDay:0,secondOfMinute:0}}},combat:{round:1,mp:{turnOrder:[{kind:'hero',id:sixtyMinutePlayer.id}],index:0,heroPositions:{'six-hundred-turn-caster':{x:1,y:1}}},enemies:[{id:'six-hundred-turn-dummy',name:'Inert Training Dummy',hp:100000,maxHp:100000,attack:0,damage:'1d4',ac:100,pos:{x:2,y:1}}],map:{width:8,height:6,terrain:[]}},log:[]};
+ T18.setActivePlayerId(sixtyMinutePlayer.id);
+ const stressRender=context.render,stressRandom=math.random;context.render=()=>{};math.random=()=>0;
+ const sixtyMinuteStarted=T.gameplay.castSpell(sixtyMinutePlayer,'Raise Dead','six-hundred-turn-target',true);
+ let stressTicksOk=sixtyMinuteStarted?.started===true&&sixtyMinuteStarted.elapsedSeconds===6;
+ let stressLastTick=null;
+ for(let turn=1;turn<599&&stressTicksOk;turn++){stressLastTick=RV.continueLongCastCombatTurn(sixtyMinutePlayer);stressTicksOk=stressLastTick?.ok===true&&stressLastTick.magicAction===true;}
+ const fiftyNineMinuteState=RV.pendingLongCast(),fiftyNineMinuteClock=RV.campaignClock();
+ assert('The first 599 Magic actions advance 59 minutes 54 seconds while the target remains dead and the level-five slot remains reserved',stressTicksOk&&fiftyNineMinuteState?.elapsedSeconds===3594&&fiftyNineMinuteState.requiredSeconds===3600&&fiftyNineMinuteClock.minuteOfDay===59&&fiftyNineMinuteClock.secondOfMinute===54&&sixtyMinuteTarget.hp===0&&sixtyMinuteTarget.mpDead===true&&sixtyMinuteCaster.spellSlotsByLevel[5]===1,JSON.stringify({start:sixtyMinuteStarted,last:stressLastTick,pending:fiftyNineMinuteState,clock:fiftyNineMinuteClock,targetHP:sixtyMinuteTarget.hp,slots:sixtyMinuteCaster.spellSlotsByLevel}));
+ const sixHundredthMagicAction=RV.continueLongCastCombatTurn(sixtyMinutePlayer);
+ const oneHourClock=RV.campaignClock();
+ assert('The 600th Magic action completes exactly one hour, revives the target, and expends exactly one spell slot',sixHundredthMagicAction?.completed===true&&sixHundredthMagicAction?.result===true&&sixHundredthMagicAction.elapsedSeconds===3600&&oneHourClock.minuteOfDay===60&&oneHourClock.secondOfMinute===0&&sixtyMinuteTarget.hp===1&&sixtyMinuteTarget.mpDead===false&&sixtyMinuteCaster.spellSlotsByLevel[5]===0&&RV.pendingLongCast()===null,JSON.stringify({sixHundredthMagicAction,clock:oneHourClock,targetHP:sixtyMinuteTarget.hp,dead:sixtyMinuteTarget.mpDead,slots:sixtyMinuteCaster.spellSlotsByLevel}));
+ context.render=stressRender;math.random=stressRandom;T18.state=sixtyMinuteStateBefore;T18.setActivePlayerId('');
  const noDoubleSpendCaster=actor({spellSlotsByLevel:{5:1},pactSlotsByLevel:{3:2}});
  const regularSlotPending={slotLevel:5,slotKind:'regular',slotCountBefore:1,legacySpellSlotsBefore:3};
  const regularSlotPayment=RV.commitLongCastSpellSlot(regularSlotPending,noDoubleSpendCaster);
