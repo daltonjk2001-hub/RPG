@@ -1130,6 +1130,7 @@ try{
   const noWatchRecovery=watchStableHero.hp===0&&watchStableHero.stable===true;
   D.advanceWorld('travel',0);
   assert('Only elapsed world watches advance stable recovery; a four-hour watch restores 1 HP when due',noWatchRecovery&&watchStableHero.hp===1&&!watchStableHero.stable&&!watchStableHero.unconscious,JSON.stringify({hp:watchStableHero.hp,stable:watchStableHero.stable,worldClock:T18.state.campaign.sr18?.clock}));
+  T18.state={character:deathHero,campaign:{companions:[],day:1},combat:{mp:null,downed:true,round:2,enemies:[]},log:[]};
   deathHero.stable=false;deathHero.deathFailure=1;deathHero.mpDead=false;deathHero.deathAt=null;deathHero.hp=0;T18.state.combat.downed=true;
   const ordinaryDownedDamage=D.damageAtZero(1);
   assert('Damage to a solo hero at 0 HP adds one failed death save',ordinaryDownedDamage.failures===1&&!ordinaryDownedDamage.dead&&deathHero.deathFailure===2);
