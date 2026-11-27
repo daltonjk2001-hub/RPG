@@ -241,10 +241,10 @@ This dashboard maps the D&D reference PDF's Parts I–III and Appendices A–B t
 - Regression coverage verifies the rolled interval, partial elapsed time, completion, and integration with the actual four-hour world clock.
 
 
-## V29.43 — Solo monsters can attack downed heroes
+## V29.43 — Explicit solo monster attacks against downed heroes
 
-- Removed the active V11 solo monster attack's early return when the hero is at 0 HP.
-- Removed the V11 monster-turn target gate that previously prevented the monster from attacking a downed hero.
-- The existing unconscious-target Advantage and close-range automatic-critical rules now remain reachable during ordinary monster turns.
-- End-to-end regression verifies that a solo monster critical hit against an Unconscious hero at 0 HP creates two failed death saves, and that the marker is consumed after the damage transaction. A separate generated-runtime assertion protects the turn-dispatch gate.
-- This does not make every monster tactically choose to attack a downed hero; it removes the hard-coded prohibition. Director/monster intent and all other damage sources still need auditing.
+- The active V11 solo monster attack now permits an attack against a hero at 0 HP only when the monster carries the explicit `attackDownedHero` target-intent flag.
+- The V11 monster-turn dispatcher no longer suppresses the attack solely because hero HP is 0; the attack-level intent gate remains authoritative.
+- When explicitly targeted, the existing Unconscious-target Advantage and close-range automatic-critical rules apply, and the critical damage marker routes two failed death saves through the solo damage handler.
+- End-to-end regression verifies the explicit target flag, critical damage against an Unconscious hero at 0 HP, two failed death saves, marker cleanup, and the generated turn-dispatch path.
+- The Director/monster decision system still needs to decide when to set `attackDownedHero`; absent that intent, monsters do not attack a downed hero. Player weapon, spell, companion and other legacy damage sources remain to be audited.
