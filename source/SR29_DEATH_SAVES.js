@@ -214,8 +214,71 @@ function sr29TestSoloHeroAttack(...args){
   try{return sr11HeroAttack(...args);}
   finally{render=priorRender;}
 }
+// V29.49 — revival eligibility and post-revival lifecycle cleanup.
+const SR29_REVIVAL_WINDOWS_MS={
+  Revivify:60*1000,
+  'Raise Dead':10*24*60*60*1000,
+  Reincarnate:10*24*60*60*1000,
+  Resurrection:100*365*24*60*60*1000,
+  'True Resurrection':200*365*24*60*60*1000
+};
+function sr29RevivalEligibility(character,spellName,now=Date.now()){
+  if(!character||Number(character.hp)>0)return {ok:false,reason:'The target is not dead.'};
+  if(character.mpDead!==true&&character.dead!==true)return {ok:false,reason:'The target is unconscious or stable, not dead.'};
+  const windowMs=SR29_REVIVAL_WINDOWS_MS[spellName];
+  if(!Number.isFinite(windowMs))return {ok:false,reason:'This spell has no configured revival window.'};
+  const deathAt=Number(character.deathAt);
+  if(!Number.isFinite(deathAt)||deathAt<=0)return {ok:false,reason:'The character has no recorded time of death.'};
+  const elapsed=now-deathAt;
+  if(elapsed<0||elapsed>windowMs)return {ok:false,reason:'The target has been dead too long for this spell.'};
+  return {ok:true,elapsedMs:elapsed,windowMs};
+}
+function sr29ClearRevivedState(character){
+  if(!character||Number(character.hp)<=0)return false;
+  character.mpDead=false;
+  character.mpDowned=false;
+  character.dead=false;
+  character.stable=false;
+  character.unconscious=false;
+  character.deathSuccess=0;
+  character.deathFailure=0;
+  character.deathSaves=0;
+  delete character.deathAt;
+  delete character.stableRecoveryHours;
+  delete character.stableElapsedHours;
+  sr29SoloRemoveUnconscious(character);
+  return true;
+}
+if(typeof sr14CastSpellComplete==='function'){
+  const sr29PriorCastBeforeRevivalRules=sr14CastSpellComplete;
+  sr14CastSpellComplete=function(playerOrNull,name,allyId=null,...args){
+    const isMP=!!state?.combat?.mp;
+    const player=playerOrNull||{id:typeof SR4!=='undefined'?(SR4.myPlayerId||'solo'):'solo',name:state?.character?.name||'Hero',character:state?.character};
+    const targetPlayer=isMP&&allyId
+      ?(state?.campaign?.multiplayer?.players||[]).find(p=>String(p?.id)===String(allyId))
+      :player;
+    const target=targetPlayer?.character;
+    const spell=typeof SRD52_SPELLS==='object'?SRD52_SPELLS[name]:null;
+    const effect=spell&&typeof sr14SpellEffectComplete==='function'?sr14SpellEffectComplete(name,spell):null;
+    const wasDowned=!!target&&Number(target.hp)<=0;
+    if(effect?.kind==='revive'){
+      const eligibility=sr29RevivalEligibility(target,name);
+      if(!eligibility.ok){toast(eligibility.reason);return false;}
+    }else if(effect?.kind==='heal'&&target?.mpDead===true){
+      toast('Healing cannot restore a creature that has died.');
+      return false;
+    }
+    const result=sr29PriorCastBeforeRevivalRules.call(this,playerOrNull,name,allyId,...args);
+    if(result&&target&&wasDowned&&Number(target.hp)>0){
+      if(name==='Resurrection'||name==='True Resurrection')target.hp=Number(target.maxHp)||target.hp;
+      sr29ClearRevivedState(target);
+    }
+    return result;
+  };
+  if(globalThis.__SR29_TEST?.gameplay)globalThis.__SR29_TEST.gameplay.castSpell=sr14CastSpellComplete;
+}
 globalThis.__SR29_DEATH_TEST={
-  version:SR29_DEATH_SAVES_VERSION,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
+  version:SR29_DEATH_SAVES_VERSION,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
   clearDowned:sr29SoloClearDowned,damageAtZero:sr29SoloDamageAtZero,hasUnconscious:sr29SoloHasUnconscious,
   heal:typeof heal==='function'?heal:null,damagePlayer:typeof damagePlayer==='function'?damagePlayer:null,
   soloMonsterAttack:typeof sr10EnemyAttack==='function'?sr10EnemyAttack:null,soloHeroAttack:typeof sr11HeroAttack==='function'?sr29TestSoloHeroAttack:null,advanceStableTime:sr29SoloAdvanceStableTime,
