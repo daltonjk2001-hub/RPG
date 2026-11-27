@@ -99,7 +99,7 @@ try{
  const taxAttackTarget=actor({id:'tax-attack-target',name:'Tax Attack Target',ac:10});
  const taxAttackRandom=math.random;let taxAttack;const taxAttackRolls=[0.9,0.1];
  try{math.random=()=>taxAttackRolls.shift()??0.1;taxAttack=RV.attackRoll(0,resurrectionTaxCaster,taxAttackTarget,false);}finally{math.random=taxAttackRandom;}
- assert('Resurrection caster tax imposes Disadvantage on weapon attacks',taxAttack.r===3&&taxAttack.dis===true&&taxAttack.success===false,JSON.stringify(taxAttack));
+ assert('Resurrection caster tax imposes Disadvantage on weapon attacks',taxAttack.r===3&&taxAttack.dis===true&&taxAttack.total<taxAttackTarget.ac,JSON.stringify(taxAttack));
  const taxSaveRandom=math.random;let taxSave;const taxSaveRolls=[0.9,0.1];
  try{math.random=()=>taxSaveRolls.shift()??0.1;taxSave=RV.savingThrow(resurrectionTaxCaster,'CON',10);}finally{math.random=taxSaveRandom;}
  assert('Resurrection caster tax imposes Disadvantage on saving throws',taxSave.roll===3&&taxSave.disadvantage===true&&taxSave.success===false,JSON.stringify(taxSave));
