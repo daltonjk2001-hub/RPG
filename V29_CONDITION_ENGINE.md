@@ -219,3 +219,13 @@ The wider attack and damage pipelines remain Partial; this closes one active sol
 - Regression tests cover the 1d4 interval, partial elapsed time, completion, no advancement from ordinary actions, and a real four-hour world-clock tick.
 
 Death and recovery remain Partial until multiplayer stable recovery, resurrection effects, and live two-device testing are complete.
+
+
+## V29.48 — Multiplayer stable recovery save/import continuity
+
+- Multiplayer death-save stabilization already stores a 1d4-hour recovery interval on the affected party character; elapsed world-clock time is advanced across the campaign's multiplayer player records, and restored HP/downed state is cleared when the interval completes.
+- Added a regression that snapshots the campaign while a remote multiplayer hero is stable with partially elapsed recovery time, runs import normalization and save validation, and verifies the timer and elapsed hours remain intact.
+- The regression then resumes from the validated imported state, advances the actual world clock by a travel watch, and confirms the restored hero regains 1 HP and clears stable, unconscious, and timer metadata.
+- Full regression and V18 hardening both pass on the tested code commit; the V29 condition-engine suite reports **341/341 assertions passed**.
+
+This closes the automated multiplayer stable-recovery save/import continuity check. It does not replace live two-device reconnect/resume testing. Death/revival coverage remains **Partial** pending the complete remaining damage-source and resurrection-effect audits, plus human solo and co-op playtests.
