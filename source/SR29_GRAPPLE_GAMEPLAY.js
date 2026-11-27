@@ -33,13 +33,34 @@ function sr29SoloActiveGrapples(actor){
   return targets.flatMap(target=>sr29Entries(target).filter(item=>item.name==='grappled'&&String(item.grapplerId||item.sourceId||'')===id));
 }
 function sr29SoloFreeHands(actor){
-  const weaponName=String(actor?.weapon||''),weapon=WEAPONS?.[weaponName]||{};
-  const intrinsicallyTwoHanded=['Greatsword','Greataxe','Longbow','Crossbow'].includes(weaponName);
+  const weaponName=String(actor?.weapon||actor?.equipment?.mainHand?.name||actor?.equipment?.mainHand?.item||'').trim();
+  const weapon=WEAPONS?.[weaponName]||{};
   const unarmed=!weaponName||/^(none|unarmed|unarmed strike)$/i.test(weaponName);
-  const mainHands=unarmed?0:Number(weapon.hands||weapon.handedness||((intrinsicallyTwoHanded||weapon.twoHanded||weapon.properties?.includes?.('Two-Handed')||/two-handed/i.test(String(weapon.desc||'')))?2:1));
-  const offHand=actor?.offHandWeapon?1:0;
-  const shieldEquipped=!!(actor?.shieldEquipped||actor?.equippedShield||actor?.shield||actor?.offHandShield||actor?.equipment?.shield||actor?.inventory?.some?.(item=>item?.type==='shield'&&item?.equipped));
-  return Math.max(0,2-Math.min(2,Math.max(0,mainHands||0)+offHand+(shieldEquipped?1:0)));
+  const declaredHands=Number(weapon.hands??weapon.handedness);
+  const twoHanded=weapon.twoHanded===true||weapon.properties?.includes?.('Two-Handed')||
+    /two-handed/i.test(String(weapon.desc||''))||
+    /^(greatsword|greataxe|longbow|light crossbow|heavy crossbow|crossbow)$/i.test(weaponName);
+  const mainHands=unarmed?0:(Number.isFinite(declaredHands)&&declaredHands>0
+    ?Math.min(2,Math.floor(declaredHands)):(twoHanded?2:1));
+  const offHandItem=actor?.offHandWeapon??actor?.equipment?.offHand;
+  const offHand=offHandItem&&offHandItem!==false?1:0;
+  const inventory=Array.isArray(actor?.inventory)?actor.inventory:[];
+  const isEquippedShield=item=>{
+    if(!item||typeof item!=='object')return false;
+    const kind=String(item.type??item.category??item.kind??'').toLowerCase();
+    const shield=kind==='shield'||String(item.name||'').toLowerCase().includes('shield');
+    const equipped=item.equipped===true||item.isEquipped===true||
+      ['offhand','off-hand','off hand','shield'].includes(String(item.equippedSlot??item.slot??'').toLowerCase());
+    return shield&&equipped;
+  };
+  const equipmentShield=actor?.equipment?.shield;
+  const shieldEquipped=actor?.shieldEquipped===true||actor?.equippedShield===true||
+    actor?.shield===true||actor?.offHandShield===true||equipmentShield===true||
+    (equipmentShield&&typeof equipmentShield==='object'&&
+      (equipmentShield.equipped===true||equipmentShield.isEquipped===true||
+       ['offhand','off-hand','off hand','shield'].includes(String(equipmentShield.slot||'').toLowerCase())))||
+    inventory.some(isEquippedShield);
+  return Math.max(0,2-Math.min(2,Math.max(0,mainHands)+offHand+(shieldEquipped?1:0)));
 }
 function sr29SoloSaveBonus(target,ability){
   const key=String(ability||'').toUpperCase(),stats=target?.stats||target?.abilityScores||{};
