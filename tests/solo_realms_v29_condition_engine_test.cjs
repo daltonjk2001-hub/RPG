@@ -85,11 +85,13 @@ try{
  const firstPenaltyRecovery=RV.reduceRevivalPenaltyAfterLongRest(penaltyRecoveryHero),secondPenaltyRecovery=RV.reduceRevivalPenaltyAfterLongRest(penaltyRecoveryHero);
  const thirdPenaltyRecovery=RV.reduceRevivalPenaltyAfterLongRest(penaltyRecoveryHero),fourthPenaltyRecovery=RV.reduceRevivalPenaltyAfterLongRest(penaltyRecoveryHero);
  assert('Each completed Long Rest removes one point from the return penalty until it reaches zero',firstPenaltyRecovery===3&&secondPenaltyRecovery===2&&thirdPenaltyRecovery===1&&fourthPenaltyRecovery===0&&!Object.prototype.hasOwnProperty.call(penaltyRecoveryHero,'revivalD20Penalty'));
- const restedPenaltyHero=actor({id:'rested-penalty-hero',name:'Rested Penalty Hero',classId:'Fighter',level:3,gold:50,inventory:[],revivalD20Penalty:4});
- T18.state={character:restedPenaltyHero,campaign:{day:1,region:'Revival Rest Test',location:'Revival Rest Test',visited:['Revival Rest Test'],companions:[],npcs:[],sideQuests:[],story:{},flags:{},mainQuest:{kind:'test',title:'Rest Test',goal:'Validate penalty recovery'},multiplayer:{active:false,players:[]}},combat:null,log:[]};
- RV.applyLongRestRecovery();
- assert('The solo Long Rest gameplay path also reduces the revival penalty after a successful rest',T18.state.campaign.day>1&&restedPenaltyHero.revivalD20Penalty===3,JSON.stringify({day:T18.state.campaign.day,penalty:restedPenaltyHero.revivalD20Penalty,gold:restedPenaltyHero.gold}));
- T18.state={character:actor(),campaign:{},combat:null,log:[]};
+ const restedPenaltyHero=actor({id:'rested-penalty-hero',name:'Rested Penalty Hero',revivalD20Penalty:4});
+ const remoteRestedHero=actor({id:'remote-rested-hero',name:'Remote Rested Hero',revivalD20Penalty:2});
+ const restedCompanion=actor({id:'rested-companion',name:'Rested Companion',revivalD20Penalty:1});
+ const restCampaign={multiplayer:{players:[{id:'remote-rested-hero',character:remoteRestedHero},{id:'host-duplicate',character:restedPenaltyHero}]},companions:[restedCompanion]};
+ const reducedByRest=RV.applyLongRestPenaltyRecovery(restCampaign,restedPenaltyHero);
+ assert('A completed Long Rest penalty transaction reduces host, remote-player and companion penalties exactly once',reducedByRest===3&&restedPenaltyHero.revivalD20Penalty===3&&remoteRestedHero.revivalD20Penalty===1&&!Object.prototype.hasOwnProperty.call(restedCompanion,'revivalD20Penalty'),JSON.stringify({reducedByRest,host:restedPenaltyHero.revivalD20Penalty,remote:remoteRestedHero.revivalD20Penalty,companion:restedCompanion.revivalD20Penalty}));
+ assert('A rest with no return penalties makes no unnecessary state change',RV.applyLongRestPenaltyRecovery({multiplayer:{players:[]},companions:[]},actor())===0);
 
  assert('Registry contains all 15 SRD conditions',T.names.length===15&&['blinded','charmed','deafened','exhaustion','frightened','grappled','incapacitated','invisible','paralyzed','petrified','poisoned','prone','restrained','stunned','unconscious'].every(n=>T.names.includes(n)));
 
