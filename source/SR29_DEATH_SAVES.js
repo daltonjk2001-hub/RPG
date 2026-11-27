@@ -173,7 +173,7 @@ if(typeof damagePlayer==='function'){
   damagePlayer=function(amount,...args){
     const c=state?.character,b=state?.combat,hpBefore=Number(c?.hp)||0;
     const downedBefore=!!(c&&b&&!b.mp&&hpBefore<=0&&(b.downed||c.stable||sr29SoloHasUnconscious(c)));
-    const pendingCriticalEnemy=downedBefore?(b?.enemies||[]).find(enemy=>enemy?._sr29AttackCriticalPending===true):null;
+    const pendingCriticalEnemy=(b?.enemies||[]).find(enemy=>enemy?._sr29AttackCriticalPending===true);
     const result=sr29SoloPriorDamagePlayer.call(this,amount,...args);
     if(c&&b&&!b.mp){
       if(downedBefore){
@@ -181,12 +181,12 @@ if(typeof damagePlayer==='function'){
         const source=args[1]&&typeof args[1]==='object'?args[1]:pendingCriticalEnemy;
         const meta=args[2]&&typeof args[2]==='object'?args[2]:{};
         const deathResult=sr29SoloDamageAtZero(amount,source,meta);
-        if(pendingCriticalEnemy)delete pendingCriticalEnemy._sr29AttackCriticalPending;
         if(deathResult.dead&&typeof render==='function')render();
       }else if(hpBefore>0&&Number(c.hp)<=0){
         sr29SoloMarkDowned();
       }
     }
+    if(pendingCriticalEnemy)delete pendingCriticalEnemy._sr29AttackCriticalPending;
     return result;
   };
 }
