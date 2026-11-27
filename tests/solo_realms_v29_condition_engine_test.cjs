@@ -1170,6 +1170,17 @@ try{
   const validatedDeathSave=T18.validateSave(JSON.parse(JSON.stringify(deathSavePayload)));
   assert('Save validation and JSON round-trip preserve downed, stable and death timestamp fields',validatedDeathSave.ok&&validatedDeathSave.state.character.deathSuccess===2&&validatedDeathSave.state.character.deathFailure===1&&validatedDeathSave.state.character.stable===true&&validatedDeathSave.state.character.deathAt===123456&&validatedDeathSave.state.combat.downed===true);
 
+  const mpStableHero=actor({id:'mp-stable-hero',name:'MP Stable Hero',hp:0,maxHp:20,mpDowned:true,mpDead:false,stable:false,deathSuccess:2,deathFailure:0,unconscious:true,conditions:[{name:'unconscious',duration:999}]});
+  const mpStablePlayer={id:'mp-stable-hero',name:'MP Stable Hero',connected:true,character:mpStableHero};
+  T18.state={character:mpStableHero,campaign:{day:1,multiplayer:{active:true,players:[mpStablePlayer]}},combat:{mp:{},enemies:[]},log:[]};
+  const priorMpStableRandom=math.random;math.random=()=>0.5;
+  let mpStableResult=false;try{mpStableResult=D.multiplayerDeathSave(mpStablePlayer);}finally{math.random=priorMpStableRandom;}
+  assert('Multiplayer death-save stabilization stores its own 1d4-hour recovery interval',mpStableResult&&mpStableHero.stable===true&&mpStableHero.mpDowned===false&&mpStableHero.stableRecoveryHours===3&&mpStableHero.stableElapsedHours===0);
+  const mpPartialRecovery=D.advanceStableTime(2);
+  assert('Multiplayer stable recovery accumulates elapsed time without restoring HP early',mpPartialRecovery===false&&mpStableHero.hp===0&&mpStableHero.stable===true&&mpStableHero.stableElapsedHours===2);
+  D.advanceWorld('travel',0);
+  assert('Multiplayer stable heroes regain 1 HP after the world-clock recovery interval',mpStableHero.hp===1&&!mpStableHero.stable&&!mpStableHero.mpDowned&&!mpStableHero.unconscious&&mpStableHero.deathSuccess===0&&mpStableHero.deathFailure===0,JSON.stringify({hp:mpStableHero.hp,stable:mpStableHero.stable,worldClock:T18.state.campaign.sr18?.clock}));
+
 
 
 
