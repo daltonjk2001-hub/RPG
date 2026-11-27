@@ -1228,6 +1228,8 @@ try{
   const priorMpDownedCriticalRandom=math.random;math.random=()=>0.5;
   try{D.multiplayerEnemyTurn(mpDownedCriticalEnemy);}finally{math.random=priorMpDownedCriticalRandom;}
   assert('A multiplayer monster critical hit against the only downed hero causes two failed death saves and doubles only damage dice',mpDownedCriticalHero.hp===0&&mpDownedCriticalHero.tempHP===89&&mpDownedCriticalHero.deathFailure===2&&!mpDownedCriticalHero.mpDead&&!mpDownedCriticalEnemy._sr29AttackCriticalPending&&T18.state.log.some(x=>/Critical hit/.test(x.msg)),JSON.stringify({hp:mpDownedCriticalHero.hp,tempHP:mpDownedCriticalHero.tempHP,failures:mpDownedCriticalHero.deathFailure,dead:mpDownedCriticalHero.mpDead,log:T18.state.log}));
+  mpDownedCriticalHero.guard=5;D.multiplayerDamageHero(mpDownedCriticalPlayer,5,'physical',null);
+  assert('Multiplayer guard that fully reduces downed damage to zero prevents a death-save failure',mpDownedCriticalHero.deathFailure===2&&mpDownedCriticalHero.tempHP===89&&mpDownedCriticalHero.guard===0);
   assert('Multiplayer monster attack criticals use the canonical condition rule and dice-only critical bonus',html.includes('critical=roll.r===20||(hit&&sr29CriticalOnHit(c,{hit,distance}))')&&html.includes('sr18CriticalExtraDice(enemy.damage||\'1d4\')'));
 
 
