@@ -906,6 +906,11 @@ if(typeof sr21ResolvePlayerAction==='function') {
   const sr29PriorResolvePlayerAction=sr21ResolvePlayerAction;
   sr21ResolvePlayerAction=function(text,options={}) {
     const action=String(text||''),effective={...(options||{})};
+    const mode=SR20_MODES.includes(effective.mode)&&effective.mode!=='auto'?effective.mode:sr21InferMode(action);
+    if(mode==='social'&&typeof sr20FindNPC==='function'){
+      const socialTarget=sr20FindNPC(effective.target,action);
+      if(sr29SocialCheckAdvantage(state?.character,socialTarget))effective.advantage=true;
+    }
     if(effective.requiresSight!==true&&/\b(look|see|watch|visually|read|inspect|observe|spot|identify|discern)\b/i.test(action))effective.requiresSight=true;
     if(effective.requiresHearing!==true&&/\b(listen|hear|hearing|sound|overhear|eavesdrop)\b/i.test(action))effective.requiresHearing=true;
     const result=sr29PriorResolvePlayerAction(text,effective);
