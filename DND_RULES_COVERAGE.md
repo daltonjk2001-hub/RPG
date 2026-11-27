@@ -239,3 +239,12 @@ This dashboard maps the D&D reference PDF's Parts I–III and Appendices A–B t
 - When the interval expires, the hero regains consciousness at 1 HP. Healing above 0 HP still clears the downed state immediately; damage while stable cancels the recovery timer and resumes death-save failures.
 - Long-rest recovery clears stale stable/downed metadata after HP is restored. Multiplayer stable recovery remains a separate open integration item.
 - Regression coverage verifies the rolled interval, partial elapsed time, completion, and integration with the actual four-hour world clock.
+
+
+## V29.43 — Solo monsters can attack downed heroes
+
+- Removed the active V11 solo monster attack's early return when the hero is at 0 HP.
+- Removed the V11 monster-turn target gate that previously prevented the monster from attacking a downed hero.
+- The existing unconscious-target Advantage and close-range automatic-critical rules now remain reachable during ordinary monster turns.
+- End-to-end regression verifies that a solo monster critical hit against an Unconscious hero at 0 HP creates two failed death saves, and that the marker is consumed after the damage transaction. A separate generated-runtime assertion protects the turn-dispatch gate.
+- This does not make every monster tactically choose to attack a downed hero; it removes the hard-coded prohibition. Director/monster intent and all other damage sources still need auditing.
