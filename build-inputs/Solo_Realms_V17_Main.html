@@ -4549,12 +4549,12 @@ function sr13InitiativeModifier(actor,isHero){
     let n=mod(Number(c.stats?.DEX)||10);
     const feats=Array.isArray(c.feats)?c.feats:[];
     const hasAlert=feats.some(f=>String(typeof f==='string'?f:f?.name||'').toLowerCase()==='alert')||String(c.feat||'').toLowerCase()==='alert';
-    if(hasAlert)n+=Math.max(2,Number(c.proficiencyBonus)||profBonus());
+    if(hasAlert){const level=Math.max(1,Number(c.level)||1),proficiency=c.proficiencyBonus!=null&&Number.isFinite(Number(c.proficiencyBonus))?Number(c.proficiencyBonus):2+Math.floor((level-1)/4);n+=Math.max(2,proficiency);}
     return n;
   }
   const e=actor||{};
-  if(Number.isFinite(Number(e.initiativeModifier)))return Number(e.initiativeModifier);
-  if(Number.isFinite(Number(e.dex)))return Number(e.dex);
+  if(e.initiativeModifier!=null&&Number.isFinite(Number(e.initiativeModifier)))return Number(e.initiativeModifier);
+  if(e.dex!=null&&Number.isFinite(Number(e.dex)))return Number(e.dex);
   return mod(Number(e.stats?.DEX)||10);
 }
 function sr13InitiativeMode(actor,isHero){
@@ -5535,6 +5535,10 @@ function sr136RunTests(){
     const conditionCases=['incapacitated','stunned','paralyzed','petrified','unconscious'];
     ok('Multiplayer initiative skips every condition that includes Incapacitated',conditionCases.every(name=>sr136IsIncapacitated({conditions:[name]})));
     ok('Ordinary conditions do not incorrectly suppress a multiplayer turn',!sr136IsIncapacitated({conditions:['poisoned','prone']}));
+    const beforeAlertState=state;state={character:{level:1}};
+    ok('Alert uses the acting character level for its proficiency bonus, not the host character',sr13InitiativeModifier({character:{level:9,stats:{DEX:14},feats:['Alert']}},true)===6);
+    state=beforeAlertState;
+    ok('Monster initiative falls back to its Dexterity score when nullable modifier fields are absent',sr13InitiativeModifier({initiativeModifier:null,dex:null,stats:{DEX:18}},false)===4);
     const enemyReaction={hp:10,reactionAvailable:false};
     ok('Enemy Reaction refreshes at the start of its own initiative turn',sr136RefreshEnemyReaction(enemyReaction)&&enemyReaction.reactionAvailable===true);
     const deadEnemyReaction={hp:0,reactionAvailable:false};
@@ -5559,7 +5563,7 @@ function sr136RunTests(){
 }
 const sr136OldTestV13=sr13RunTests;
 sr13RunTests=function(){return [...sr136OldTestV13(),...sr136RunTests()];};
-globalThis.__SR13_TEST={...globalThis.__SR13_TEST,version:SR136_VERSION,moveTiedHero:sr136MoveTiedHero,reorderTie:sr136ReorderTie,isIncapacitated:sr136IsIncapacitated,refreshEnemyReaction:sr136RefreshEnemyReaction,tests:sr13RunTests};
+globalThis.__SR13_TEST={...globalThis.__SR13_TEST,version:SR136_VERSION,initiativeModifier:sr13InitiativeModifier,moveTiedHero:sr136MoveTiedHero,reorderTie:sr136ReorderTie,isIncapacitated:sr136IsIncapacitated,refreshEnemyReaction:sr136RefreshEnemyReaction,tests:sr13RunTests};
 
 
 
