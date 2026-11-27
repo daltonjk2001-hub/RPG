@@ -1355,13 +1355,12 @@ try{
  const snapshotPending=longCastSaveCenterSnapshot?.state?.campaign?.sr29?.pendingLongCast;
  const snapshotPlayers=longCastSaveCenterSnapshot?.state?.campaign?.multiplayer?.players||[];
  assert('The campaign Save Center snapshot preserves a mid-cast timer, selected slot, target, and multiplayer roster',snapshotPending?.id==='turn-cast-test'&&snapshotPending.elapsedSeconds===6&&snapshotPending.requiredSeconds===60&&snapshotPending.slotLevel===5&&snapshotPending.slotKind==='regular'&&snapshotPending.targetId==='turn-cast-target'&&snapshotPlayers.some(p=>p.id==='turn-cast-target')&&longCastSaveCenterSnapshot.state.campaign.sr18.clock.secondOfMinute===6,JSON.stringify({snapshotPending,clock:longCastSaveCenterSnapshot?.state?.campaign?.sr18?.clock,players:snapshotPlayers.map(p=>p.id)}));
- context.save();
+ T18.save();
  const savedLocalEntry=[...storage.entries()].find(([,value])=>{try{return JSON.parse(value)?.campaign?.sr29?.pendingLongCast?.id==='turn-cast-test';}catch{return false;}});
  assert('The real local autosave serializes the in-progress long cast into the existing campaign save',!!savedLocalEntry&&JSON.parse(savedLocalEntry[1]).campaign.sr29.pendingLongCast.elapsedSeconds===6&&JSON.parse(savedLocalEntry[1]).campaign.sr29.pendingLongCast.slotLevel===5,savedLocalEntry?.[0]||'No matching local save record was written');
  T18.state=JSON.parse(savedLocalEntry[1]);
  const reloadedPending=RV.pendingLongCast(),reloadedClock=RV.campaignClock();
  assert('A JSON save/restore round trip resumes the cast at the same six-second mark without restoring its reserved spell slot',reloadedPending?.id==='turn-cast-test'&&reloadedPending.elapsedSeconds===6&&reloadedPending.requiredSeconds===60&&reloadedPending.slotLevel===5&&reloadedPending.slotKind==='regular'&&reloadedPending.targetId==='turn-cast-target'&&reloadedClock.secondOfMinute===6&&reloadedClock.minuteOfDay===0&&T18.state.character.spellSlotsByLevel[5]===1&&T18.state.character.actionSpent===true,JSON.stringify({reloadedPending,reloadedClock,slots:T18.state.character.spellSlotsByLevel,actionSpent:T18.state.character.actionSpent}));
- T18.state=soloStateBefore;
  const soloTurnCaster=actor({id:'solo-turn-caster',name:'Solo Long-Cast Cleric',classId:'Cleric',level:9,classLevels:{Cleric:9},spellSlotsByLevel:{5:1},spellSlotProgressionVersion:3,actionSpent:false});
  const soloStateBefore=T18.state;
  T18.state={character:soloTurnCaster,campaign:{day:1,region:'Solo Turn Cast',location:'Solo Turn Cast',sr29:{pendingLongCast:{id:'solo-turn-cast',spellName:'Raise Dead',requiredMinutes:1,requiredSeconds:60,elapsedMinutes:0,elapsedSeconds:0,casterId:'solo-turn-caster',casterName:soloTurnCaster.name,casterIsMain:true,startedInCombat:true,slotLevel:5,slotKind:'regular',slotCountBefore:1,castMode:{}}}},combat:{round:1,enemies:[{id:'solo-turn-enemy',name:'Solo Turn Enemy',hp:12,maxHp:12,ac:12,pos:{x:4,y:4}}],map:{width:8,height:6,terrain:[]}},log:[]};

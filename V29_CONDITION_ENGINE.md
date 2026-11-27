@@ -391,5 +391,5 @@ Still incomplete: Reincarnate's complete species-specific trait automation and p
 ## V29.66 — Long-cast save and multiplayer snapshot persistence
 
 - Added a Save Center snapshot regression while a multiplayer Raise Dead cast is six seconds into its one-minute test duration. The snapshot must retain elapsed/required seconds, selected regular slot level/type, target ID, caster state, world-clock second, and the full multiplayer roster.
-- The regression also invokes the existing local `save()` autosave path, finds the saved campaign JSON in the local storage fixture, restores that JSON into the runtime, and verifies that the pending cast resumes at exactly six seconds with the same slot pool and spent Action.
+- The regression invokes the existing local autosave wrapper through the V18 test harness, finds the saved campaign JSON in the local storage fixture, restores that JSON into the runtime, and verifies that the pending cast resumes at exactly six seconds with the same slot pool and spent Action. The test harness exposes the existing save wrapper; no gameplay save schema or second save format is introduced.
 - This validates the generic V18 campaign snapshot and autosave serialization paths without introducing a parallel save format or a special-case copy of long-cast data.
