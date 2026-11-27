@@ -4188,9 +4188,9 @@ function sr12Potion(player,allyId=null){
 function sr12ClassPower(player){
   const c=player.character,cls=c.classId,level=Number(c.classLevels?.[cls])||c.level||1;
   if(c.hp<=0){toast('You are down.');return false;}
-  if(c.bonusActionSpent){toast('Your bonus action is already spent.');return false;}
+  if(c.bonusActionSpent&&!['Fighter','Cleric','Warlock','Wizard'].includes(cls)){toast('Your bonus action is already spent.');return false;}
   if(cls==='Fighter'){
-    if(level<2||c.actionSurgeUsed){toast('Action Surge is not available.');return false;}c.actionSurgeUsed=true;c.actionSpent=false;c.bonusActionSpent=true;log(`${player.name} uses Action Surge and gains one additional action.`,'goodlog');return true;
+    if(level<2||c.actionSurgeUsed){toast('Action Surge is not available.');return false;}c.actionSurgeUsed=true;c.actionSpent=false;log(`${player.name} uses Action Surge and gains one additional action.`,'goodlog');return true;
   }
   if(cls==='Barbarian'){
     if(level<1||c.rageRounds>0){toast('Rage is not available yet.');return false;}c.rageRounds=10;c.rageResist=true;c.bonusActionSpent=true;log(`${player.name} enters Rage: physical damage resistance and bonus weapon damage.`,'goodlog');return true;
@@ -4205,7 +4205,8 @@ function sr12ClassPower(player){
     const n=Math.min(c.level*5,Math.max(0,c.maxHp-c.hp));if(!n){toast('You do not need healing.');return false;}c.hp+=n;c.bonusActionSpent=true;log(`${player.name} uses Lay on Hands and restores ${n} HP.`,'goodlog');return true;
   }
   if(cls==='Cleric'){
-    const party=state.campaign?.multiplayer?.players||[player];const allies=party.filter(p=>p.connected!==false&&p.character&&p.character.hp<p.character.maxHp);if(!allies.length){toast('No injured allies need healing.');return false;}for(const p of allies){const n=rollDice('1d6')+Math.max(1,level);p.character.hp=Math.min(p.character.maxHp,p.character.hp+n);p.character.mpDowned=false;}c.bonusActionSpent=true;log(`${player.name} channels divine energy to heal the party.`,'goodlog');return true;
+    if(c.actionSpent){toast('Your Action is already spent.');return false;}
+    const party=state.campaign?.multiplayer?.players||[player];const allies=party.filter(p=>p.connected!==false&&p.character&&p.character.hp<p.character.maxHp);if(!allies.length){toast('No injured allies need healing.');return false;}for(const p of allies){const n=rollDice('1d6')+Math.max(1,level);p.character.hp=Math.min(p.character.maxHp,p.character.hp+n);p.character.mpDowned=false;}c.actionSpent=true;log(`${player.name} channels divine energy to heal the party.`,'goodlog');return true;
   }
   if(cls==='Druid'){
     c.wildShapeRounds=10;c.tempHP=Math.max(c.tempHP||0,Math.ceil(level*2));c.wildShape=true;c.bonusActionSpent=true;log(`${player.name} assumes a bestial form, gaining ${c.tempHP} temporary HP.`,'goodlog');return true;
@@ -4220,10 +4221,12 @@ function sr12ClassPower(player){
     c.innateSorceryRounds=3;c.spellAttackBonus=(c.spellAttackBonus||0)+1;c.bonusActionSpent=true;log(`${player.name} channels Innate Sorcery; spell attacks are empowered for 3 rounds.`,'goodlog');return true;
   }
   if(cls==='Warlock'){
+    if(c.actionSpent){toast('Your Action is already spent.');return false;}
     const e=sr4Target();if(!e){toast('Choose an enemy.');return false;}const bonus=profBonus()+mod(c.stats.CHA),roll=sr11RollAttack(bonus,c,e,false);if(roll.r===20||(roll.r!==1&&roll.total>=e.ac)){const n=rollDice(level>=5?'2d10':'1d10')+Math.max(0,mod(c.stats.CHA));sr12ApplyDamage(e,n,'force');log(`${player.name} fires Eldritch Blast for ${n} force damage.`,'goodlog');}else log(`${player.name} misses with Eldritch Blast.`,'rolllog');c.actionSpent=true;return true;
   }
   if(cls==='Wizard'){
-    const max=Number(c.maxSpellSlots)||0;if(Number(c.spellSlots)>=max){toast('Your spell slots are already full.');return false;}c.spellSlots=Math.min(max,(Number(c.spellSlots)||0)+1);c.bonusActionSpent=true;log(`${player.name} uses Arcane Recovery to restore a spell slot.`,'goodlog');return true;
+    if(state.combat){toast('Arcane Recovery is used during a Short Rest, not in combat.');return false;}
+    const max=Number(c.maxSpellSlots)||0;if(Number(c.spellSlots)>=max){toast('Your spell slots are already full.');return false;}c.spellSlots=Math.min(max,(Number(c.spellSlots)||0)+1);log(`${player.name} uses Arcane Recovery to restore a spell slot.`,'goodlog');return true;
   }
   toast('No class power is ready.');return false;
 }
@@ -5539,6 +5542,20 @@ function sr136RunTests(){
     ok('Alert uses the acting character level for its proficiency bonus, not the host character',sr13InitiativeModifier({character:{level:9,stats:{DEX:14},feats:['Alert']}},true)===6);
     state=beforeAlertState;
     ok('Monster initiative falls back to its Dexterity score when nullable modifier fields are absent',sr13InitiativeModifier({initiativeModifier:null,dex:null,stats:{DEX:18}},false)===4);
+    const beforeActionTests=state;
+    const surgePlayer={id:'surge-test',name:'Surge Test',character:{classId:'Fighter',level:2,classLevels:{Fighter:2},hp:20,actionSpent:true,bonusActionSpent:true,actionSurgeUsed:false}};
+    const surgeOk=sr12ClassPower(surgePlayer);
+    ok('Action Surge works after a Bonus Action and does not consume another Bonus Action',surgeOk&&surgePlayer.character.actionSurgeUsed&&!surgePlayer.character.actionSpent&&surgePlayer.character.bonusActionSpent===true);
+    const cleric={id:'cleric-test',name:'Cleric Test',connected:true,character:{classId:'Cleric',level:2,classLevels:{Cleric:2},hp:5,maxHp:20,actionSpent:false,bonusActionSpent:true}};
+    const ally={id:'cleric-ally',name:'Ally',connected:true,character:{hp:5,maxHp:20}};
+    state={campaign:{multiplayer:{players:[cleric,ally]}},combat:null,log:[]};
+    const clericOk=sr12ClassPower(cleric);
+    ok('Divine Spark legacy action path uses the Action, not the Bonus Action',clericOk&&cleric.character.actionSpent&&cleric.character.bonusActionSpent===true);
+    const wizard={id:'wizard-test',name:'Wizard Test',character:{classId:'Wizard',level:3,classLevels:{Wizard:3},hp:20,maxSpellSlots:4,spellSlots:1,bonusActionSpent:true}};
+    state={campaign:{multiplayer:{players:[]}},combat:null,log:[]};
+    const recoveryOk=sr12ClassPower(wizard);
+    ok('Arcane Recovery is a Short Rest feature and does not consume a Bonus Action',recoveryOk&&wizard.character.spellSlots===2&&wizard.character.bonusActionSpent===true);
+    state=beforeActionTests;
     const enemyReaction={hp:10,reactionAvailable:false};
     ok('Enemy Reaction refreshes at the start of its own initiative turn',sr136RefreshEnemyReaction(enemyReaction)&&enemyReaction.reactionAvailable===true);
     const deadEnemyReaction={hp:0,reactionAvailable:false};
@@ -5996,7 +6013,7 @@ function sr14RunFeature(player,key,option=''){
  if(ok){if(isMP){player.character=c;sr4Broadcast();}save();render();}return ok;
 }
 
-function sr14FeatureDefinitions(c){const k=c.classId,lv=sr14Level(c,k);const map={Barbarian:[['rage','Rage','Bonus Action · limited uses · physical resistance']],Bard:[['inspiration','Bardic Inspiration','Bonus Action · ally gains a die']],Cleric:[['divineSpark','Divine Spark','Action · heal an ally or harm a foe']],Druid:[['wildShape','Wild Shape','Bonus Action · choose a known beast form']],Fighter:[['secondWind','Second Wind','Bonus Action · heal 1d10 + Fighter level'],...(lv>=2?[['actionSurge','Action Surge','Bonus Action · gain one action']]:[])],Monk:[['flurry','Flurry of Blows','Bonus Action · spend Focus for two strikes']],Paladin:[['layOnHands','Lay on Hands','Bonus Action · spend healing pool']],Ranger:[['huntersMark','Hunter’s Mark','Bonus Action · concentration and bonus damage']],Rogue:[['cunningDash','Cunning Action: Dash','Bonus Action · double movement'],['cunningDisengage','Cunning Action: Disengage','Bonus Action · avoid opportunity attacks'],['cunningHide','Cunning Action: Hide','Bonus Action · Stealth check']],Sorcerer:[['innateSorcery','Innate Sorcery','Bonus Action · improve spellcasting']],Warlock:[['eldritchBlast','Eldritch Blast','Cantrip · ranged spell attack']],Wizard:[['arcaneRecovery','Arcane Recovery','Short Rest · recover spell slots']]};return (map[k]||[]).filter(x=>sr14FeatureAvailable(c,k,x[0]));}
+function sr14FeatureDefinitions(c){const k=c.classId,lv=sr14Level(c,k);const map={Barbarian:[['rage','Rage','Bonus Action · limited uses · physical resistance']],Bard:[['inspiration','Bardic Inspiration','Bonus Action · ally gains a die']],Cleric:[['divineSpark','Divine Spark','Action · heal an ally or harm a foe']],Druid:[['wildShape','Wild Shape','Bonus Action · choose a known beast form']],Fighter:[['secondWind','Second Wind','Bonus Action · heal 1d10 + Fighter level'],...(lv>=2?[['actionSurge','Action Surge','No action cost · gain one Action']]:[])],Monk:[['flurry','Flurry of Blows','Bonus Action · spend Focus for two strikes']],Paladin:[['layOnHands','Lay on Hands','Bonus Action · spend healing pool']],Ranger:[['huntersMark','Hunter’s Mark','Bonus Action · concentration and bonus damage']],Rogue:[['cunningDash','Cunning Action: Dash','Bonus Action · double movement'],['cunningDisengage','Cunning Action: Disengage','Bonus Action · avoid opportunity attacks'],['cunningHide','Cunning Action: Hide','Bonus Action · Stealth check']],Sorcerer:[['innateSorcery','Innate Sorcery','Bonus Action · improve spellcasting']],Warlock:[['eldritchBlast','Eldritch Blast','Cantrip · ranged spell attack']],Wizard:[['arcaneRecovery','Arcane Recovery','Short Rest · recover spell slots']]};return (map[k]||[]).filter(x=>sr14FeatureAvailable(c,k,x[0]));}
 
 // ---- Spell library, preparation and executable spell resolver -------------------------
 function sr14ClassCanCast(c,sp){return Object.entries(c.classLevels||{[c.classId]:c.level||1}).some(([k,l])=>Number(l)>0&&sp.classes.includes(k));}
