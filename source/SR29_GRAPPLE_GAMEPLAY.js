@@ -38,7 +38,7 @@ function sr29EquipmentIsEquipped(item,defaultWhenSlotted=false){
   if(item.equipped===false||item.isEquipped===false)return false;
   if(item.equipped===true||item.isEquipped===true)return true;
   const slot=String(item.equippedSlot??item.slot??'').toLowerCase();
-  return defaultWhenSlotted&&!!slot;
+  return !!defaultWhenSlotted;
 }
 function sr29SoloFreeHands(actor){
   const equipment=actor?.equipment||{};
@@ -61,7 +61,7 @@ function sr29SoloFreeHands(actor){
     if(!item||typeof item!=='object')return false;
     const kind=String(item.type??item.category??item.kind??'').toLowerCase();
     const shield=kind==='shield'||String(item.name||'').toLowerCase().includes('shield');
-    return shield&&sr29EquipmentIsEquipped(item,true);
+    return shield&&sr29EquipmentIsEquipped(item,false);
   };
   const equipmentShield=equipment.shield;
   const shieldEquipped=actor?.shieldEquipped===true||actor?.equippedShield===true||
