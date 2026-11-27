@@ -322,7 +322,7 @@ function sr29ReincarnateSpeciesFromRoll(roll){
 }
 function sr29ClearOldAncestryState(character){
   if(!character)return;
-  for(const key of ['dragonBreathUsed','dragonbornBreathUses','dragonbornFlightUsed','draconicAncestryChoice','draconicDamageType',
+  for(const key of ['dragonBreathUsed','dragonbornBreathUses','dragonbornBreathUsesMax','dragonbornFlightUsed','draconicAncestryChoice','draconicDamageType',
     'radiantTouchUsed','radiantBurst','escapeUsed','relentlessUsed','relentlessEnduranceUsed']){
     delete character[key];
   }
