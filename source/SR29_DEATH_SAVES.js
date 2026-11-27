@@ -1,6 +1,6 @@
-/* SOLO REALMS V29.51 — resurrection caster tax and return penalties.
+/* SOLO REALMS V29.52 — spell-specific revival eligibility.
    Death saves occur at the downed hero's turn start; three successes stabilize at 0 HP. */
-const SR29_DEATH_SAVES_VERSION='29.51.0';
+const SR29_DEATH_SAVES_VERSION='29.52.0';
 function sr29SoloRemoveUnconscious(c){
   if(!c)return;
   c.unconscious=false;
@@ -27,7 +27,7 @@ function sr29SoloHasUnconscious(c){
 function sr29SoloEndFromDeath(reason){
   const c=state?.character;
   if(!c)return false;
-  c.mpDead=true;c.deathAt=Number(c.deathAt)||Date.now();c.stable=false;delete c.stableRecoveryHours;delete c.stableElapsedHours;
+  c.mpDead=true;c.deathAt=Number(c.deathAt)||Date.now();sr29RecordDeathSnapshot(c);c.stable=false;delete c.stableRecoveryHours;delete c.stableElapsedHours;
   if(state.combat&&!state.combat.mp)state.combat=null;
   log(reason||'Three failed death saves. Your character has died.','badlog');
   if(typeof setScene==='function')setScene({title:'The Chronicle Falls Silent',text:`${c.name||'Your hero'} has died. The companions who survive carry the story onward. Your character may be restored by an appropriate revival effect, or you can begin another chronicle.`,choices:[{label:'Begin a new chronicle',sub:'Keep this character and start a new story',action:'new-campaign'},{label:'Create a new character',sub:'Return to character creation',action:'new-character'}]});
@@ -108,7 +108,7 @@ if(typeof sr12DeathSave==='function'){
     if(c&&c.stable&&!wasStable&&!c.mpDead&&Number(c.hp)<=0){
       c.stableRecoveryHours=Math.max(1,Math.min(4,die(4)));c.stableElapsedHours=0;
     }else if(c&&!c.stable){delete c.stableRecoveryHours;delete c.stableElapsedHours;}
-    if(c?.mpDead&&!Number(c.deathAt))c.deathAt=Date.now();
+    if(c?.mpDead){if(!Number.isFinite(Number(c.deathAt)))c.deathAt=Date.now();sr29RecordDeathSnapshot(c);}
     return result;
   };
 }
@@ -120,7 +120,7 @@ if(typeof sr12DamageHero==='function'){
     const hasCriticalMarker=!!source&&Object.prototype.hasOwnProperty.call(source,'_sr29AttackCriticalPending');
     const result=sr29PriorMultiplayerDamageHero.call(this,player,...args);
     if(c&&wasStable&&!c.stable){delete c.stableRecoveryHours;delete c.stableElapsedHours;}
-    if(c?.mpDead&&!Number(c.deathAt))c.deathAt=Date.now();
+    if(c?.mpDead){if(!Number.isFinite(Number(c.deathAt)))c.deathAt=Date.now();sr29RecordDeathSnapshot(c);}
     // V13.2 already owns multiplayer downed-hit failures. This adapter only
     // consumes the V29 source marker after that canonical transaction.
     if(source){if(hasCriticalMarker)delete source._sr29AttackCriticalPending;delete source.lastAttackCritical;}
@@ -242,6 +242,73 @@ const SR29_REVIVAL_WINDOW_RULES={
   Resurrection:{calendarYears:100},
   'True Resurrection':{calendarYears:200}
 };
+function sr29RecordDeathSnapshot(character){
+  if(!character||typeof character!=='object')return false;
+  if(!Object.prototype.hasOwnProperty.call(character,'creatureTypeAtDeath')){
+    const currentType=character.creatureType??character.creature_type??character.type;
+    if(typeof currentType==='string'&&currentType.trim())character.creatureTypeAtDeath=currentType.trim();
+    else if(typeof character.ancestry==='string'&&character.ancestry.trim())character.creatureTypeAtDeath='Humanoid';
+  }
+  if(character.causeOfDeath===undefined&&character.deathCause!==undefined)character.causeOfDeath=character.deathCause;
+  if(character.diedOfOldAge===true)character.causeOfDeath='old-age';
+  if(character.undeadAtDeath===true||character.wasUndeadWhenItDied===true||
+     String(character.creatureTypeAtDeath||'').trim().toLowerCase()==='undead'){
+    character.undeadAtDeath=true;
+    character.creatureTypeAtDeath='Undead';
+  }
+  return true;
+}
+function sr29IsOldAgeDeath(character){
+  if(!character)return false;
+  const cause=String(character.causeOfDeath??character.deathCause??'').trim().toLowerCase().replace(/[ _]+/g,'-');
+  return character.diedOfOldAge===true||cause==='old-age'||cause==='senescence';
+}
+function sr29WasUndeadAtDeath(character){
+  if(!character)return false;
+  const type=String(character.creatureTypeAtDeath??character.creatureType??character.creature_type??character.type??'').trim().toLowerCase();
+  return character.undeadAtDeath===true||character.wasUndeadWhenItDied===true||type==='undead';
+}
+function sr29IsHumanoidAtDeath(character){
+  if(!character)return false;
+  const type=String(character.creatureTypeAtDeath??character.creatureType??character.creature_type??character.type??(typeof character.ancestry==='string'?'Humanoid':'')).trim().toLowerCase();
+  return type==='humanoid';
+}
+function sr29MissingBodyParts(character){
+  const values=[];
+  for(const source of [character?.missingBodyParts,character?.bodyIntegrity?.missingParts]){
+    if(Array.isArray(source))for(const item of source){
+      const name=String(typeof item==='string'?item:item?.name||item?.part||'').trim().toLowerCase();
+      if(name&&!values.includes(name))values.push(name);
+    }
+  }
+  return values;
+}
+function sr29HasMissingVitalParts(character){
+  if(character?.vitalPartsIntact===false||character?.bodyIntegrity?.vitalPartsIntact===false)return true;
+  const vital=new Set(['head','brain','heart','lungs','lung','vital organs','vital organ','organs','organ']);
+  const explicit=Array.isArray(character?.missingVitalParts)?character.missingVitalParts:[];
+  return explicit.some(part=>vital.has(String(typeof part==='string'?part:part?.name||part?.part||'').trim().toLowerCase()))||
+    sr29MissingBodyParts(character).some(part=>vital.has(part));
+}
+function sr29ClearRevivalDeathMetadata(character,spellName){
+  if(!character)return false;
+  delete character.causeOfDeath;
+  delete character.deathCause;
+  delete character.diedOfOldAge;
+  delete character.creatureTypeAtDeath;
+  delete character.undeadAtDeath;
+  delete character.wasUndeadWhenItDied;
+  if(['Resurrection','True Resurrection','Reincarnate'].includes(spellName)){
+    if(Array.isArray(character.missingBodyParts))character.missingBodyParts=[];
+    if(Array.isArray(character.missingVitalParts))character.missingVitalParts=[];
+    if(character.bodyIntegrity&&typeof character.bodyIntegrity==='object'){
+      character.bodyIntegrity.missingParts=[];
+      character.bodyIntegrity.vitalPartsIntact=true;
+    }
+    if(character.vitalPartsIntact===false)character.vitalPartsIntact=true;
+  }
+  return true;
+}
 function sr29RevivalEligibility(character,spellName,now=Date.now()){
   if(!character||Number(character.hp)>0)return {ok:false,reason:'The target is not dead.'};
   if(character.mpDead!==true&&character.dead!==true)return {ok:false,reason:'The target is unconscious or stable, not dead.'};
@@ -252,6 +319,11 @@ function sr29RevivalEligibility(character,spellName,now=Date.now()){
   if(rawDeathAt===undefined||rawDeathAt===null||rawDeathAt===''||!Number.isFinite(deathAt))return {ok:false,reason:'The character has no recorded time of death.'};
   const elapsed=now-deathAt;
   if(elapsed<0)return {ok:false,reason:'The recorded time of death is in the future.'};
+  if(['Revivify','Resurrection','True Resurrection'].includes(spellName)&&sr29IsOldAgeDeath(character))return {ok:false,reason:'This spell cannot restore a creature that died of old age.'};
+  if(['Raise Dead','Resurrection'].includes(spellName)&&sr29WasUndeadAtDeath(character))return {ok:false,reason:'This spell cannot restore a creature that was Undead when it died.'};
+  if(spellName==='Revivify'&&sr29MissingBodyParts(character).length)return {ok:false,reason:'Revivify cannot restore missing body parts.'};
+  if(spellName==='Raise Dead'&&sr29HasMissingVitalParts(character))return {ok:false,reason:'Raise Dead cannot restore missing body parts or vital organs required for survival.'};
+  if(spellName==='Reincarnate'&&!sr29IsHumanoidAtDeath(character))return {ok:false,reason:'Reincarnate requires a dead Humanoid or a piece of one.'};
   if(Number.isFinite(rule.milliseconds)&&elapsed>rule.milliseconds)return {ok:false,reason:'The target has been dead too long for this spell.'};
   if(Number.isFinite(rule.calendarYears)){
     const oldestAllowed=new Date(now);
@@ -472,6 +544,7 @@ if(typeof sr14CastSpellComplete==='function'){
       if(name==='Resurrection'&&deathElapsedMs>=SR29_RESURRECTION_CASTER_TAX_MS)sr29SetResurrectionCasterTax(caster,target);
       if(name==='Resurrection'||name==='True Resurrection')target.hp=Number(target.maxHp)||target.hp;
       sr29ClearRevivedState(target);
+      sr29ClearRevivalDeathMetadata(target,name);
       sr29SetRevivalReturnPenalty(target,name);
     }
     return result;
@@ -479,7 +552,7 @@ if(typeof sr14CastSpellComplete==='function'){
   if(globalThis.__SR29_TEST?.gameplay)globalThis.__SR29_TEST.gameplay.castSpell=sr14CastSpellComplete;
 }
 globalThis.__SR29_DEATH_TEST={
-  version:SR29_DEATH_SAVES_VERSION,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestPenaltyRecovery:sr29ApplyLongRestPenaltyRecovery,hasResurrectionCasterTax:sr29HasResurrectionCasterTax,setResurrectionCasterTax:sr29SetResurrectionCasterTax,clearResurrectionCasterTax:sr29ClearResurrectionCasterTax,applyResurrectionTaxD20Result:sr29ApplyResurrectionTaxD20Result,rejectCastDuringResurrectionTax:sr29RejectCastDuringResurrectionTax,canonicalAbilityCheck:typeof sr29CanonicalAbilityCheck==='function'?sr29CanonicalAbilityCheck:null,attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
+  version:SR29_DEATH_SAVES_VERSION,recordDeathSnapshot:sr29RecordDeathSnapshot,isOldAgeDeath:sr29IsOldAgeDeath,wasUndeadAtDeath:sr29WasUndeadAtDeath,isHumanoidAtDeath:sr29IsHumanoidAtDeath,missingBodyParts:sr29MissingBodyParts,hasMissingVitalParts:sr29HasMissingVitalParts,clearRevivalDeathMetadata:sr29ClearRevivalDeathMetadata,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestPenaltyRecovery:sr29ApplyLongRestPenaltyRecovery,hasResurrectionCasterTax:sr29HasResurrectionCasterTax,setResurrectionCasterTax:sr29SetResurrectionCasterTax,clearResurrectionCasterTax:sr29ClearResurrectionCasterTax,applyResurrectionTaxD20Result:sr29ApplyResurrectionTaxD20Result,rejectCastDuringResurrectionTax:sr29RejectCastDuringResurrectionTax,canonicalAbilityCheck:typeof sr29CanonicalAbilityCheck==='function'?sr29CanonicalAbilityCheck:null,attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
   clearDowned:sr29SoloClearDowned,damageAtZero:sr29SoloDamageAtZero,hasUnconscious:sr29SoloHasUnconscious,
   heal:typeof heal==='function'?heal:null,damagePlayer:typeof damagePlayer==='function'?damagePlayer:null,
   soloMonsterAttack:typeof sr10EnemyAttack==='function'?sr10EnemyAttack:null,soloHeroAttack:typeof sr11HeroAttack==='function'?sr29TestSoloHeroAttack:null,advanceStableTime:sr29SoloAdvanceStableTime,
