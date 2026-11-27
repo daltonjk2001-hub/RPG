@@ -249,6 +249,13 @@ function sr29Names(target) {
   if(sr29Has(target,'prone'))names.push('prone');
   return [...new Set(names)];
 }
+function sr29EffectiveSpeed(target) {
+  const exhaustion=Math.max(0,Math.min(6,Math.floor(Number(target?.exhaustion)||0)));
+  const speedZero=['grappled','paralyzed','petrified','restrained','unconscious'].some(n=>sr29Has(target,n));
+  const base=Number(target?.baseMovement??target?.baseSpeed??target?.movement??target?.speed??30);
+  const bonus=Number(target?.movementBonus)||0;
+  return speedZero?0:Math.max(0,(Number.isFinite(base)?base:30)+bonus-5*exhaustion);
+}
 function sr29Status(target) {
   if(typeof state!=='undefined'&&state?.combat)sr29ReconcileCombatGrapples();
   const exhaustion=Math.max(0,Math.min(6,Math.floor(Number(target?.exhaustion)||0)));
@@ -259,7 +266,7 @@ function sr29Status(target) {
     movementMode:sr29Has(target,'prone')?'crawl-or-stand':'normal',concentrationEnds:incap,
     autoFailAbilities:['STR','DEX'].filter(a=>sr29AutoFailSave(target,a)),
     resistanceAllDamage:sr29Has(target,'petrified'),conditionImmunities:sr29Has(target,'petrified')?['poisoned']:[],
-    effectiveSpeed:speedZero?0:Math.max(0,Number(target?.baseMovement??target?.baseSpeed??target?.movement??target?.speed??30)-5*exhaustion)};
+    effectiveSpeed:sr29EffectiveSpeed(target)};
 }
 function sr29AutoFailSave(target,ability) {
   const key=String(ability||'').toUpperCase().slice(0,3);
@@ -330,7 +337,7 @@ function sr29CanAct(actor,actionType='action') {
   if(kind==='action'||kind==='legendary-action'||kind==='special-action')return status.canAct;
   return status.canAct;
 }
-function sr29CanMove(actor){return sr29Status(actor).speedOverride!==0;}
+function sr29CanMove(actor){const status=sr29Status(actor);return status.speedOverride!==0&&status.effectiveSpeed>0;}
 function sr29LongRestExhaustion(actor) {
   if(!actor||Number(actor.exhaustion)<=0)return {changed:false,before:Number(actor?.exhaustion)||0,after:Number(actor?.exhaustion)||0};
   const result=sr29ChangeExhaustion(actor,-1);
@@ -844,7 +851,8 @@ if(typeof sr10EnemyMove==='function'){
       log((actor.name||'The creature')+' cannot willingly move closer to the visible source of its Fear.','muted');return false;
     }
     const base=Number(actor?.baseSpeed||actor?.speed||30),exhaustion=Math.max(0,Math.min(6,Math.floor(Number(actor?.exhaustion)||0)));
-    actor.speed=Math.max(0,base-5*exhaustion);
+    const otherSpeedPenalty=Math.max(0,Number(actor?.speedPenalty)||0);
+    actor.speed=Math.max(0,base-5*exhaustion-otherSpeedPenalty);
     const result=sr29PriorEnemyMove.call(this,actor,...args);
     sr29ReconcileCombatGrapples();
     return result;
@@ -854,6 +862,10 @@ if(typeof sr12EnemyStep==='function'){
   const sr29PriorEnemyStep=sr12EnemyStep;
   sr12EnemyStep=function(...args){
     const actor=args[0],goal=args[1];
+    if(actor){
+      const base=Number(actor.baseSpeed||actor.speed||30),exhaustion=Math.max(0,Math.min(6,Math.floor(Number(actor.exhaustion)||0)));
+      actor.speed=Math.max(0,base-5*exhaustion-Math.max(0,Number(actor.speedPenalty)||0));
+    }
     if(actor?.pos&&goal&&sr29FrightenedMovementBlocked(actor,actor.pos,goal,state)){
       log((actor.name||'The creature')+' cannot willingly move closer to the visible source of its Fear.','muted');return false;
     }
