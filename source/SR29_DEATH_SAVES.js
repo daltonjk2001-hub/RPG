@@ -107,7 +107,6 @@ if(typeof sr12DeathSave==='function'){
     const result=sr29PriorMultiplayerDeathSave.call(this,player,...args);
     if(c&&c.stable&&!wasStable&&!c.mpDead&&Number(c.hp)<=0){
       c.stableRecoveryHours=Math.max(1,Math.min(4,die(4)));c.stableElapsedHours=0;
-      if(typeof save==='function')save();if(typeof sr4Broadcast==='function')sr4Broadcast();
     }else if(c&&!c.stable){delete c.stableRecoveryHours;delete c.stableElapsedHours;}
     return result;
   };
