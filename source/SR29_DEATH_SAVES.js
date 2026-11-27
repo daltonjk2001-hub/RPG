@@ -96,7 +96,7 @@ if(typeof sr131ClearDowned==='function'){
   const sr29PriorClearDowned=sr131ClearDowned;
   sr131ClearDowned=function(c,...args){
     const result=sr29PriorClearDowned.call(this,c,...args);
-    if(c&&Number(c.hp)>0){delete c.stableRecoveryHours;delete c.stableElapsedHours;}
+    if(c&&Number(c.hp)>0){c.unconscious=false;delete c.stableRecoveryHours;delete c.stableElapsedHours;}
     return result;
   };
 }
