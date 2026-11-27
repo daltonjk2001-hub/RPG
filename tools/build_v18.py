@@ -77,10 +77,10 @@ def build_runtime() -> str:
     if base.count(v13_fallback_test) != 1:
         raise SystemExit("Expected one V13 downed-target selection assertion.")
     base = base.replace(v13_fallback_test, "const fallbackTarget=sr12EnemyTarget({pos:{x:2,y:2}});ok('V13.2 enemy selects a downed hero only when no standing heroes remain',fallbackTarget?.id==='death-test',JSON.stringify({target:fallbackTarget?.id,players:sr12AllHeroPositions().map(h=>({id:h.id,pos:h.pos,hp:h.player.character.hp,downed:h.player.character.mpDowned,dead:h.player.character.mpDead,connected:h.player.connected}))}));")
-    v13_enemy_critical_test = "ok('V13.2 melee attack against an unconscious target has Advantage and is a critical hit',testHero.character.deathFailure===2&&state.log.some(x=>/attacks with advantage/.test(x.msg))&&state.log.some(x=>/Critical hit/.test(x.msg))&&!killer2.lastAttackCritical);"
+    v13_enemy_critical_test = "ok('V13.2 melee attack against an unconscious target has Advantage and is a critical hit',testHero.character.deathFailure===2&&killer2._sr29LastAttackAdvantage===true&&killer2._sr29LastAttackCritical===true&&!killer2.lastAttackCritical&&!killer2._sr29AttackCriticalPending);"
     if base.count(v13_enemy_critical_test) != 1:
         raise SystemExit("Expected one V13 downed monster critical assertion.")
-    base = base.replace(v13_enemy_critical_test, "ok('V13.2 melee attack against an unconscious target has Advantage and is a critical hit',testHero.character.deathFailure===2&&state.log.some(x=>/attacks with advantage/.test(x.msg))&&state.log.some(x=>/Critical hit/.test(x.msg))&&!killer2.lastAttackCritical,JSON.stringify({failures:testHero.character.deathFailure,critical:killer2.lastAttackCritical,marker:killer2._sr29AttackCriticalPending,enemyPos:killer2.pos,log:state.log.slice(-5)}));")
+    base = base.replace(v13_enemy_critical_test, "ok('V13.2 melee attack against an unconscious target has Advantage and is a critical hit',testHero.character.deathFailure===2&&killer2._sr29LastAttackAdvantage===true&&killer2._sr29LastAttackCritical===true&&!killer2.lastAttackCritical&&!killer2._sr29AttackCriticalPending,JSON.stringify({failures:testHero.character.deathFailure,advantage:killer2._sr29LastAttackAdvantage,critical:killer2._sr29LastAttackCritical,marker:killer2._sr29AttackCriticalPending,enemyPos:killer2.pos}));")
     layer = LAYER.read_text(encoding="utf-8").rstrip()
     studio = STUDIO.read_text(encoding="utf-8").rstrip()
     behavior = BEHAVIOR.read_text(encoding="utf-8").rstrip()
