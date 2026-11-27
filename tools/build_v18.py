@@ -200,7 +200,7 @@ def build_runtime() -> str:
         raise SystemExit("Expected one raw multiplayer enemy attack resolver.")
     base = base.replace(
         mp_enemy_attack_raw,
-        "const roll=sr11RollAttack(base+(pack?2:0),enemy,c,true),cover=sr11Cover(target.pos,enemy.pos),ac=sr4WithCharRead(player,computeAC)+(c.buffRounds>0?2:0)+cover,hit=sr25AttackSuccess(roll,ac),critical=roll.r===20||(hit&&sr29CriticalOnHit(c,{hit,distance}));",
+        "const roll=sr11RollAttack(base+(pack?2:0),enemy,c,true),cover=sr11Cover(target.pos,enemy.pos),ac=sr4WithCharRead(player,computeAC)+(c.buffRounds>0?2:0)+cover,hit=sr25AttackSuccess(roll,ac),critical=roll.r===20||(hit&&sr29CriticalOnHit(c,{hit,distance}));enemy._sr29LastAttackAdvantage=roll.adv===true;enemy._sr29LastAttackCritical=critical;",
     )
 
     v13_down_critical_multiplier = "if(source===enemy&&enemy._sr13MeleeAgainstUnconscious&&!enemy._sr13LastNatural20){enemy.lastAttackCritical=true;amount=Math.max(0,Number(amount)||0)*2;}"
