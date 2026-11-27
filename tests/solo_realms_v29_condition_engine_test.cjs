@@ -1228,6 +1228,32 @@ try{
   assert('Multiplayer death-save stabilization stores its own 1d4-hour recovery interval',mpStableResult&&mpStableHero.stable===true&&mpStableHero.mpDowned===false&&mpStableHero.stableRecoveryHours===3&&mpStableHero.stableElapsedHours===0);
   const mpPartialRecovery=D.advanceStableTime(2);
   assert('Multiplayer stable recovery accumulates elapsed time without restoring HP early',mpPartialRecovery===false&&mpStableHero.hp===0&&mpStableHero.stable===true&&mpStableHero.stableElapsedHours===2);
+  const mpStablePreImportState=T18.state;
+  const mpStableSnapshot=T18.snapshot('V29 multiplayer stable recovery round-trip');
+  const mpStableNormalized=T18.normalizeImport(mpStableSnapshot);
+  const mpStableValidated=T18.validateSave(mpStableNormalized);
+  const restoredMpStablePlayer=mpStableValidated.state?.campaign?.multiplayer?.players?.find(player=>player.id==='mp-stable-hero');
+  const restoredMpStableHero=restoredMpStablePlayer?.character;
+  assert('Multiplayer stable timer is preserved by snapshot export and import normalization',
+    mpStableSnapshot.state?.campaign?.multiplayer?.players?.[0]?.character?.stableRecoveryHours===3&&
+    mpStableSnapshot.state?.campaign?.multiplayer?.players?.[0]?.character?.stableElapsedHours===2&&
+    mpStableNormalized.campaign?.multiplayer?.players?.[0]?.character?.stableRecoveryHours===3&&
+    mpStableNormalized.campaign?.multiplayer?.players?.[0]?.character?.stableElapsedHours===2);
+  assert('Multiplayer save validation preserves the remote hero stable/downed recovery state',
+    mpStableValidated.ok&&restoredMpStableHero?.stable===true&&restoredMpStableHero.hp===0&&
+    restoredMpStableHero.stableRecoveryHours===3&&restoredMpStableHero.stableElapsedHours===2,
+    JSON.stringify({ok:mpStableValidated.ok,reason:mpStableValidated.reason,hero:restoredMpStableHero}));
+  if(mpStableValidated.ok&&restoredMpStableHero){
+    T18.state=mpStableValidated.state;
+    D.advanceWorld('travel',0);
+    assert('A restored multiplayer stable hero completes recovery through the world clock',
+      restoredMpStableHero.hp===1&&!restoredMpStableHero.stable&&!restoredMpStableHero.mpDowned&&
+      !restoredMpStableHero.unconscious&&restoredMpStableHero.stableRecoveryHours===undefined&&
+      restoredMpStableHero.stableElapsedHours===undefined);
+  }else{
+    assert('A restored multiplayer stable hero completes recovery through the world clock',false,'Save/import did not produce a valid multiplayer state.');
+  }
+  T18.state=mpStablePreImportState;
   D.advanceWorld('travel',0);
   assert('Multiplayer stable heroes regain 1 HP after the world-clock recovery interval',mpStableHero.hp===1&&!mpStableHero.stable&&!mpStableHero.mpDowned&&!mpStableHero.unconscious&&mpStableHero.deathSuccess===0&&mpStableHero.deathFailure===0,JSON.stringify({hp:mpStableHero.hp,stable:mpStableHero.stable,worldClock:T18.state.campaign.sr18?.clock}));
 
