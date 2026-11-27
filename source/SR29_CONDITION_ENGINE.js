@@ -967,7 +967,7 @@ if(typeof sr18MonsterApplyDamage==='function') {
   const sr29PriorMonsterDamage=sr18MonsterApplyDamage;
   sr18MonsterApplyDamage=function(target,amount,type,enemy) {
     const character=target?.player?.character;
-    if(!state?.combat?.mp||!sr29Has(character,'petrified'))return sr29PriorMonsterDamage(target,amount,type,enemy);
+    if(!sr29Has(character,'petrified'))return sr29PriorMonsterDamage(target,amount,type,enemy);
     const original=Array.isArray(character.resistances)?character.resistances:null;
     const resistances=original?original.slice():[];
     if(!resistances.some(x=>String(x).toLowerCase()==='all'))resistances.push('all');
