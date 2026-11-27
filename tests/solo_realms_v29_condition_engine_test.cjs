@@ -1048,6 +1048,28 @@ try{
 
 
 
+  const monsterCritHero=actor({id:'monster-crit-hero',name:'Monster Critical Hero',hp:30,maxHp:30});
+  const monsterCritPlayer={id:'solo',name:'Monster Critical Hero',character:monsterCritHero};
+  const monsterCritEnemy={id:'monster-crit-enemy',name:'Critical Claw',attack:100,pos:{x:2,y:1}};
+  const monsterCritTarget={player:monsterCritPlayer,pos:{x:1,y:1}};
+  T18.state={character:monsterCritHero,campaign:{multiplayer:null,companions:[]},combat:{mp:null,heroPos:{x:1,y:1},enemies:[monsterCritEnemy],round:1},log:[]};
+  T.apply(monsterCritHero,'paralyzed','permanent','monster critical regression');
+  const priorMonsterCritRandom=math.random;math.random=()=>0.5;
+  let monsterCriticalResult=false;
+  try{monsterCriticalResult=T18.resolveMonsterAction(monsterCritEnemy,{name:'Claw',attack_bonus:100,description:'Melee Weapon Attack Roll: +100, reach 5 ft. Hit: 1d6 slashing damage.',damage:[{dice:'1d6',type:'slashing'}]},monsterCritTarget);}finally{math.random=priorMonsterCritRandom;}
+  assert('Monster melee attacks automatically critical-hit a Paralyzed target within 5 feet',monsterCriticalResult===true&&monsterCritHero.hp===22&&T18.state.log.some(x=>/critical hit/.test(x.msg)),JSON.stringify({hp:monsterCritHero.hp,log:T18.state.log}));
+
+  const distantUnconsciousHero=actor({id:'distant-unconscious-hero',name:'Distant Unconscious Hero',hp:30,maxHp:30});
+  const distantPlayer={id:'solo',name:'Distant Unconscious Hero',character:distantUnconsciousHero};
+  const distantMonster={id:'distant-monster',name:'Ranged Hunter',attack:100,pos:{x:3,y:1}};
+  T18.state={character:distantUnconsciousHero,campaign:{multiplayer:null,companions:[]},combat:{mp:null,heroPos:{x:1,y:1},enemies:[distantMonster],round:1},log:[]};
+  T.apply(distantUnconsciousHero,'unconscious','permanent','distance critical regression');
+  const priorDistantRandom=math.random;math.random=()=>0.5;
+  let distantAttackResult=false;
+  try{distantAttackResult=T18.resolveMonsterAction(distantMonster,{name:'Longbow',attack_bonus:100,description:'Ranged Weapon Attack Roll: +100, range 30/120 ft. Hit: 1d6 piercing damage.',damage:[{dice:'1d6',type:'piercing'}]}, {player:distantPlayer,pos:{x:1,y:1}});}finally{math.random=priorDistantRandom;}
+  assert('A monster ranged hit from beyond 5 feet does not gain the automatic Unconscious critical',distantAttackResult===true&&distantUnconsciousHero.hp===26&&!T18.state.log.some(x=>/critical hit/.test(x.msg)),JSON.stringify({hp:distantUnconsciousHero.hp,log:T18.state.log}));
+
+
 
 
 
