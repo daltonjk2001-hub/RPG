@@ -205,5 +205,6 @@ globalThis.__SR29_DEATH_TEST={
   heal:typeof heal==='function'?heal:null,damagePlayer:typeof damagePlayer==='function'?damagePlayer:null,
   soloMonsterAttack:typeof sr10EnemyAttack==='function'?sr10EnemyAttack:null,advanceStableTime:sr29SoloAdvanceStableTime,
   advanceWorld:typeof sr18AdvanceWorld==='function'?sr18AdvanceWorld:null,
-  multiplayerDeathSave:typeof sr12DeathSave==='function'?sr12DeathSave:null
+  multiplayerDeathSave:typeof sr12DeathSave==='function'?sr12DeathSave:null,
+  clearMultiplayerDowned:typeof sr131ClearDowned==='function'?sr131ClearDowned:null
 };
