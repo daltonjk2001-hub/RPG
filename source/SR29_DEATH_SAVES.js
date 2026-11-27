@@ -227,8 +227,9 @@ function sr29RevivalEligibility(character,spellName,now=Date.now()){
   if(character.mpDead!==true&&character.dead!==true)return {ok:false,reason:'The target is unconscious or stable, not dead.'};
   const rule=SR29_REVIVAL_WINDOW_RULES[spellName];
   if(!rule)return {ok:false,reason:'This spell has no configured revival window.'};
-  const deathAt=Number(character.deathAt);
-  if(!Number.isFinite(deathAt)||deathAt<=0)return {ok:false,reason:'The character has no recorded time of death.'};
+  const rawDeathAt=character.deathAt;
+  const deathAt=Number(rawDeathAt);
+  if(rawDeathAt===undefined||rawDeathAt===null||rawDeathAt===''||!Number.isFinite(deathAt))return {ok:false,reason:'The character has no recorded time of death.'};
   const elapsed=now-deathAt;
   if(elapsed<0)return {ok:false,reason:'The recorded time of death is in the future.'};
   if(Number.isFinite(rule.milliseconds)&&elapsed>rule.milliseconds)return {ok:false,reason:'The target has been dead too long for this spell.'};
