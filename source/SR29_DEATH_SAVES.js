@@ -108,15 +108,36 @@ if(typeof sr12DeathSave==='function'){
     if(c&&c.stable&&!wasStable&&!c.mpDead&&Number(c.hp)<=0){
       c.stableRecoveryHours=Math.max(1,Math.min(4,die(4)));c.stableElapsedHours=0;
     }else if(c&&!c.stable){delete c.stableRecoveryHours;delete c.stableElapsedHours;}
+    if(c?.mpDead&&!Number(c.deathAt))c.deathAt=Date.now();
     return result;
   };
 }
 if(typeof sr12DamageHero==='function'){
   const sr29PriorMultiplayerDamageHero=sr12DamageHero;
   sr12DamageHero=function(player,...args){
-    const c=player?.character,wasStable=!!c?.stable;
+    const c=player?.character,hpBefore=Number(c?.hp)||0,wasStable=!!c?.stable;
+    const downedBefore=!!(c&&hpBefore<=0&&!c.mpDead&&(c.mpDowned||c.stable||sr29SoloHasUnconscious(c)));
+    const amount=Math.max(0,Number(args[0])||0),damageType=args[1]||'physical';
+    const source=args[2]&&typeof args[2]==='object'?args[2]:null;
+    const pendingCritical=source?._sr29AttackCriticalPending===true;
     const result=sr29PriorMultiplayerDamageHero.call(this,player,...args);
     if(c&&wasStable&&!c.stable){delete c.stableRecoveryHours;delete c.stableElapsedHours;}
+    if(c&&downedBefore&&amount>0&&!c.mpDead){
+      delete c.stableRecoveryHours;delete c.stableElapsedHours;
+      c.stable=false;c.mpDowned=true;c.unconscious=true;
+      const critical=pendingCritical||source?.lastAttackCritical===true;
+      const massive=amount>=Math.max(1,Number(c.maxHp)||Infinity);
+      const failures=massive?3:(critical?2:1);
+      c.deathFailure=Math.min(3,(Number(c.deathFailure)||0)+failures);
+      if(massive||c.deathFailure>=3){
+        c.mpDead=true;c.mpDowned=true;c.deathAt=Date.now();
+        log(massive?'Massive damage at 0 HP causes instant death.':`Damage causes ${failures} failed death save(s); ${player?.name||c.name||'A hero'} has died.`,'badlog');
+      }else{
+        log(`Damage at 0 HP causes ${failures} failed death save(s) (${c.deathFailure}/3).`,'badlog');
+      }
+      if(typeof save==='function')save();
+    }
+    if(pendingCritical)delete source._sr29AttackCriticalPending;
     return result;
   };
 }
@@ -215,5 +236,6 @@ globalThis.__SR29_DEATH_TEST={
   advanceWorld:typeof sr18AdvanceWorld==='function'?sr18AdvanceWorld:null,
   multiplayerDeathSave:typeof sr12DeathSave==='function'?sr12DeathSave:null,
   clearMultiplayerDowned:typeof sr131ClearDowned==='function'?sr131ClearDowned:null,
-  multiplayerDamageHero:typeof sr12DamageHero==='function'?sr12DamageHero:null
+  multiplayerDamageHero:typeof sr12DamageHero==='function'?sr12DamageHero:null,
+  multiplayerEnemyTurn:typeof sr12EnemyTurn==='function'?sr12EnemyTurn:null
 };
