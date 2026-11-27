@@ -156,7 +156,7 @@ function sr29SoloDamageAtZero(amount,source=null,meta={}){
     sr29SoloEndFromDeath('Massive damage at 0 HP causes instant death.');
     return {applied:true,failures:3,dead:true,massive:true};
   }
-  const critical=meta?.critical===true||source?.lastAttackCritical===true;
+  const critical=meta?.critical===true||source?.lastAttackCritical===true||source?._sr29AttackCriticalPending===true;
   const failures=critical?2:1;
   c.stable=false;c.unconscious=true;c.deathFailure=(Number(c.deathFailure)||0)+failures;
   if(c.deathFailure>=3){
