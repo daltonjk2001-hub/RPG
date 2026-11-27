@@ -317,6 +317,7 @@ function sr18TeleportMonster(enemy,target,description){
  const match=d.match(/teleport(?:s|ed|ing)?[^.]{0,100}?(?:up to |within |no more than )?(\d+)\s*feet?/i)||d.match(/(\d+)\s*feet?[^.]{0,80}teleport/i);
  const feet=Math.max(5,Number(match?.[1])||30),b=state.combat;
  if(!b)return false;
+ if(!b.mp&&typeof sr29CanMoveToward==='function'&&!sr29CanMoveToward(enemy,target?.player?.character))return false;
  if(!b.mp){
   const before=Math.max(0,Number(enemy?.distance)||0),after=Math.max(5,before-feet);
   if(after>=before)return false;
@@ -337,6 +338,7 @@ function sr18TeleportMonster(enemy,target,description){
  };
  const plan=sr18TeleportPlan(from,to,feet,isOpen,(a,z)=>sr11HasLOS(a,z));
  if(!plan)return false;
+ if(typeof sr29FrightenedMovementBlocked==='function'&&sr29FrightenedMovementBlocked(enemy,from,plan.to,state))return false;
  enemy.pos={...plan.to};if(enemy.position)enemy.position={...plan.to};
  if(typeof sr29ReconcileAbstractGrapples==='function')sr29ReconcileAbstractGrapples();
  if(typeof sr29ReconcileCombatGrapples==='function')sr29ReconcileCombatGrapples();
