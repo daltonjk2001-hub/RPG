@@ -316,3 +316,10 @@ Still incomplete: Reincarnate's complete species-specific trait automation and p
 - When the original body is explicitly recorded as absent/destroyed, the spell creates a replacement-body record, requires the creature's name to be spoken, and records the 10-foot / unoccupied-space placement rule. Because the current noncombat world has no spatial placement interface, the exact world-space placement remains a visible pending step rather than an invented coordinate.
 - Regressions cover selective ailment removal, non-Undead restoration, absent-body creation/name requirement, and an end-to-end remote True Resurrection cast with a 25,000 gp consumed diamond.
 - True Resurrection and overall death/recovery remain **Partial** until replacement-body world placement and actual long-casting progress/interruption are implemented, plus alternate revival routes and live co-op validation.
+
+
+## V29.58 — True Resurrection type restoration and component price notation
+
+- Corrected the non-Undead restoration so a target without an existing current creature-type field receives its saved pre-Undead type (or the player Humanoid fallback).
+- Material price parsing now accepts the 2024 component notation `25,000+ GP`; the end-to-end True Resurrection cast therefore validates and consumes its 25,000 gp diamond instead of bypassing the minimum-value check.
+- Added regressions for the missing current-type field and the exact 25,000+ gp component notation.

@@ -480,7 +480,7 @@ def build_runtime() -> str:
         "V25 campaign rules and d20 contract": "const SR25_VERSION = '25.0.0';",
         "V29 canonical condition engine": "const SR29_VERSION = '29.0.0';",
         "V29.1 live grapple gameplay adapter": "const SR29_GRAPPLE_GAMEPLAY_VERSION='29.1.0';",
-        "V29.57 True Resurrection restoration effects": "const SR29_DEATH_SAVES_VERSION='29.57.0';",
+        "V29.58 True Resurrection type restoration and component price notation": "const SR29_DEATH_SAVES_VERSION='29.58.0';",
         "2024 Dragonborn species is supported by the ancestry schema": "ANCESTRIES.Dragonborn={",
     }
     missing = [label for label, marker in required_contracts.items() if marker not in combined]

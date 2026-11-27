@@ -164,6 +164,7 @@ try{
  assert('True Resurrection removes poison, magical contagions and curses while retaining unrelated conditions and nonmagical diseases',trueResEffects.ok&&trueResEffectsTarget.conditions.length===1&&trueResEffectsTarget.conditions[0].name==='frightened'&&trueResEffectsTarget.poisons.length===0&&trueResEffectsTarget.magicalContagions.length===0&&trueResEffectsTarget.curses.length===0&&trueResEffectsTarget.diseases.length===1&&trueResEffectsTarget.afflictions.length===1&&trueResEffectsTarget.afflictions[0].name==='ordinary fever',JSON.stringify({trueResEffects,conditions:trueResEffectsTarget.conditions,afflictions:trueResEffectsTarget.afflictions}));
  assert('True Resurrection restores an Undead target to its recorded non-Undead form',trueResEffects.wasUndead&&trueResEffects.restoredType==='Humanoid'&&trueResEffectsTarget.creatureType==='Humanoid'&&trueResEffectsTarget.undead===false&&trueResEffectsTarget.restoredFromUndead===true);
  assert('True Resurrection creates a replacement body when the original body no longer exists and records the name and ten-foot placement rule',trueResEffects.newBodyCreated&&trueResEffectsTarget.bodyExists===true&&trueResEffectsTarget.newBodyCreated===true&&trueResEffectsTarget.resurrectionBody.spokenName===trueResEffectsTarget.name&&trueResEffectsTarget.resurrectionBody.placement.withinFeet===10&&trueResEffectsTarget.resurrectionBody.placement.requiresUnoccupiedSpace===true);
+ assert('True Resurrection 25,000+ GP diamond notation parses the 25,000 gp minimum',RV.materialComponentCost({components:'M (diamonds worth 25,000+ GP, which the spell consumes)'})===25000);
  const unnamedBodyTarget=actor({bodyExists:false,name:''});
  assert('True Resurrection refuses a no-body restoration when the creature’s name has not been spoken',!RV.applyTrueResurrectionEffects(unnamedBodyTarget).ok&&unnamedBodyTarget.bodyExists===false);
  T.gameplay.setSpellData('True Resurrection',{name:'True Resurrection',level:9,classes:['Druid'],kind:'revive',range:'Touch',castingTime:'1 hour',components:'V, S, M (diamonds worth 25,000+ GP, which the spell consumes)',description:'The creature returns with all its Hit Points. This spell neutralizes poison, cures magical contagions, lifts curses, restores a non-Undead form and can provide a new body if the original no longer exists.'});
@@ -1308,7 +1309,7 @@ try{
   assert('Monster critical bonus dice preserve flat attack damage modifiers',T18.criticalExtraDice('2d6+4')==='2d6'&&T18.criticalExtraDice('1d8 + 1d6 + 3')==='1d8+1d6'&&T18.criticalExtraDice('1d10-2')==='1d10');
 
   const D=context.__SR29_DEATH_TEST;
-  assert('V29.57 True Resurrection restoration effects and material integration are installed',!!D&&D.version==='29.57.0'&&typeof D.deathSave==='function');
+  assert('V29.58 True Resurrection type restoration and 25,000+ gp component parsing are installed',!!D&&D.version==='29.58.0'&&typeof D.deathSave==='function');
 
   const soloCriticalHero=actor({id:'solo-critical-hero',name:'Solo Critical Hero',hp:30,maxHp:30,armor:'Traveler’s clothes'});
   const soloCriticalEnemy={id:'solo-critical-enemy',name:'Solo Critical Monster',attack:100,damage:'1d6',pos:{x:2,y:1}};

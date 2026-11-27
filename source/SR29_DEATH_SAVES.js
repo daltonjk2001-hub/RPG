@@ -1,7 +1,7 @@
-/* SOLO REALMS V29.57 — True Resurrection restoration effects.
-   V29.56 resurrection material-component consumption; V29.55 Dragonborn lineage selection.
+/* SOLO REALMS V29.58 — True Resurrection type restoration and component price notation.
+   V29.57 True Resurrection restoration effects; V29.56 material-component consumption.
    Death saves occur at the downed hero's turn start; three successes stabilize at 0 HP. */
-const SR29_DEATH_SAVES_VERSION='29.57.0';
+const SR29_DEATH_SAVES_VERSION='29.58.0';
 function sr29SoloRemoveUnconscious(c){
   if(!c)return;
   c.unconscious=false;
@@ -722,11 +722,13 @@ function sr29ApplyTrueResurrectionEffects(character,options={}){
   if(wasUndead){
     restoredType=String(character.preUndeadCreatureType||character.originalCreatureType||character.creatureTypeBeforeUndead||
       (character.ancestry?'Humanoid':'')).trim()||null;
+    let wroteCreatureType=false;
     for(const key of ['creatureType','creature_type','type']){
       if(String(character[key]||'').toLowerCase()==='undead'){
-        if(restoredType)character[key]=restoredType;else delete character[key];
+        if(restoredType){character[key]=restoredType;wroteCreatureType=true;}else delete character[key];
       }
     }
+    if(restoredType&&!wroteCreatureType)character.creatureType=restoredType;
     character.undead=false;character.isUndead=false;character.restoredFromUndead=true;
   }
   let newBody=null;
@@ -816,7 +818,7 @@ function sr29MaterialComponentText(sp){
 }
 function sr29MaterialComponentCost(sp){
   const text=sr29MaterialComponentText(sp);
-  const match=text.match(/\bworth\s+(?:at\s+least\s+)?(\d[\d,]*)\s*gp\b/i);
+  const match=text.match(/\bworth\s+(?:at\s+least\s+)?(\d[\d,]*)\s*\+?\s*gp\b/i);
   const declared=Number(sp?.materialCost??sp?.material_cost??0);
   return match?Number(match[1].replace(/,/g,'')):Number.isFinite(declared)&&declared>0?declared:0;
 }
