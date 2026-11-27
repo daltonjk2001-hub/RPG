@@ -145,3 +145,12 @@ This dashboard maps the D&D reference PDF's Parts I–III and Appendices A–B t
 - The 2024 Alert feat's Initiative Proficiency bonus is implemented and now uses the correct character-level proficiency bonus.
 - The separate Alert Initiative Swap benefit is **not yet implemented**. It requires a willing-ally confirmation step immediately after initiative rolls and before the first combat turn; a silent host-side swap would not satisfy the rule's consent requirement.
 - Keep Initiative and turn order marked Partial until that consent flow, solo/companion adjudication, and physical multiplayer timing are completed and tested.
+
+
+## V29.32 legacy class-power action costs
+
+- Audited the older multiplayer `sr12ClassPower` route still reachable through the generic class-ability button.
+- Corrected Action Surge so it does not require or consume a Bonus Action; it grants the additional Action and can be used after the Bonus Action has already been spent.
+- Corrected the legacy Cleric Divine Spark path to consume an Action, and the Warlock Eldritch Blast path to check/consume an Action rather than being blocked by a spent Bonus Action.
+- Arcane Recovery is now rejected during combat and no longer consumes a Bonus Action; it remains a Short Rest feature.
+- Updated the Action Surge feature label and added three regression assertions covering Fighter, Cleric, and Wizard costs. Broader class-feature timing remains Partial.
