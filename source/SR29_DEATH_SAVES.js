@@ -156,6 +156,7 @@ function sr29ApplyLongRestPenaltyRecovery(campaign=state?.campaign,character=sta
     const before=sr29RevivalD20Penalty(target),after=sr29ReduceRevivalPenaltyAfterLongRest(target);
     if(after<before)reduced++;
     sr29ClearResurrectionCasterTax(target);
+    if(target.ancestry==='Dragonborn'){target.dragonbornBreathUses=0;target.dragonbornFlightUsed=false;target.dragonbornFlightRounds=0;}
   }
   return reduced;
 }
@@ -316,13 +317,72 @@ const SR29_DRACONIC_ANCESTRY_TYPES=Object.freeze({
   Black:'acid',Blue:'lightning',Brass:'fire',Bronze:'lightning',Copper:'acid',
   Gold:'fire',Green:'poison',Red:'fire',Silver:'cold',White:'cold'
 });
+function sr29SetDraconicAncestry(character,choice){
+  if(!character||character.ancestry!=='Dragonborn')return false;
+  const name=String(choice||'').trim();
+  const damageType=SR29_DRACONIC_ANCESTRY_TYPES[name];
+  if(!damageType)return false;
+  character.draconicAncestryChoice=name;
+  character.draconicDamageType=damageType;
+  character.darkvisionRange=60;
+  return true;
+}
+function sr29DragonbornProficiencyBonus(character){
+  const level=Math.max(1,Math.min(20,Math.floor(Number(character?.level)||1)));
+  return Math.min(6,2+Math.floor((level-1)/4));
+}
+function sr29DragonbornBreathDamageDice(character){
+  const level=Math.max(1,Math.min(20,Math.floor(Number(character?.level)||1)));
+  return Math.min(4,level>=17?4:level>=11?3:level>=5?2:1);
+}
+function sr29DragonbornBreath(mode='cone'){
+  const c=state?.character,b=state?.combat;
+  if(!c||c.ancestry!=='Dragonborn'){toast('Only a Dragonborn can use this Breath Weapon.');return false;}
+  if(!b||b.mp){toast('The Dragonborn Breath Weapon currently requires a solo tactical encounter.');return false;}
+  if(!c.draconicDamageType||!c.draconicAncestryChoice){toast('Choose a Draconic Ancestry before using your Breath Weapon.');return false;}
+  if(!['cone','line'].includes(mode)){toast('Choose either the cone or line Breath Weapon shape.');return false;}
+  const maximum=Math.max(2,Number(c.dragonbornBreathUsesMax)||sr29DragonbornProficiencyBonus(c));
+  const used=Math.max(0,Number(c.dragonbornBreathUses)||0);
+  if(used>=maximum){toast('You have used all of your Breath Weapon uses. Finish a Long Rest to regain them.');return false;}
+  if(c.actionSpent===true||(typeof sr29ActionEconomyGate==='function'&&!sr29ActionEconomyGate(c,'action',true))){toast('Your Action is already spent or unavailable.');return false;}
+  const enemy=typeof targetEnemy==='function'?targetEnemy():(b.enemies||[]).find(x=>Number(x?.hp)>0);
+  if(!enemy){toast('Choose an enemy to aim your Breath Weapon.');return false;}
+  const size=mode==='cone'?15:30,origin=b.heroPos||{x:1,y:1};
+  const player={id:'solo',name:c.name||'Hero',character:c};
+  const spell={area:size,areaShape:mode,range:'Self',description:mode==='cone'?'15-foot cone':'30-foot line 5 feet wide'};
+  const effect={kind:'saveDamage',area:true,shape:mode,size,save:'DEX',type:c.draconicDamageType};
+  let targets=[];
+  try{
+    if(typeof sr14TargetListComplete==='function')targets=sr14TargetListComplete(player,spell,effect,enemy,origin)||[];
+  }catch(error){log('Breath Weapon targeting could not be resolved: '+String(error?.message||error),'badlog');return false;}
+  targets=targets.filter(x=>x&&Number(x.hp)>0);
+  if(!targets.length){toast('No enemies are inside the selected Breath Weapon area.');return false;}
+  const damageDice=sr29DragonbornBreathDamageDice(c),dc=8+sr29DragonbornProficiencyBonus(c)+Math.max(0,typeof sr14AbilityMod==='function'?sr14AbilityMod(c.stats?.CON):0);
+  c.dragonbornBreathUses=used+1;c.actionSpent=true;
+  let total=0;
+  for(const target of targets){
+    const save=typeof sr14SavingThrow==='function'?sr14SavingThrow(target,'DEX',dc):{success:false,total:0,roll:die(20)};
+    const rolled=rollDice(String(damageDice)+'d10');
+    const applied=typeof sr12ApplyDamage==='function'?sr12ApplyDamage(target,save.success?Math.floor(rolled/2):rolled,c.draconicDamageType):Math.max(0,Number(target.hp||0)-(save.success?Math.floor(rolled/2):rolled));
+    if(typeof sr12ApplyDamage!=='function')target.hp=Math.max(0,applied);
+    total+=applied;
+    log(target.name+' makes a DC '+dc+' Dexterity save ('+save.total+'): '+(save.success?'success':'failure')+'; Breath Weapon deals '+applied+' '+c.draconicDamageType+' damage.','goodlog');
+  }
+  log(c.name+' exhales a '+(mode==='cone'?'15-foot cone':'30-foot line')+' of '+c.draconicDamageType+' energy ('+damageDice+'d10 total before saves).','goodlog');
+  if(!globalThis.__SR29_TEST){
+    if(typeof afterPlayerAction==='function')afterPlayerAction();
+    if(typeof render==='function')render();
+    if(typeof save==='function')save();
+  }
+  return {ok:true,mode,targets:targets.map(x=>x.id||x.name),damageType:c.draconicDamageType,damageDice:String(damageDice)+'d10',dc,total,uses:c.dragonbornBreathUses,usesMax:maximum};
+}
 function sr29ReincarnateSpeciesFromRoll(roll){
   const value=Number(roll);
   return Number.isInteger(value)&&value>=1&&value<=10?SR29_REINCARNATE_SPECIES[value-1]:null;
 }
 function sr29ClearOldAncestryState(character){
   if(!character)return;
-  for(const key of ['dragonBreathUsed','dragonbornBreathUses','dragonbornBreathUsesMax','dragonbornFlightUsed','draconicAncestryChoice','draconicDamageType',
+  for(const key of ['dragonBreathUsed','dragonbornBreathUses','dragonbornBreathUsesMax','dragonbornFlightUsed','draconicAncestryChoice','draconicDamageType','darkvisionRange',
     'radiantTouchUsed','radiantBurst','escapeUsed','relentlessUsed','relentlessEnduranceUsed']){
     delete character[key];
   }
@@ -374,11 +434,13 @@ function sr29ApplyReincarnateSpecies(character,roll=die(10),speciesChoice=null,d
   if(newSpecies==='Aasimar')character.radiantTouchUsed=false;
   if(newSpecies==='Dragonkin')character.dragonBreathUsed=false;
   if(newSpecies==='Dragonborn'){
-    const requestedDraconic=typeof draconicChoice==='string'?draconicChoice.trim():'';
-    character.draconicAncestryChoice=Object.prototype.hasOwnProperty.call(SR29_DRACONIC_ANCESTRY_TYPES,requestedDraconic)?requestedDraconic:null;
     character.dragonbornBreathUses=0;
-    character.dragonbornBreathUsesMax=2+Math.floor((level-1)/4);
+    character.dragonbornBreathUsesMax=sr29DragonbornProficiencyBonus(character);
     character.dragonbornFlightUsed=false;
+    character.dragonbornFlightAvailable=level>=5;
+    character.darkvisionRange=60;
+    if(typeof draconicChoice==='string'&&draconicChoice.trim())sr29SetDraconicAncestry(character,draconicChoice);
+    else{character.draconicAncestryChoice=null;delete character.draconicDamageType;}
   }
   const campaignFlags=state?.campaign?.flags;
   if(campaignFlags&&typeof campaignFlags==='object'&&campaignFlags.sceneTraitUses===undefined)campaignFlags.sceneTraitUses={};
@@ -637,7 +699,7 @@ if(typeof sr14CastSpellComplete==='function'){
   if(globalThis.__SR29_TEST?.gameplay)globalThis.__SR29_TEST.gameplay.castSpell=sr14CastSpellComplete;
 }
 globalThis.__SR29_DEATH_TEST={
-  version:SR29_DEATH_SAVES_VERSION,reincarnateSpecies:SR29_REINCARNATE_SPECIES,reincarnateSpeciesFromRoll:sr29ReincarnateSpeciesFromRoll,applyReincarnateSpecies:sr29ApplyReincarnateSpecies,recordDeathSnapshot:sr29RecordDeathSnapshot,isOldAgeDeath:sr29IsOldAgeDeath,wasUndeadAtDeath:sr29WasUndeadAtDeath,isHumanoidAtDeath:sr29IsHumanoidAtDeath,missingBodyParts:sr29MissingBodyParts,hasMissingVitalParts:sr29HasMissingVitalParts,clearRevivalDeathMetadata:sr29ClearRevivalDeathMetadata,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestPenaltyRecovery:sr29ApplyLongRestPenaltyRecovery,hasResurrectionCasterTax:sr29HasResurrectionCasterTax,setResurrectionCasterTax:sr29SetResurrectionCasterTax,clearResurrectionCasterTax:sr29ClearResurrectionCasterTax,applyResurrectionTaxD20Result:sr29ApplyResurrectionTaxD20Result,rejectCastDuringResurrectionTax:sr29RejectCastDuringResurrectionTax,canonicalAbilityCheck:typeof sr29CanonicalAbilityCheck==='function'?sr29CanonicalAbilityCheck:null,attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
+  version:SR29_DEATH_SAVES_VERSION,reincarnateSpecies:SR29_REINCARNATE_SPECIES,reincarnateSpeciesFromRoll:sr29ReincarnateSpeciesFromRoll,applyReincarnateSpecies:sr29ApplyReincarnateSpecies,recordDeathSnapshot:sr29RecordDeathSnapshot,isOldAgeDeath:sr29IsOldAgeDeath,wasUndeadAtDeath:sr29WasUndeadAtDeath,isHumanoidAtDeath:sr29IsHumanoidAtDeath,missingBodyParts:sr29MissingBodyParts,hasMissingVitalParts:sr29HasMissingVitalParts,clearRevivalDeathMetadata:sr29ClearRevivalDeathMetadata,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestPenaltyRecovery:sr29ApplyLongRestPenaltyRecovery,hasResurrectionCasterTax:sr29HasResurrectionCasterTax,setResurrectionCasterTax:sr29SetResurrectionCasterTax,setDraconicAncestry:sr29SetDraconicAncestry,dragonbornBreath:sr29DragonbornBreath,dragonbornBreathDamageDice:sr29DragonbornBreathDamageDice,dragonbornProficiencyBonus:sr29DragonbornProficiencyBonus,clearResurrectionCasterTax:sr29ClearResurrectionCasterTax,applyResurrectionTaxD20Result:sr29ApplyResurrectionTaxD20Result,rejectCastDuringResurrectionTax:sr29RejectCastDuringResurrectionTax,canonicalAbilityCheck:typeof sr29CanonicalAbilityCheck==='function'?sr29CanonicalAbilityCheck:null,attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
   clearDowned:sr29SoloClearDowned,damageAtZero:sr29SoloDamageAtZero,hasUnconscious:sr29SoloHasUnconscious,
   heal:typeof heal==='function'?heal:null,damagePlayer:typeof damagePlayer==='function'?damagePlayer:null,
   soloMonsterAttack:typeof sr10EnemyAttack==='function'?sr10EnemyAttack:null,soloHeroAttack:typeof sr11HeroAttack==='function'?sr29TestSoloHeroAttack:null,advanceStableTime:sr29SoloAdvanceStableTime,
