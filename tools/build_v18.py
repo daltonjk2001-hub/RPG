@@ -26,6 +26,7 @@ CUSTOM_AI_DM = ROOT / "source" / "SR24_CUSTOM_AI_DM.js"
 RULES_CONTRACT = ROOT / "source" / "SR25_RULES_CONTRACT.js"
 CONDITION_ENGINE = ROOT / "source" / "SR29_CONDITION_ENGINE.js"
 GRAPPLE_GAMEPLAY = ROOT / "source" / "SR29_GRAPPLE_GAMEPLAY.js"
+DEATH_SAVES = ROOT / "source" / "SR29_DEATH_SAVES.js"
 SAVE_GUARD = ROOT / "source" / "SR22_SAVE_GUARD.js"
 LEGACY_LEDGER = ROOT / "source" / "SR22_LEGACY_LEDGER.js"
 THEME_CSS = ROOT / "source" / "SR20_UI_THEME.css"
@@ -77,6 +78,7 @@ def build_runtime() -> str:
     rules_contract = RULES_CONTRACT.read_text(encoding="utf-8").rstrip()
     condition_engine = CONDITION_ENGINE.read_text(encoding="utf-8").rstrip()
     grapple_gameplay = GRAPPLE_GAMEPLAY.read_text(encoding="utf-8").rstrip()
+    death_saves = DEATH_SAVES.read_text(encoding="utf-8").rstrip()
     save_guard = SAVE_GUARD.read_text(encoding="utf-8").rstrip()
     legacy_ledger = LEGACY_LEDGER.read_text(encoding="utf-8").rstrip()
 
@@ -248,6 +250,25 @@ def build_runtime() -> str:
             )
         base = base.replace(old_check, new_check)
 
+    # Route the solo initiative loop through the canonical turn-start death-save procedure.
+    solo_downed_turn = "if(state.character.hp<=0){downed();if(!state.combat)return;const skipped=b.turnIndex+1;"
+    if base.count(solo_downed_turn) != 1:
+        raise SystemExit("Expected one solo initiative downed-turn branch.")
+    base = base.replace(
+        solo_downed_turn,
+        "if(state.character.hp<=0){sr29SoloDeathSave();if(!state.combat)return;if(state.character.hp>0){sr10RenderTurn();return;}const skipped=b.turnIndex+1;",
+    )
+    solo_down_return = "if(!state.combat)return;if(state.character.hp<=0)return;const next=b.turnIndex+1;"
+    if base.count(solo_down_return) != 1:
+        raise SystemExit("Expected one solo initiative post-actor downed early-return.")
+    base = base.replace(solo_down_return, "if(!state.combat)return;const next=b.turnIndex+1;")
+
+    # Massive damage at 0 HP must retain the death timestamp required by Revivify.
+    massive_death = "if(incoming>=Number(c.maxHp||Infinity)){c.mpDead=true;c.deathFailure=3;log"
+    if base.count(massive_death) != 1:
+        raise SystemExit("Expected one multiplayer massive-damage death branch.")
+    base = base.replace(massive_death, "if(incoming>=Number(c.maxHp||Infinity)){c.mpDead=true;c.deathFailure=3;c.deathAt=Date.now();log")
+
     # Advance the multiplayer handshake while leaving the independent V15
     # resource protocol's own version marker intact.
     replacements = [
@@ -269,7 +290,7 @@ def build_runtime() -> str:
     base = base.replace("reliable-v17", "systems-v18")
     base = base.replace("Solo Realms V17 character and client.", "Solo Realms V18 character and client.")
 
-    combined = base + save_guard + "\n\n" + legacy_ledger + "\n\n" + layer + "\n\n" + studio + "\n\n" + behavior + "\n\n" + gameplay + "\n\n" + screen_layout + "\n\n" + playtest_hardening + "\n\n" + director + "\n\n" + custom_ai_dm + "\n\n" + rules_contract + "\n\n" + condition_engine + "\n\n" + grapple_gameplay + "\n})();\n"
+    combined = base + save_guard + "\n\n" + legacy_ledger + "\n\n" + layer + "\n\n" + studio + "\n\n" + behavior + "\n\n" + gameplay + "\n\n" + screen_layout + "\n\n" + playtest_hardening + "\n\n" + director + "\n\n" + custom_ai_dm + "\n\n" + rules_contract + "\n\n" + condition_engine + "\n\n" + grapple_gameplay + "\n\n" + death_saves + "\n})();\n"
     required_contracts = {
         "six four-hour watches per calendar day": "const SR18_WATCHES_PER_DAY=6;",
         "V21 four-hour watch integration": "const SR21_WORLD_CLOCK_CONTRACT='four-hour-watches-v1';",
@@ -288,7 +309,7 @@ def build_runtime() -> str:
 
 
 def main() -> None:
-    for path in (SRC, SAVE_GUARD, LEGACY_LEDGER, LAYER, STUDIO, BEHAVIOR, GAMEPLAY, SCREEN_LAYOUT, PLAYTEST_HARDENING, DIRECTOR, CUSTOM_AI_DM, RULES_CONTRACT, CONDITION_ENGINE, GRAPPLE_GAMEPLAY, THEME_CSS, BASE_HTML, MANIFEST, SERVICE_WORKER):
+    for path in (SRC, SAVE_GUARD, LEGACY_LEDGER, LAYER, STUDIO, BEHAVIOR, GAMEPLAY, SCREEN_LAYOUT, PLAYTEST_HARDENING, DIRECTOR, CUSTOM_AI_DM, RULES_CONTRACT, CONDITION_ENGINE, GRAPPLE_GAMEPLAY, DEATH_SAVES, THEME_CSS, BASE_HTML, MANIFEST, SERVICE_WORKER):
         require_file(path)
 
     combined = build_runtime()
