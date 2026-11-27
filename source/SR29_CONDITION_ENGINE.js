@@ -842,6 +842,22 @@ if(typeof sr7Move==='function'){
     return result;
   };
 }
+if(typeof sr10ResetHeroTurn==='function'){
+  const sr29PriorResetHeroTurn=sr10ResetHeroTurn;
+  sr10ResetHeroTurn=function(...args){
+    const result=sr29PriorResetHeroTurn.apply(this,args),hero=state?.character;
+    if(hero)hero.movement=sr29EffectiveSpeed(hero);
+    return result;
+  };
+}
+if(typeof sr12BeginHeroTurn==='function'){
+  const sr29PriorBeginHeroTurn=sr12BeginHeroTurn;
+  sr12BeginHeroTurn=function(player,...args){
+    const result=sr29PriorBeginHeroTurn.call(this,player,...args),hero=player?.character;
+    if(hero)hero.movement=sr29EffectiveSpeed(hero);
+    return result;
+  };
+}
 if(typeof sr10EnemyMove==='function'){
   const sr29PriorEnemyMove=sr10EnemyMove;
   sr10EnemyMove=function(actor,...args){
