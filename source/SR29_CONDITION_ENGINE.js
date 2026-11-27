@@ -871,9 +871,18 @@ if(typeof sr14RunFeature==='function'){
   const sr29PriorRunFeature=sr14RunFeature;
   sr14RunFeature=function(player,key,option=''){
     const character=player?.character,originalBaseMovement=character?.baseMovement;
-    if(character&&String(key||'')==='stepOfWind'&&String(option||'')!=='disengage')character.baseMovement=sr29EffectiveSpeed(character);
-    try{return sr29PriorRunFeature.call(this,player,key,option);}
-    finally{if(character){if(originalBaseMovement===undefined)delete character.baseMovement;else character.baseMovement=originalBaseMovement;}}
+    const isDash=String(key||'')==='stepOfWind'&&String(option||'')!=='disengage';
+    const beforeMovement=Number(character?.movement)||0,effectiveSpeed=isDash?sr29EffectiveSpeed(character):0;
+    if(isDash&&character)character.baseMovement=effectiveSpeed;
+    let result=false;
+    try{
+      result=sr29PriorRunFeature.call(this,player,key,option);
+      if(result&&isDash&&character){
+        const requiredMovement=beforeMovement+effectiveSpeed;
+        if((Number(character.movement)||0)<requiredMovement)character.movement=requiredMovement;
+      }
+      return result;
+    }finally{if(character){if(originalBaseMovement===undefined)delete character.baseMovement;else character.baseMovement=originalBaseMovement;}}
   };
 }
 if(typeof sr10EnemyMove==='function'){
