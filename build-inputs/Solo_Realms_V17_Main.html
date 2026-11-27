@@ -4255,7 +4255,7 @@ function sr12HeroAction(player,action,spellName,targetId,data={}){
       case'grapple':{const e=sr4Target();if(!e||sr12Distance(sr12PlayerPos(player.id),e.pos)>5){toast('Move within 5 feet of a target to grapple it.');break;}const attack=die(20)+mod(player.character.stats.STR)+((player.character.proficiencies||[]).includes('Athletics')?profBonus():0),defend=die(20)+Math.max(mod(e.stats?.STR||10),mod(e.stats?.DEX||10));c.actionSpent=true;if(attack>=defend){sr11Add(e,'grappled',2,player.name);log(`${player.name} grapples ${e.name} (${attack} vs ${defend}).`,'goodlog');}else log(`${player.name} fails to grapple ${e.name} (${attack} vs ${defend}).`,'badlog');ok=true;break;}
       case'help':{const e=sr4Target();if(!e||sr12Distance(sr12PlayerPos(player.id),e.pos)>5){toast('Move within 5 feet of a target to Help an ally.');break;}state.combat.helpedTarget=e.name;state.combat.helpedBy=player.name;c.actionSpent=true;log(`${player.name} helps the party against ${e.name}; the next party attack gains advantage.`,'goodlog');ok=true;break;}
       case'hide':{const roll=die(20)+skillBonus('Stealth');c.actionSpent=true;if(roll>=12){c.hidden=true;c.hiddenRounds=1;log(`${player.name} hides successfully (Stealth ${roll} vs DC 12).`,'goodlog');}else log(`${player.name} fails to hide (Stealth ${roll} vs DC 12).`,'badlog');ok=true;break;}
-      case'ready':c.actionSpent=true;c.readiedAttack=true;c.reactionAvailable=true;log(`${player.name} readies an attack as a reaction before the next enemy strike.`,'goodlog');ok=true;break;
+      case'ready':ok=sr136ReadyAction(player);break;
       case'interact':c.actionSpent=true;log(`${player.name} interacts with the battlefield. The Director records the action; describe the object or hazard in the action composer for adjudication.`,'rolllog');ok=true;break;
       case'potion':ok=sr12Potion(player,targetId);break;
       case'spell':ok=sr12CastSpell(player,spellName,targetId);break;
@@ -5474,6 +5474,14 @@ function sr136MoveTiedHero(b,index,direction){
   b.initiativeOrder=order.map(x=>({...x,indexes:x.indexes?[...x.indexes]:undefined}));
   return true;
 }
+function sr136ReadyAction(player){
+  const c=player?.character;if(!c)return false;
+  if(c.actionSpent){toast('Your Action is already spent.');return false;}
+  if(c.reactionAvailable===false){toast('Your Reaction has already been spent.');return false;}
+  c.actionSpent=true;c.readiedAttack=true;
+  log(`${player.name} readies an attack as a Reaction before the next enemy strike.`,'goodlog');
+  return true;
+}
 function sr136IsIncapacitated(actor){
   return ['incapacitated','stunned','paralyzed','petrified','unconscious'].some(name=>sr13HasCondition(actor,name));
 }
@@ -5542,6 +5550,12 @@ function sr136RunTests(){
     ok('Alert uses the acting character level for its proficiency bonus, not the host character',sr13InitiativeModifier({character:{level:9,stats:{DEX:14},feats:['Alert']}},true)===6);
     state=beforeAlertState;
     ok('Monster initiative falls back to its Dexterity score when nullable modifier fields are absent',sr13InitiativeModifier({initiativeModifier:null,dex:null,stats:{DEX:18}},false)===4);
+    const readyAvailable={name:'Ready Hero',character:{actionSpent:false,reactionAvailable:true,readiedAttack:false}};
+    ok('Ready consumes the Action while preserving an available Reaction',sr136ReadyAction(readyAvailable)&&readyAvailable.character.actionSpent&&readyAvailable.character.readiedAttack&&readyAvailable.character.reactionAvailable===true);
+    const readySpentAction={name:'Spent Hero',character:{actionSpent:true,reactionAvailable:true,readiedAttack:false}};
+    ok('Ready cannot be taken after the Action is spent',!sr136ReadyAction(readySpentAction)&&!readySpentAction.character.readiedAttack);
+    const readySpentReaction={name:'No Reaction Hero',character:{actionSpent:false,reactionAvailable:false,readiedAttack:false}};
+    ok('Ready cannot restore or use an already-spent Reaction',!sr136ReadyAction(readySpentReaction)&&!readySpentReaction.character.actionSpent&&!readySpentReaction.character.readiedAttack);
     const beforeActionTests=state;
     const surgePlayer={id:'surge-test',name:'Surge Test',character:{classId:'Fighter',level:2,classLevels:{Fighter:2},hp:20,actionSpent:true,bonusActionSpent:true,actionSurgeUsed:false}};
     const surgeOk=sr12ClassPower(surgePlayer);
@@ -5580,7 +5594,7 @@ function sr136RunTests(){
 }
 const sr136OldTestV13=sr13RunTests;
 sr13RunTests=function(){return [...sr136OldTestV13(),...sr136RunTests()];};
-globalThis.__SR13_TEST={...globalThis.__SR13_TEST,version:SR136_VERSION,initiativeModifier:sr13InitiativeModifier,moveTiedHero:sr136MoveTiedHero,reorderTie:sr136ReorderTie,isIncapacitated:sr136IsIncapacitated,refreshEnemyReaction:sr136RefreshEnemyReaction,tests:sr13RunTests};
+globalThis.__SR13_TEST={...globalThis.__SR13_TEST,version:SR136_VERSION,initiativeModifier:sr13InitiativeModifier,moveTiedHero:sr136MoveTiedHero,reorderTie:sr136ReorderTie,readyAction:sr136ReadyAction,isIncapacitated:sr136IsIncapacitated,refreshEnemyReaction:sr136RefreshEnemyReaction,tests:sr13RunTests};
 
 
 
