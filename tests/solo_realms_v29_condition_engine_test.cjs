@@ -1068,6 +1068,8 @@ try{
   let distantAttackResult=false;
   try{distantAttackResult=T18.resolveMonsterAction(distantMonster,{name:'Longbow',attack_bonus:100,description:'Ranged Weapon Attack Roll: +100, range 30/120 ft. Hit: 1d6 piercing damage.',damage:[{dice:'1d6',type:'piercing'}]}, {player:distantPlayer,pos:{x:1,y:1}});}finally{math.random=priorDistantRandom;}
   assert('A monster ranged hit from beyond 5 feet does not gain the automatic Unconscious critical',distantAttackResult===true&&distantUnconsciousHero.hp===26&&!T18.state.log.some(x=>/critical hit/.test(x.msg)),JSON.stringify({hp:distantUnconsciousHero.hp,log:T18.state.log}));
+  assert('Monster critical bonus dice preserve flat attack damage modifiers',T18.criticalExtraDice('2d6+4')==='2d6'&&T18.criticalExtraDice('1d8 + 1d6 + 3')==='1d8+1d6'&&T18.criticalExtraDice('1d10-2')==='1d10');
+
 
 
 
