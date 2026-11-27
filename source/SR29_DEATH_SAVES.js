@@ -289,10 +289,20 @@ function sr29ApplyRevivalD20Penalty(character,result,dc=null){
     result.d20={...result.d20};
     if(Number.isFinite(Number(result.d20.total)))result.d20.total=Number(result.d20.total)-penalty;
     if(Number.isFinite(Number(result.d20.modifier)))result.d20.modifier=Number(result.d20.modifier)-penalty;
+    const nestedDC=Number(result.d20.targetNumber);
+    if(Number.isFinite(nestedDC)&&Number.isFinite(Number(result.d20.total))){
+      const natural=Number(result.d20.natural??result.d20.die);
+      const attack=result.d20.mechanic==='attack';
+      result.d20.success=result.d20.autoFail===true||result.d20.chosenToFail===true?false:
+        attack&&natural===20?true:attack&&natural===1?false:Number(result.d20.total)>=nestedDC;
+    }
   }
   const targetNumber=Number(result.dc??result.targetNumber??dc);
   if(Number.isFinite(targetNumber)&&Number.isFinite(Number(result.total))){
-    result.success=result.autoFail===true||result.chosenToFail===true?false:Number(result.total)>=targetNumber;
+    const natural=Number(result.r??result.roll??result.natural??result.die);
+    const attack=result.mechanic==='attack'||Object.prototype.hasOwnProperty.call(result,'r');
+    result.success=result.autoFail===true||result.chosenToFail===true?false:
+      attack&&natural===20?true:attack&&natural===1?false:Number(result.total)>=targetNumber;
   }
   result.revivalPenaltyApplied=penalty;
   return result;
