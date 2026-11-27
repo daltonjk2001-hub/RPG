@@ -393,6 +393,19 @@ try{
  T18.state={character:mpFatigueHero,campaign:{multiplayer:{players:[mpFatiguePlayer]}},combat:{mp:{heroPositions:{'mp-fatigue-hero':{x:1,y:1}}},heroPos:{x:1,y:1},enemies:[]},log:[]};
  T.gameplay.beginHeroTurn(mpFatiguePlayer);
  assert('Multiplayer hero turn movement allowance uses Exhaustion-adjusted Speed',mpFatigueHero.movement===20&&mpFatigueHero.movementSpent===0);
+ const dashRogue=actor({id:'dash-rogue',name:'Dash Rogue',classId:'Rogue',classLevels:{Rogue:2},level:2,baseMovement:30,movementBonus:0,movement:20,speed:30,exhaustion:2,bonusActionSpent:false});
+ const dashRoguePlayer={id:'dash-rogue',name:'Dash Rogue',connected:true,character:dashRogue};
+ T18.state={character:dashRogue,campaign:{day:1,region:'Dash Test',location:'Dash Test',visited:[],companions:[],npcs:[],sideQuests:[],story:{},flags:{},mainQuest:{kind:'test',title:'Dash Test',goal:'Validate exhaustion speed'},multiplayer:{players:[dashRoguePlayer]}},combat:{mp:{turnOrder:[{id:'dash-rogue',kind:'hero'}],index:0,heroPositions:{'dash-rogue':{x:1,y:1}}},heroPos:{x:1,y:1},enemies:[],round:1},log:[]};
+ T.gameplay.beginHeroTurn(dashRoguePlayer);
+ const exhaustedCunningDash=T.gameplay.cunningAction(dashRoguePlayer,'dash');
+ assert('Cunning Action Dash adds the Exhaustion-adjusted Speed, not the unmodified base Speed',exhaustedCunningDash===true&&dashRogue.movement===40&&dashRogue.speed===30);
+ const windMonk=actor({id:'wind-monk',name:'Wind Monk',classId:'Monk',classLevels:{Monk:2},level:2,baseMovement:30,movementBonus:0,movement:20,speed:30,exhaustion:2,focus:2,focusMax:2,bonusActionSpent:false});
+ const windMonkPlayer={id:'wind-monk',name:'Wind Monk',connected:true,character:windMonk};
+ T18.state={character:windMonk,campaign:{day:1,region:'Wind Test',location:'Wind Test',visited:[],companions:[],npcs:[],sideQuests:[],story:{},flags:{},mainQuest:{kind:'test',title:'Wind Test',goal:'Validate Step of the Wind'},multiplayer:{players:[windMonkPlayer]}},combat:{mp:{turnOrder:[{id:'wind-monk',kind:'hero'}],index:0,heroPositions:{'wind-monk':{x:1,y:1}}},heroPos:{x:1,y:1},enemies:[],round:1},log:[]};
+ T.gameplay.beginHeroTurn(windMonkPlayer);
+ const exhaustedStepOfWind=T.gameplay.runFeature(windMonkPlayer,'stepOfWind','dash');
+ assert('Step of the Wind Dash adds the Exhaustion-adjusted Speed and restores base movement metadata',exhaustedStepOfWind===true&&windMonk.movement===40&&windMonk.baseMovement===30&&windMonk.focus===1);
+
  const fatigueMonster=actor({id:'fatigue-monster',name:'Fatigued Monster',pos:{x:1,y:1},baseSpeed:30,speed:30,exhaustion:2,speedPenalty:5});
  const fatigueMonsterHero=actor({id:'fatigue-monster-target',name:'Fatigue Monster Target'});
  const fatigueTerrain=[];for(let x=0;x<8;x++)for(let y=0;y<6;y++)fatigueTerrain.push({x,y,kind:'floor'});
