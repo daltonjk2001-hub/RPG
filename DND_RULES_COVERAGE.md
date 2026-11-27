@@ -248,3 +248,13 @@ This dashboard maps the D&D reference PDF's Parts I–III and Appendices A–B t
 - When explicitly targeted, the existing Unconscious-target Advantage and close-range automatic-critical rules apply, and the critical damage marker routes two failed death saves through the solo damage handler.
 - End-to-end regression verifies the explicit target flag, critical damage against an Unconscious hero at 0 HP, two failed death saves, marker cleanup, and the generated turn-dispatch path.
 - The Director/monster decision system still needs to decide when to set `attackDownedHero`; absent that intent, monsters do not attack a downed hero. Player weapon, spell, companion and other legacy damage sources remain to be audited.
+
+
+## V29.44 — Multiplayer monster critical and downed-damage parity
+
+- Multiplayer enemy attacks now use the canonical Paralyzed/Unconscious critical-hit rule at 5 feet, in addition to natural 20.
+- Critical bonus damage adds only the dice terms from the monster's damage expression; flat modifiers remain applied once.
+- The active enemy attack carries a one-shot critical marker into the multiplayer hero damage transaction. If the hero was already at 0 HP, ordinary damage adds one failed death save and critical damage adds two; massive damage at or above maximum HP causes instant death.
+- Stable recovery metadata is cleared when damage interrupts stabilization. The marker is consumed after each damage transaction, including hits against standing heroes.
+- Added an end-to-end multiplayer enemy-turn regression against the party's only downed hero, including an Unconscious critical hit, temporary-HP damage accounting, two death-save failures, and dice-only critical bonus.
+- The multiplayer target selector only selects downed heroes when no living/standing party member remains; target selection and Director intent still require broader behavioral playtesting. Player weapon, companion, spell and legacy damage sources remain under audit.
