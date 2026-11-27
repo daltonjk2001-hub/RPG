@@ -227,13 +227,6 @@ def build_runtime() -> str:
 
     # Multiplayer weapon attacks use the same condition critical rule, and
     # critical bonus damage doubles dice only, never flat weapon modifiers.
-    mp_hero_automatic_critical = "automaticCritical=!ranged&&dist<=5&&sr11Has(e,'unconscious')"
-    if base.count(mp_hero_automatic_critical) != 1:
-        raise SystemExit("Expected one multiplayer player automatic-critical expression.")
-    base = base.replace(
-        mp_hero_automatic_critical,
-        "automaticCritical=sr29CriticalOnHit(e,{hit:true,distance:dist})",
-    )
     mp_hero_hit = "const cover=sr11Cover(e.pos,sr12PlayerPos(player.id)),ac=e.ac+cover,hit=sr25AttackSuccess(roll,ac);"
     if base.count(mp_hero_hit) != 1:
         raise SystemExit("Expected one active multiplayer hero weapon hit declaration.")
