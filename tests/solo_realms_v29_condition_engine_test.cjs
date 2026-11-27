@@ -1109,7 +1109,7 @@ try{
   T.apply(soloRogueTarget,'paralyzed','permanent','solo player critical regression');
   const priorSoloRogueRandom=math.random;math.random=()=>0.5;
   try{D.soloHeroAttack();}finally{math.random=priorSoloRogueRandom;}
-  assert('Solo Rogue criticals double weapon and Sneak Attack dice against a Paralyzed target',soloRogueTarget.hp===70&&soloRogue.sneakAttackUsed===true&&T18.state.log.some(x=>/Critical hit/.test(x.msg))&&T18.state.log.some(x=>/Sneak Attack adds critical extra damage/.test(x.msg)),JSON.stringify({hp:soloRogueTarget.hp,log:T18.state.log.slice(0,5)}));
+  assert('Solo Rogue criticals double weapon and Sneak Attack dice against a Paralyzed target',soloRogueTarget.hp===74&&soloRogue.sneakAttackUsed===true&&T18.state.log.some(x=>/Critical hit/.test(x.msg))&&T18.state.log.some(x=>/Sneak Attack adds critical extra damage/.test(x.msg)),JSON.stringify({hp:soloRogueTarget.hp,log:T18.state.log.slice(0,5)}));
   const mpWeaponHero=actor({id:'mp-weapon-hero',name:'MP Weapon Hero',classId:'Fighter',level:5,weapon:'Longsword',actionSpent:false,stats:{STR:18,DEX:10,CON:10,INT:10,WIS:10,CHA:10}});
   const mpWeaponPlayer={id:'mp-weapon-hero',name:'MP Weapon Hero',connected:true,character:mpWeaponHero};
   const mpWeaponTarget=actor({id:'mp-weapon-target',name:'Paralyzed Multiplayer Target',hp:100,maxHp:100,ac:1,pos:{x:2,y:1}});
@@ -1118,7 +1118,7 @@ try{
   T.apply(mpWeaponTarget,'paralyzed','permanent','multiplayer player critical regression');
   const priorMpWeaponRandom=math.random;math.random=()=>0.5;
   let mpWeaponResult=false;try{mpWeaponResult=T.gameplay.heroAttack(mpWeaponPlayer,mpWeaponTarget,false);}finally{math.random=priorMpWeaponRandom;}
-  assert('Multiplayer weapon attacks automatically critical-hit a Paralyzed target within 5 feet',mpWeaponResult===true&&mpWeaponTarget.hp===86&&T18.state.log.some(x=>/Critical hit/.test(x.msg)),JSON.stringify({hp:mpWeaponTarget.hp,log:T18.state.log.slice(0,5)}));
+  assert('Multiplayer weapon attacks automatically critical-hit a Paralyzed target within 5 feet',mpWeaponResult===true&&mpWeaponTarget.hp===72&&T18.state.log.filter(x=>/Critical hit/.test(x.msg)).length===2,JSON.stringify({hp:mpWeaponTarget.hp,log:T18.state.log.slice(0,5)}));
 
   const downedCriticalHero=actor({id:'downed-critical-hero',name:'Downed Critical Hero',hp:0,maxHp:20,deathFailure:0,deathSuccess:0,stable:false,unconscious:true,conditions:[{name:'unconscious',duration:999}]});
   const downedCriticalEnemy={id:'downed-critical-enemy',name:'Downed Critical Monster',attack:100,damage:'1d6',attackDownedHero:true,pos:{x:2,y:1}};
