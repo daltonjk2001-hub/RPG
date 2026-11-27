@@ -158,3 +158,8 @@ The condition dashboard remains **Partial** until the remaining acceptance crite
 7. Perform full save/import compatibility verification and human playtests across standalone, PWA, Android touch, and two-device multiplayer.
 
 No claim of complete 2024 D&D rules coverage should be made until those integration and live-verification gates pass.
+
+
+## V29.19 — Revalidate pending player grapple challenges
+
+A pending player-versus-player grapple save prompt is only a provisional challenge, not an already-established Grappled condition. The host now cancels it if the grappler becomes Incapacitated or if the current tactical positions place the participants beyond the stored grapple reach before the target responds. This prevents a delayed client response from applying a grapple after forced displacement or other movement invalidates the attempt. Regression coverage exercises both cancellation reasons; challenges without usable position data retain the previous behavior and still rely on the saved attempt context.
