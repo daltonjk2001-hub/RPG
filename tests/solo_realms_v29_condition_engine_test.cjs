@@ -1052,7 +1052,7 @@ try{
   const monsterCritPlayer={id:'solo',name:'Monster Critical Hero',character:monsterCritHero};
   const monsterCritEnemy={id:'monster-crit-enemy',name:'Critical Claw',attack:100,pos:{x:2,y:1}};
   const monsterCritTarget={player:monsterCritPlayer,pos:{x:1,y:1}};
-  T18.state={character:monsterCritHero,campaign:{multiplayer:null,companions:[]},combat:{mp:null,heroPos:{x:1,y:1},enemies:[monsterCritEnemy],round:1},log:[]};
+  T18.state={character:monsterCritHero,campaign:{multiplayer:null,companions:[]},combat:{mp:null,heroPos:{x:1,y:1},enemies:[monsterCritEnemy],map:{width:8,height:6,terrain:[]},round:1},log:[]};
   T.apply(monsterCritHero,'paralyzed','permanent','monster critical regression');
   const priorMonsterCritRandom=math.random;math.random=()=>0.5;
   let monsterCriticalResult=false;
@@ -1062,7 +1062,7 @@ try{
   const distantUnconsciousHero=actor({id:'distant-unconscious-hero',name:'Distant Unconscious Hero',hp:30,maxHp:30});
   const distantPlayer={id:'solo',name:'Distant Unconscious Hero',character:distantUnconsciousHero};
   const distantMonster={id:'distant-monster',name:'Ranged Hunter',attack:100,pos:{x:3,y:1}};
-  T18.state={character:distantUnconsciousHero,campaign:{multiplayer:null,companions:[]},combat:{mp:null,heroPos:{x:1,y:1},enemies:[distantMonster],round:1},log:[]};
+  T18.state={character:distantUnconsciousHero,campaign:{multiplayer:null,companions:[]},combat:{mp:null,heroPos:{x:1,y:1},enemies:[distantMonster],map:{width:8,height:6,terrain:[]},round:1},log:[]};
   T.apply(distantUnconsciousHero,'unconscious','permanent','distance critical regression');
   const priorDistantRandom=math.random;math.random=()=>0.5;
   let distantAttackResult=false;
