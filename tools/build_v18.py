@@ -300,6 +300,13 @@ def build_runtime() -> str:
 
     # The final V11 initiative adapter replaces the older V10 enemy attack;
     # route that active implementation through canonical critical resolution.
+    solo_v11_guard = "const c=state.character;if(!e||c.hp<=0)return;const dist=sr9Dist(e.pos,state.combat.heroPos),melee=dist<=5,base=Number(e.attack)||0,roll=sr11RollAttack(base,e,c,melee),ac=computeAC()+(c.buffRounds>0?2:0),total=roll.total,"
+    if base.count(solo_v11_guard) != 1:
+        raise SystemExit("Expected one active V11 solo monster downed-target guard.")
+    base = base.replace(
+        solo_v11_guard,
+        "const c=state.character;if(!e||c.hp<=0&&!e.attackDownedHero)return;const dist=sr9Dist(e.pos,state.combat.heroPos),melee=dist<=5,base=Number(e.attack)||0,roll=sr11RollAttack(base,e,c,melee),ac=computeAC()+(c.buffRounds>0?2:0),total=roll.total,",
+    )
     solo_v11_hit = "total=roll.total,hit=roll.r===20||(roll.r!==1&&total>=ac);"
     if base.count(solo_v11_hit) != 1:
         raise SystemExit("Expected one active V11 solo initiative monster hit check.")
