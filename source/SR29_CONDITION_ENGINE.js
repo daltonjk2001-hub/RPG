@@ -280,12 +280,8 @@ function sr29AttackState(attacker,target,options={}) {
   add(false,sr29Has(attacker,'blinded')||sr29Has(attacker,'poisoned')||sr29Has(attacker,'prone')||sr29Has(attacker,'restrained'));
   if(sr29Has(attacker,'frightened')&&sr29FrightSourceVisible(attacker,options))add(false,true);
   add((sr29Has(attacker,'invisible')||attacker?.invisible===true||attacker?.hidden===true)&&!(options.targetCanSeeInvisible===true||sr29CanSeeInvisible(target)),false);
-  const grappleEffect=sr29Entries(attacker).find(x=>x.name==='grappled');
-  if(grappleEffect){
-    const grapplerId=String(grappleEffect.grapplerId||grappleEffect.sourceId||'');
-    const targetId=String(target?.id||target?.name||'');
-    if(!grapplerId||grapplerId!==targetId)add(false,true);
-  }
+  // Grappled sets Speed to 0; it does not impose attack Disadvantage.
+  // Restrained owns that penalty in the 2024 condition rules.
   add(false,(sr29Has(target,'invisible')||target?.invisible===true)&&!options.canSeeInvisible);
   add(sr29Has(target,'blinded')||target?.blinded===true||sr29Has(target,'restrained')||sr29Has(target,'paralyzed')||
       sr29Has(target,'petrified')||sr29Has(target,'stunned')||sr29Has(target,'unconscious'),false);
