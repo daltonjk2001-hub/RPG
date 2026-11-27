@@ -858,6 +858,24 @@ if(typeof sr12BeginHeroTurn==='function'){
     return result;
   };
 }
+if(typeof sr137CunningAction==='function'){
+  const sr29PriorCunningAction=sr137CunningAction;
+  sr137CunningAction=function(player,mode,...args){
+    const character=player?.character,originalSpeed=character?.speed;
+    if(character&&String(mode||'').toLowerCase()==='dash')character.speed=sr29EffectiveSpeed(character);
+    try{return sr29PriorCunningAction.call(this,player,mode,...args);}
+    finally{if(character){if(originalSpeed===undefined)delete character.speed;else character.speed=originalSpeed;}}
+  };
+}
+if(typeof sr14RunFeature==='function'){
+  const sr29PriorRunFeature=sr14RunFeature;
+  sr14RunFeature=function(player,key,option=''){
+    const character=player?.character,originalBaseMovement=character?.baseMovement;
+    if(character&&String(key||'')==='stepOfWind'&&String(option||'')!=='disengage')character.baseMovement=sr29EffectiveSpeed(character);
+    try{return sr29PriorRunFeature.call(this,player,key,option);}
+    finally{if(character){if(originalBaseMovement===undefined)delete character.baseMovement;else character.baseMovement=originalBaseMovement;}}
+  };
+}
 if(typeof sr10EnemyMove==='function'){
   const sr29PriorEnemyMove=sr10EnemyMove;
   sr10EnemyMove=function(actor,...args){
