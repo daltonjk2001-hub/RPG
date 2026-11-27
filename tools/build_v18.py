@@ -149,7 +149,7 @@ def build_runtime() -> str:
     old_grid_critical = "if(roll.r===20||(automaticCritical&&hit))dmg+=rollDice(w.damage);"
     if base.count(old_grid_critical) != 1:
         raise SystemExit("Expected one V11 grid-attack critical-damage expression.")
-    base = base.replace(old_grid_critical, "if(roll.r===20||(automaticCritical&&hit)||sr29CriticalOnHit(e,{hit,distance:dist}))dmg+=rollDice(w.damage);")
+    base = base.replace(old_grid_critical, "const criticalDice=sr18CriticalExtraDice(w.damage);if(critical&&criticalDice)dmg+=rollDice(criticalDice);")
 
     # The player-facing grid Attack action also uses an earlier automatic-critical
     # shortcut. Route it through the 2024 condition helper so Paralyzed as well as
@@ -193,6 +193,43 @@ def build_runtime() -> str:
                 f"found {actual_count}; inspect V17 call sites before rebuilding."
             )
         base = base.replace(old_check, new_check)
+
+    # The active solo V11 weapon attack must define its condition-based critical
+    # after the hit result; the earlier damage-only patch referenced an undefined name.
+    solo_hero_hit = "const cover=sr11Cover(e.pos,b.heroPos),ac=e.ac+cover,hit=sr25AttackSuccess(roll,ac);"
+    if base.count(solo_hero_hit) != 1:
+        raise SystemExit("Expected one active solo V11 hero weapon hit declaration.")
+    base = base.replace(
+        solo_hero_hit,
+        "const cover=sr11Cover(e.pos,b.heroPos),ac=e.ac+cover,hit=sr25AttackSuccess(roll,ac),automaticCritical=hit&&sr29CriticalOnHit(e,{hit,distance:dist}),critical=roll.r===20||automaticCritical;",
+    )
+    solo_hero_log = "log(`Attack: ${roll.adv?'advantage ':roll.dis?'disadvantage ':''}d20 ${roll.r} + ${bonus} = ${roll.total} vs AC ${ac}${cover?' (cover)':''}. ${hit?'Hit':'Miss'}.`,hit?'goodlog':'badlog');"
+    if base.count(solo_hero_log) != 1:
+        raise SystemExit("Expected one active solo V11 hero attack result log.")
+    base = base.replace(
+        solo_hero_log,
+        "log(`Attack: ${roll.adv?'advantage ':roll.dis?'disadvantage ':''}d20 ${roll.r} + ${bonus} = ${roll.total} vs AC ${ac}${cover?' (cover)':''}. ${critical?'Critical hit':hit?'Hit':'Miss'}.`,hit?'goodlog':'badlog');",
+    )
+
+    # Multiplayer weapon attacks use the same condition critical rule, and
+    # critical bonus damage doubles dice only, never flat weapon modifiers.
+    mp_hero_hit = "const cover=sr11Cover(e.pos,sr12PlayerPos(player.id)),ac=e.ac+cover,hit=sr25AttackSuccess(roll,ac);"
+    if base.count(mp_hero_hit) != 1:
+        raise SystemExit("Expected one active multiplayer hero weapon hit declaration.")
+    mp_hero_log = "log(`${player.name} attacks ${e.name}: ${roll.adv?'advantage ':roll.dis?'disadvantage ':''}d20 ${roll.r} + ${bonus} = ${roll.total} vs AC ${ac}${cover?' (cover)':''}. ${hit?'Hit':'Miss'}.`,hit?'goodlog':'badlog');"
+    if base.count(mp_hero_log) != 1:
+        raise SystemExit("Expected one active multiplayer hero attack result log.")
+    base = base.replace(
+        mp_hero_log,
+        "log(`${player.name} attacks ${e.name}: ${roll.adv?'advantage ':roll.dis?'disadvantage ':''}d20 ${roll.r} + ${bonus} = ${roll.total} vs AC ${ac}${cover?' (cover)':''}. ${roll.r===20||automaticCritical?'Critical hit':hit?'Hit':'Miss'}.`,hit?'goodlog':'badlog');",
+    )
+    mp_hero_critical = "if(critical)dmg+=rollDice(w.damage);"
+    if base.count(mp_hero_critical) != 1:
+        raise SystemExit("Expected one multiplayer hero weapon critical-damage expression.")
+    base = base.replace(
+        mp_hero_critical,
+        "const criticalDice=sr18CriticalExtraDice(w.damage);if(critical&&criticalDice)dmg+=rollDice(criticalDice);",
+    )
 
     # Migrate direct-die companion and class-feature attack totals which do not
     # use sr11RollAttack. These expressions include the selected d20 plus the
