@@ -1103,12 +1103,13 @@ try{
   assert('V11 solo monster critical damage doubles dice without doubling flat modifiers',soloFlatCriticalHero.hp===19&&T18.state.log.some(x=>/Critical hit/.test(x.msg)),JSON.stringify({hp:soloFlatCriticalHero.hp,log:T18.state.log}));
 
   const downedCriticalHero=actor({id:'downed-critical-hero',name:'Downed Critical Hero',hp:0,maxHp:20,deathFailure:0,deathSuccess:0,stable:false,unconscious:true,conditions:[{name:'unconscious',duration:999}]});
-  const downedCriticalEnemy={id:'downed-critical-enemy',name:'Downed Critical Monster',attack:100,damage:'1d6',pos:{x:2,y:1}};
+  const downedCriticalEnemy={id:'downed-critical-enemy',name:'Downed Critical Monster',attack:100,damage:'1d6',attackDownedHero:true,pos:{x:2,y:1}};
   T18.state={character:downedCriticalHero,campaign:{companions:[]},combat:{mp:null,downed:true,heroPos:{x:1,y:1},enemies:[downedCriticalEnemy],map:{width:8,height:6,terrain:[]},round:1},log:[]};
   const priorDownedCriticalRandom=math.random;math.random=()=>0.5;
   try{D.soloMonsterAttack(downedCriticalEnemy);}finally{math.random=priorDownedCriticalRandom;}
   assert('A solo monster critical hit against an unconscious hero at 0 HP causes two failed death saves',downedCriticalHero.hp===0&&downedCriticalHero.deathFailure===2&&!downedCriticalHero.mpDead&&!downedCriticalEnemy._sr29AttackCriticalPending,JSON.stringify({hp:downedCriticalHero.hp,failures:downedCriticalHero.deathFailure,dead:downedCriticalHero.mpDead,log:T18.state.log}));
   assert('The active solo monster turn dispatcher does not skip a downed hero as its target',html.includes('if(sr9Dist(e.pos,b.heroPos)<=5)sr10EnemyAttack(e);')&&!html.includes('if(sr9Dist(e.pos,b.heroPos)<=5&&state.character.hp>0)sr10EnemyAttack(e);'));
+  assert('The active V11 monster attack only targets a downed hero when explicitly instructed',html.includes('if(!e||c.hp<=0&&!e.attackDownedHero)return;'));
   const deathHero=actor({id:'solo-death-hero',name:'Solo Death Hero',hp:0,maxHp:20,deathSuccess:2,deathFailure:0,stable:false,unconscious:true,conditions:[{name:'unconscious',duration:999}]});
   T18.state={character:deathHero,campaign:{companions:[],day:1},combat:{mp:null,downed:true,round:2,enemies:[]},log:[]};
   const priorDeathRandom=math.random;math.random=()=>0.5;
