@@ -49,9 +49,9 @@ function sr29SoloFreeHands(actor){
   const unarmed=!mainEquipped||!weaponName||/^(none|unarmed|unarmed strike)$/i.test(weaponName);
   const declaredHands=Number(mainSource?.hands??mainSource?.handedness??weapon.hands??weapon.handedness);
   const properties=[...(Array.isArray(weapon.properties)?weapon.properties:[]),...(Array.isArray(mainSource?.properties)?mainSource.properties:[])].map(x=>String(x).toLowerCase());
-  const twoHanded=weapon.twoHanded===true||mainSource?.twoHanded===true||properties.includes('two-handed')||
+  const twoHanded=!/^hand crossbow$/i.test(weaponName)&&(weapon.twoHanded===true||mainSource?.twoHanded===true||properties.includes('two-handed')||
     /two-handed/i.test(String(weapon.desc||mainSource?.description||''))||
-    /^(greatsword|greataxe|longbow|light crossbow|heavy crossbow)$/i.test(weaponName);
+    /^(greatsword|greataxe|longbow|light crossbow|heavy crossbow)$/i.test(weaponName));
   const mainHands=unarmed?0:(Number.isFinite(declaredHands)&&declaredHands>0
     ?Math.min(2,Math.floor(declaredHands)):(twoHanded?2:1));
   const offHandItem=actor?.offHandWeapon??equipment.offHand;
@@ -69,8 +69,8 @@ function sr29SoloFreeHands(actor){
     (equipmentShield===true)||(equipmentShield&&typeof equipmentShield==='object'&&sr29EquipmentIsEquipped(equipmentShield,true))||
     inventory.some(isEquippedShield);
   // A shield occupying the off-hand is one occupied hand, not two separate items.
-  const offHandIsShield=!!(offHandItem&&typeof offHandItem==='object'&&
-    (String(offHandItem.type??offHandItem.category??'').toLowerCase()==='shield'||/shield/i.test(String(offHandItem.name||''))));
+  const offHandIsShield=!!(offHandItem&&((typeof offHandItem==='string'&&/shield/i.test(offHandItem))||(typeof offHandItem==='object'&&
+    (String(offHandItem.type??offHandItem.category??'').toLowerCase()==='shield'||/shield/i.test(String(offHandItem.name||''))))));
   const occupied=Math.max(0,mainHands)+offHand+(shieldEquipped&&!offHandIsShield?1:0);
   return Math.max(0,2-Math.min(2,occupied));
 }
