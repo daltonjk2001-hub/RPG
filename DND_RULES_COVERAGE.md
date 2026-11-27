@@ -169,3 +169,10 @@ This dashboard maps the D&D reference PDF's Parts I–III and Appendices A–B t
 - Verified against SRD 5.2.1: drinking or administering a Potion of Healing is a Bonus Action.
 - The legacy multiplayer potion path previously consumed the Action. It now checks and consumes the Bonus Action, so a character can drink/administer a potion after using their Action but cannot do so after spending their Bonus Action.
 - Added two regression assertions for both cases. The central Action ledger no longer classifies potions as Action-costing commands.
+
+
+## V29.35 solo Potion of Healing turn behavior
+
+- The solo combat potion path also treated drinking a Potion of Healing as an immediate turn-ending action. Updated it to consume only the Bonus Action during combat, preserve the current turn, and leave the Action available; outside combat it remains usable without a combat action cost.
+- Solo use now rejects a potion after the Bonus Action is spent and does not consume the item on rejection.
+- Added two V10 regression assertions for same-turn continuation and Bonus Action exhaustion.
