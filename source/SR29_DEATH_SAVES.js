@@ -63,7 +63,7 @@ function sr29SoloDeathSave(){
 }
 function sr29SoloAdvanceStableTime(hours){
   const c=state?.character,elapsedHours=Math.max(0,Number(hours)||0);
-  if(!c||!c.stable||Number(c.hp)>0||c.mpDead||elapsedHours<=0)return false;
+  if(!c||state?.combat?.mp||state?.campaign?.multiplayer?.players?.length>1||!c.stable||Number(c.hp)>0||c.mpDead||elapsedHours<=0)return false;
   const required=Math.max(1,Math.min(4,Number(c.stableRecoveryHours)||1));
   c.stableElapsedHours=Math.max(0,Number(c.stableElapsedHours)||0)+elapsedHours;
   if(c.stableElapsedHours<required){if(typeof save==='function')save();return false;}
