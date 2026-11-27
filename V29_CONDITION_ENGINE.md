@@ -362,3 +362,11 @@ Still incomplete: Reincarnate's complete species-specific trait automation and p
 - This advances the slot schema once before slot reservation. Subsequent resolver save/render calls preserve the spent regular or Pact Magic slot instead of rebuilding an older slot map and restoring it.
 - Raise Dead, Reincarnate, Resurrection and True Resurrection regressions now assert that the V3 progression marker is present as soon as each cast starts, then verify the exact one-slot decrease remains after completion and rendering.
 - The prior CI runs passed all other V29 assertions but failed the four post-render slot-persistence checks (408/412).
+
+
+## V29.64 — Preserve V7 V3 spell slots through save/render
+
+- Root cause of the four remaining long-cast regressions: the legacy V5 `sr5Ensure` migration rebuilt spell slots whenever `spellSlotProgressionVersion !== 2`. That condition also matched V7's newer V3 schema and restored expended slots to their full values during save/render.
+- The reproducible V18 builder now changes that legacy initializer to rebuild only when the stored marker is below V2. V7 V3 slot maps and their spent counts are left intact; older saves still migrate forward.
+- The V29.63 long-cast preflight continues to normalize the actual local or remote caster's slot pool before reservation. The four end-to-end tests already assert the V3 marker at cast start and the exact one-slot decrease after completion/save/render.
+- This is a root-level resource-persistence fix, not a test-only workaround. Death/recovery remains **Partial** for the separately listed world-placement, turn-by-turn activity, alternative revival and live device checks.

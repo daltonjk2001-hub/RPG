@@ -469,6 +469,15 @@ def build_runtime() -> str:
     base = base.replace("reliable-v17", "systems-v18")
     base = base.replace("Solo Realms V17 character and client.", "Solo Realms V18 character and client.")
 
+    # The V5 compatibility initializer must not downgrade a V7 V3 slot map.
+    # It historically rebuilt slots whenever the marker was not exactly V2, which
+    # silently restored spent slots during every V7 save/render cycle.
+    legacy_slot_schema_guard = "c.spellSlotProgressionVersion!==2"
+    if base.count(legacy_slot_schema_guard) != 1:
+        raise SystemExit("Expected one legacy V5 spell-slot schema guard; inspect before migrating V7 resource saves.")
+    base = base.replace(legacy_slot_schema_guard, "Number(c.spellSlotProgressionVersion||0)<2")
+
+    # V29 long casts use the same V7 regular/Pact slot pools as ordinary casts.
     combined = base + save_guard + "\n\n" + legacy_ledger + "\n\n" + layer + "\n\n" + studio + "\n\n" + behavior + "\n\n" + gameplay + "\n\n" + screen_layout + "\n\n" + playtest_hardening + "\n\n" + director + "\n\n" + custom_ai_dm + "\n\n" + rules_contract + "\n\n" + condition_engine + "\n\n" + grapple_gameplay + "\n\n" + death_saves + "\n})();\n"
     required_contracts = {
         "six four-hour watches per calendar day": "const SR18_WATCHES_PER_DAY=6;",
@@ -480,8 +489,8 @@ def build_runtime() -> str:
         "V25 campaign rules and d20 contract": "const SR25_VERSION = '25.0.0';",
         "V29 canonical condition engine": "const SR29_VERSION = '29.0.0';",
         "V29.1 live grapple gameplay adapter": "const SR29_GRAPPLE_GAMEPLAY_VERSION='29.1.0';",
-        "V29.63 V7 regular and Pact Magic slot migration for long casts": "const SR29_DEATH_SAVES_VERSION='29.63.0';",
-        "V29.63 V7 regular and Pact Magic slot migration for long casts": "const SR29_DEATH_SAVES_VERSION='29.63.0';",
+        "V29.64 preserves V7 V3 slot pools in legacy save initialization": "const SR29_DEATH_SAVES_VERSION='29.64.0';",
+        "V29.64 preserves V7 V3 slot pools in legacy save initialization": "const SR29_DEATH_SAVES_VERSION='29.64.0';",
         "2024 Dragonborn species is supported by the ancestry schema": "ANCESTRIES.Dragonborn={",
     }
     missing = [label for label, marker in required_contracts.items() if marker not in combined]

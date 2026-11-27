@@ -1335,7 +1335,7 @@ try{
   assert('Monster critical bonus dice preserve flat attack damage modifiers',T18.criticalExtraDice('2d6+4')==='2d6'&&T18.criticalExtraDice('1d8 + 1d6 + 3')==='1d8+1d6'&&T18.criticalExtraDice('1d10-2')==='1d10');
 
   const D=context.__SR29_DEATH_TEST;
-  assert('V29.63 V7 slot progression migration persists through long-cast completion',!!D&&D.version==='29.63.0'&&typeof D.deathSave==='function');
+  assert('V29.64 V7 V3 slot counts survive legacy save/render migration during long casts',!!D&&D.version==='29.64.0'&&typeof D.deathSave==='function');
  const noDoubleSpendCaster=actor({spellSlotsByLevel:{5:1},pactSlotsByLevel:{3:2}});
  const regularSlotPending={slotLevel:5,slotKind:'regular',slotCountBefore:1,legacySpellSlotsBefore:3};
  const regularSlotPayment=RV.commitLongCastSpellSlot(regularSlotPending,noDoubleSpendCaster);

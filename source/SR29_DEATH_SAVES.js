@@ -1,7 +1,7 @@
-/* SOLO REALMS V29.63 — Migrate V7 regular and Pact Magic slot progression before long casts.
-   V29.62 normalize spell-slot progression before long casting.
+/* SOLO REALMS V29.64 — Preserve V7 slot expenditure through the legacy save initializer.
+   V29.63 V7 regular and Pact Magic slot migration for long casts.
    Death saves occur at the downed hero's turn start; three successes stabilize at 0 HP. */
-const SR29_DEATH_SAVES_VERSION='29.63.0';
+const SR29_DEATH_SAVES_VERSION='29.64.0';
 function sr29SoloRemoveUnconscious(c){
   if(!c)return;
   c.unconscious=false;
