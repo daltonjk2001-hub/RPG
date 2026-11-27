@@ -1169,30 +1169,6 @@ if(typeof sr18ResolveMonsterAction==='function'){
     try{return sr29PriorMonsterActionPhase.apply(this,args);}finally{SR29_PHASE=previous;}
   };
 }
-if(typeof damagePlayer==='function'){
-  const sr29PriorDamagePlayer=damagePlayer;
-  damagePlayer=function(...args){
-    const result=sr29PriorDamagePlayer.apply(this,args);
-    sr29RepeatSaveAfterDamage(state?.character,result);
-    return result;
-  };
-}
-if(typeof sr12DamageHero==='function'){
-  const sr29PriorDamageHero=sr12DamageHero;
-  sr12DamageHero=function(player,amount,...args){
-    const result=sr29PriorDamageHero.call(this,player,amount,...args);
-    sr29RepeatSaveAfterDamage(player?.character,result);
-    return result;
-  };
-}
-if(typeof sr12ApplyDamage==='function'){
-  const sr29PriorApplyDamage=sr12ApplyDamage;
-  sr12ApplyDamage=function(enemy,amount,...args){
-    const result=sr29PriorApplyDamage.call(this,enemy,amount,...args);
-    sr29RepeatSaveAfterDamage(enemy,result);
-    return result;
-  };
-}
 if(typeof sr7PlayerAttack==='function'){
   const sr29PriorSoloGridAttack=sr7PlayerAttack;
   sr7PlayerAttack=function(...args){
