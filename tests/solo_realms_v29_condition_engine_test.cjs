@@ -27,6 +27,7 @@ function assert(name,value,detail=''){checks.push({name,pass:!!value,detail:Stri
 function actor(extra={}){return {id:'v29-target',name:'V29 Target',hp:30,maxHp:30,baseSpeed:30,speed:30,
  stats:{STR:10,DEX:10,CON:10,INT:10,WIS:10,CHA:10},conditions:[],activeEffects:[],...extra};}
 try{
+ const revivalPriorRender=context.render;context.render=()=>{};
  const revivalCaster=actor({id:'revival-caster',name:'Revival Caster',classId:'Cleric',level:5,classLevels:{Cleric:5},spells:['Revivify'],preparedSpells:['Revivify'],spellSlotsByLevel:{3:1},actionSpent:false,bonusActionSpent:false,reactionAvailable:true,spellSlotSpentThisTurn:false});
  const revivalCasterPlayer={id:'revival-caster',name:'Revival Caster',connected:true,character:revivalCaster};
  const revivalTarget=actor({id:'revival-target',name:'Revival Target',hp:0,maxHp:24,mpDead:true,mpDowned:true,dead:true,stable:true,unconscious:true,deathAt:Date.now()-30000,deathSaves:3,deathSuccess:0,deathFailure:3,stableRecoveryHours:3,stableElapsedHours:2,conditions:[{name:'unconscious',duration:999}]});
@@ -49,6 +50,7 @@ try{
  const healingDeadTarget=T.gameplay.castSpell(revivalCasterPlayer,'Healing Word','revival-target',true);
  assert('Ordinary healing cannot revive a character whose multiplayer death flag is set',healingDeadTarget===false&&revivalTarget.hp===0&&revivalTarget.mpDead===true&&revivalCaster.spellSlotsByLevel[1]===1&&revivalCaster.bonusActionSpent===false);
  T18.state={character:actor(),campaign:{},combat:null,log:[]};
+ context.render=revivalPriorRender;
 
  assert('Registry contains all 15 SRD conditions',T.names.length===15&&['blinded','charmed','deafened','exhaustion','frightened','grappled','incapacitated','invisible','paralyzed','petrified','poisoned','prone','restrained','stunned','unconscious'].every(n=>T.names.includes(n)));
 
