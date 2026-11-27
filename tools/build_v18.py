@@ -271,7 +271,7 @@ def build_runtime() -> str:
         raise SystemExit("Expected one active V11 solo monster critical-damage expression.")
     base = base.replace(
         solo_v11_critical,
-        "const criticalDice=sr18CriticalExtraDice(e.damage||'1d4');if(critical&&criticalDice)dmg+=rollDice(criticalDice);",
+        "const criticalDice=sr18CriticalExtraDice(e.damage||'1d4');if(critical&&criticalDice)dmg+=rollDice(criticalDice);e._sr29AttackCriticalPending=critical;",
     )
 
     # Route the solo initiative loop through the canonical turn-start death-save procedure.
