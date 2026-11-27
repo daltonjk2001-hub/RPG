@@ -32,35 +32,47 @@ function sr29SoloActiveGrapples(actor){
   const targets=[...(state?.combat?.enemies||[]),state?.character].filter(Boolean);
   return targets.flatMap(target=>sr29Entries(target).filter(item=>item.name==='grappled'&&String(item.grapplerId||item.sourceId||'')===id));
 }
+function sr29EquipmentIsEquipped(item,defaultWhenSlotted=false){
+  if(item===false||item==null)return false;
+  if(typeof item!=='object')return true;
+  if(item.equipped===false||item.isEquipped===false)return false;
+  if(item.equipped===true||item.isEquipped===true)return true;
+  const slot=String(item.equippedSlot??item.slot??'').toLowerCase();
+  return defaultWhenSlotted&&!!slot;
+}
 function sr29SoloFreeHands(actor){
-  const weaponName=String(actor?.weapon||actor?.equipment?.mainHand?.name||actor?.equipment?.mainHand?.item||'').trim();
+  const equipment=actor?.equipment||{};
+  const mainSource=equipment.mainHand!==undefined?equipment.mainHand:actor?.weapon;
+  const mainEquipped=sr29EquipmentIsEquipped(mainSource,true);
+  const weaponName=String((typeof mainSource==='object'?(mainSource.name??mainSource.item??mainSource.id):mainSource)||'').trim();
   const weapon=WEAPONS?.[weaponName]||{};
-  const unarmed=!weaponName||/^(none|unarmed|unarmed strike)$/i.test(weaponName);
-  const declaredHands=Number(weapon.hands??weapon.handedness);
-  const twoHanded=weapon.twoHanded===true||weapon.properties?.includes?.('Two-Handed')||
-    /two-handed/i.test(String(weapon.desc||''))||
-    /^(greatsword|greataxe|longbow|light crossbow|heavy crossbow|crossbow)$/i.test(weaponName);
+  const unarmed=!mainEquipped||!weaponName||/^(none|unarmed|unarmed strike)$/i.test(weaponName);
+  const declaredHands=Number(mainSource?.hands??mainSource?.handedness??weapon.hands??weapon.handedness);
+  const properties=[...(Array.isArray(weapon.properties)?weapon.properties:[]),...(Array.isArray(mainSource?.properties)?mainSource.properties:[])].map(x=>String(x).toLowerCase());
+  const twoHanded=weapon.twoHanded===true||mainSource?.twoHanded===true||properties.includes('two-handed')||
+    /two-handed/i.test(String(weapon.desc||mainSource?.description||''))||
+    /^(greatsword|greataxe|longbow|light crossbow|heavy crossbow)$/i.test(weaponName);
   const mainHands=unarmed?0:(Number.isFinite(declaredHands)&&declaredHands>0
     ?Math.min(2,Math.floor(declaredHands)):(twoHanded?2:1));
-  const offHandItem=actor?.offHandWeapon??actor?.equipment?.offHand;
-  const offHand=offHandItem&&offHandItem!==false?1:0;
+  const offHandItem=actor?.offHandWeapon??equipment.offHand;
+  const offHand=sr29EquipmentIsEquipped(offHandItem,true)?1:0;
   const inventory=Array.isArray(actor?.inventory)?actor.inventory:[];
   const isEquippedShield=item=>{
     if(!item||typeof item!=='object')return false;
     const kind=String(item.type??item.category??item.kind??'').toLowerCase();
     const shield=kind==='shield'||String(item.name||'').toLowerCase().includes('shield');
-    const equipped=item.equipped===true||item.isEquipped===true||
-      ['offhand','off-hand','off hand','shield'].includes(String(item.equippedSlot??item.slot??'').toLowerCase());
-    return shield&&equipped;
+    return shield&&sr29EquipmentIsEquipped(item,true);
   };
-  const equipmentShield=actor?.equipment?.shield;
+  const equipmentShield=equipment.shield;
   const shieldEquipped=actor?.shieldEquipped===true||actor?.equippedShield===true||
-    actor?.shield===true||actor?.offHandShield===true||equipmentShield===true||
-    (equipmentShield&&typeof equipmentShield==='object'&&
-      (equipmentShield.equipped===true||equipmentShield.isEquipped===true||
-       ['offhand','off-hand','off hand','shield'].includes(String(equipmentShield.slot||'').toLowerCase())))||
+    actor?.shield===true||actor?.offHandShield===true||
+    (equipmentShield===true)||(equipmentShield&&typeof equipmentShield==='object'&&sr29EquipmentIsEquipped(equipmentShield,true))||
     inventory.some(isEquippedShield);
-  return Math.max(0,2-Math.min(2,Math.max(0,mainHands)+offHand+(shieldEquipped?1:0)));
+  // A shield occupying the off-hand is one occupied hand, not two separate items.
+  const offHandIsShield=!!(offHandItem&&typeof offHandItem==='object'&&
+    (String(offHandItem.type??offHandItem.category??'').toLowerCase()==='shield'||/shield/i.test(String(offHandItem.name||''))));
+  const occupied=Math.max(0,mainHands)+offHand+(shieldEquipped&&!offHandIsShield?1:0);
+  return Math.max(0,2-Math.min(2,occupied));
 }
 function sr29SoloSaveBonus(target,ability){
   const key=String(ability||'').toUpperCase(),stats=target?.stats||target?.abilityScores||{};
