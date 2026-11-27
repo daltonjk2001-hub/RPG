@@ -731,6 +731,12 @@ try{
   assert('Solo grapple movement charges doubled drag cost and keeps the held target adjacent',html.includes('cost.movementCost')&&html.includes('held.forEach(target=>{target.distance=5;})'));
   assert('Free-hand calculation accounts for unarmed, one-handed, off-hand weapons and equipped shields',T.gameplay?.freeHands?.({})===2&&T.gameplay.freeHands({weapon:'Unarmed Strike'})===2&&T.gameplay.freeHands({weapon:'Dagger'})===1&&T.gameplay.freeHands({weapon:'Dagger',offHandWeapon:'Shortsword'})===0&&T.gameplay.freeHands({weapon:'Dagger',shieldEquipped:true})===0);
   assert('Free-hand calculation recognizes two-handed weapons',T.gameplay.freeHands({weapon:'Greatsword'})===0&&T.gameplay.freeHands({weapon:'Longbow'})===0);
+  assert('An unequipped shield inventory record does not occupy a hand',T.gameplay.freeHands({weapon:'Dagger',inventory:[{type:'shield',equipped:false}]})===1);
+  assert('An equipped shield inventory record occupies the off hand',T.gameplay.freeHands({weapon:'Dagger',inventory:[{type:'shield',equipped:true}]})===0);
+  assert('An explicitly unequipped equipment shield does not occupy a hand',T.gameplay.freeHands({weapon:'Dagger',equipment:{shield:{equipped:false}}})===1);
+  assert('An equipped equipment shield occupies the off hand',T.gameplay.freeHands({weapon:'Dagger',equipment:{shield:{equipped:true}}})===0);
+  assert('Custom equipped main-hand and off-hand slots are recognized',T.gameplay.freeHands({equipment:{mainHand:{name:'Dagger'},offHand:{name:'Shortsword'}}})===0);
+  assert('A hand crossbow remains one-handed when weapon metadata does not specify otherwise',T.gameplay.freeHands({weapon:'Hand Crossbow'})===1);
  assert('Solo monster targets choose the stronger legal grapple save',T.gameplay.chooseTargetSave(actor({stats:{STR:10,DEX:16,CON:10,INT:10,WIS:10,CHA:10}}))==='DEX');
  assert('Restrained targets account for Dexterity-save disadvantage when choosing',T.gameplay.chooseTargetSave(actor({stats:{STR:10,DEX:16,CON:10,INT:10,WIS:10,CHA:10},conditions:['restrained']}))==='STR');
  assert('Multiplayer heroes use the V29 Unarmed Strike grapple adapter',typeof T.gameplay.multiplayerStartGrapple==='function'&&html.includes('sr29MpStartGrapple(player,targetId||null)'));
