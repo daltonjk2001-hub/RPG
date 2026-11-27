@@ -1116,6 +1116,12 @@ try{
   deathHero.deathFailure=0;deathHero.deathSuccess=0;deathHero.hp=0;deathHero.stable=true;deathHero.unconscious=true;T18.state.combat.downed=true;
   const stableBefore=T18.state.log.length;const stableNoRoll=D.deathSave();
   assert('A stable solo hero skips further death saves until damaged or healed',stableNoRoll===false&&deathHero.deathSuccess===0&&T18.state.log.length===stableBefore);
+
+  const recoveryHours=deathHero.stableRecoveryHours;
+  const earlyStableRecovery=D.advanceStableTime(Math.max(0,recoveryHours-1));
+  assert('Stable solo recovery waits for the rolled 1d4-hour interval',earlyStableRecovery===false&&deathHero.hp===0&&deathHero.stable===true&&Number(deathHero.stableElapsedHours)===Math.max(0,recoveryHours-1));
+  const completedStableRecovery=D.advanceStableTime(1);
+  assert('A stable solo hero regains 1 HP and consciousness after the rolled interval',completedStableRecovery===true&&deathHero.hp===1&&!deathHero.stable&&!deathHero.unconscious&&!T18.state.combat.downed);
   deathHero.stable=false;deathHero.deathFailure=1;deathHero.mpDead=false;deathHero.deathAt=null;deathHero.hp=0;T18.state.combat.downed=true;
   const ordinaryDownedDamage=D.damageAtZero(1);
   assert('Damage to a solo hero at 0 HP adds one failed death save',ordinaryDownedDamage.failures===1&&!ordinaryDownedDamage.dead&&deathHero.deathFailure===2);
