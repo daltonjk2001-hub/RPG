@@ -930,6 +930,9 @@ if(typeof sr14CastSpellComplete==='function'){
     const hadCharacterPosition=!!caster&&Object.prototype.hasOwnProperty.call(caster,'position');
     const previousCharacterPosition=hadCharacterPosition&&caster.position&&typeof caster.position==='object'?{...caster.position}:caster?.position;
     let teleportPlan=null;
+    if(effect?.kind==='teleport'&&!combat){
+      toast('Non-combat travel teleport is not implemented yet.');return false;
+    }
     if(effect?.kind==='teleport'&&combat){
       const teleportRange=sr29PlayerTeleportRange(spellName,spell);
       if(!Number.isFinite(teleportRange)||teleportRange<=0){toast('This teleport needs a supported range and destination rule before it can be used in tactical combat.');return false;}
