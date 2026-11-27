@@ -229,3 +229,14 @@ Death and recovery remain Partial until multiplayer stable recovery, resurrectio
 - Full regression and V18 hardening both pass on the tested code commit; the V29 condition-engine suite reports **341/341 assertions passed**.
 
 This closes the automated multiplayer stable-recovery save/import continuity check. It does not replace live two-device reconnect/resume testing. Death/revival coverage remains **Partial** pending the complete remaining damage-source and resurrection-effect audits, plus human solo and co-op playtests.
+
+## V29.49 — Revival eligibility windows and death-state cleanup
+
+- Added a shared revival eligibility validator at the V18 SRD52 spell-cast boundary. A target must be at 0 HP, marked dead, and have a finite recorded `deathAt`; a merely stable or unconscious character is not treated as dead.
+- The validator applies the 2024 spell time windows: Revivify 1 minute; Raise Dead and Reincarnate 10 days; Resurrection 100 calendar years; True Resurrection 200 calendar years. Resurrection limits use calendar-year arithmetic rather than a fixed 365-day approximation, and valid pre-1970 Unix timestamps are accepted.
+- Explicit ally IDs resolve against the campaign multiplayer roster even if the current combat context has transitioned; this prevents a remote target from silently falling back to the active caster.
+- After a successful supported revival that raises HP above 0, the target's dead/downed/stable/unconscious flags, death-save counters, death timestamp, and stable-recovery timer fields are cleared. Ordinary Healing Word cannot revive a target marked dead through the multiplayer roster path.
+- Added boundary and cast-path regressions for the one-minute, ten-day, 100-calendar-year and 200-calendar-year cutoffs; missing/future death timestamps; stable-at-0-HP rejection; stale metadata cleanup; and ordinary healing against a dead multiplayer target.
+- **Verification on commit `e9d3721183704efd433255102419e8ae18d55c2f`:** full regression and V18 hardening both passed; V29 condition-engine suite reported **351/351 assertions passed**.
+
+This is not a complete resurrection implementation. Spell-specific exclusions and effects still need implementation and tests: old-age death; prior Undead status where applicable; missing vital parts; consumed material component and casting-time enforcement; Raise Dead/Resurrection D20 penalties and the Resurrection caster drawback; Reincarnate's new species body and species-trait replacement; True Resurrection's full restoration/Undead conversion/new-body behavior; and alternate solo-companion, legacy, and party-healing routes. Death/recovery remains **Partial** pending those audits and live solo/two-device co-op playtests.
