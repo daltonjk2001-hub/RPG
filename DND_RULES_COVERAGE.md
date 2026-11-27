@@ -154,3 +154,11 @@ This dashboard maps the D&D reference PDF's Parts I–III and Appendices A–B t
 - Corrected the legacy Cleric Divine Spark path to consume an Action, and the Warlock Eldritch Blast path to check/consume an Action rather than being blocked by a spent Bonus Action.
 - Arcane Recovery is now rejected during combat and no longer consumes a Bonus Action; it remains a Short Rest feature.
 - Updated the Action Surge feature label and added three regression assertions covering Fighter, Cleric, and Wizard costs. Broader class-feature timing remains Partial.
+
+
+## V29.33 Ready action economy gate
+
+- The legacy multiplayer Ready action previously bypassed the Action-spent check and forcibly set `reactionAvailable=true`, allowing a character to Ready after spending their Action or regain a Reaction that had already been used.
+- Ready now requires an unused Action and an available Reaction, consumes the Action, marks the readied attack, and preserves (rather than refreshes) the Reaction.
+- Added three regression assertions covering valid Ready, spent Action, and spent Reaction cases.
+- The current Ready trigger model remains simplified (it waits for the next qualifying enemy strike); full player-defined trigger/action resolution remains open.
