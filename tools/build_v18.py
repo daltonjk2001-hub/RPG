@@ -322,6 +322,30 @@ def build_runtime() -> str:
         "const criticalDice=sr18CriticalExtraDice(e.damage||'1d4');if(critical&&criticalDice)dmg+=rollDice(criticalDice);e._sr29AttackCriticalPending=critical;",
     )
 
+    # Multiplayer enemy attacks use the same condition-based critical rule and
+    # carry a one-shot critical marker into the downed-hero damage adapter.
+    mp_enemy_attack = "const roll=sr11RollAttack(base+(pack?2:0),enemy,c,true),cover=sr11Cover(target.pos,enemy.pos),ac=sr4WithCharRead(player,computeAC)+(c.buffRounds>0?2:0)+cover,hit=roll.r===20||(roll.r!==1&&roll.total>=ac);"
+    if base.count(mp_enemy_attack) != 1:
+        raise SystemExit("Expected one active multiplayer enemy attack resolver.")
+    base = base.replace(
+        mp_enemy_attack,
+        "const roll=sr11RollAttack(base+(pack?2:0),enemy,c,true),cover=sr11Cover(target.pos,enemy.pos),ac=sr4WithCharRead(player,computeAC)+(c.buffRounds>0?2:0)+cover,hit=roll.r===20||(roll.r!==1&&roll.total>=ac),critical=roll.r===20||(hit&&sr29CriticalOnHit(c,{hit,distance}));",
+    )
+    mp_enemy_log = "log(`${enemy.name} ${roll.adv?'attacks with advantage':roll.dis?'attacks with disadvantage':'attacks'} ${player.name}: d20 ${roll.r} + ${base+(pack?2:0)} = ${roll.total} vs AC ${ac}. ${hit?'Hit':'Miss'}.`,hit?'badlog':'goodlog');"
+    if base.count(mp_enemy_log) != 1:
+        raise SystemExit("Expected one multiplayer enemy attack result log.")
+    base = base.replace(
+        mp_enemy_log,
+        "log(`${enemy.name} ${roll.adv?'attacks with advantage':roll.dis?'attacks with disadvantage':'attacks'} ${player.name}: d20 ${roll.r} + ${base+(pack?2:0)} = ${roll.total} vs AC ${ac}. ${critical?'Critical hit':hit?'Hit':'Miss'}.`,hit?'badlog':'goodlog');",
+    )
+    mp_enemy_damage = "if(hit){let damage=rollDice(enemy.damage||'1d4');if(roll.r===20)damage+=rollDice(enemy.damage||'1d4');sr12DamageHero(player,damage,'physical',enemy);}"
+    if base.count(mp_enemy_damage) != 1:
+        raise SystemExit("Expected one multiplayer enemy damage application.")
+    base = base.replace(
+        mp_enemy_damage,
+        "if(hit){let damage=rollDice(enemy.damage||'1d4');if(critical)damage+=rollDice(enemy.damage||'1d4');enemy._sr29AttackCriticalPending=critical;sr12DamageHero(player,damage,'physical',enemy);}",
+    )
+
     # Route the solo initiative loop through the canonical turn-start death-save procedure.
     solo_downed_turn = "if(state.character.hp<=0){downed();if(!state.combat)return;const skipped=b.turnIndex+1;"
     if base.count(solo_downed_turn) != 1:
