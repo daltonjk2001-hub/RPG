@@ -92,7 +92,8 @@ if(typeof damagePlayer==='function'){
         if(!b.downed)sr29SoloMarkDowned();
         const source=args[1]&&typeof args[1]==='object'?args[1]:null;
         const meta=args[2]&&typeof args[2]==='object'?args[2]:{};
-        sr29SoloDamageAtZero(amount,source,meta);
+        const deathResult=sr29SoloDamageAtZero(amount,source,meta);
+        if(deathResult.dead&&typeof render==='function')render();
       }else if(hpBefore>0&&Number(c.hp)<=0){
         sr29SoloMarkDowned();
       }
