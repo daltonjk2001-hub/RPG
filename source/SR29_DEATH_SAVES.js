@@ -115,34 +115,18 @@ if(typeof sr12DeathSave==='function'){
 if(typeof sr12DamageHero==='function'){
   const sr29PriorMultiplayerDamageHero=sr12DamageHero;
   sr12DamageHero=function(player,...args){
-    const c=player?.character,hpBefore=Number(c?.hp)||0,wasStable=!!c?.stable;
-    const downedBefore=!!(c&&hpBefore<=0&&!c.mpDead);
-    const amount=Math.max(0,Number(args[0])||0),damageType=args[1]||'physical';
-    const resistanceAdjusted=c?.rageRounds>0&&c?.rageResist&&['physical','bludgeoning','piercing','slashing'].includes(damageType)?Math.ceil(amount/2):amount;
-    const damageAfterGuard=Math.max(0,resistanceAdjusted-Math.max(0,Number(c?.guard)||0));
+    const c=player?.character,wasStable=!!c?.stable;
     const source=args[2]&&typeof args[2]==='object'?args[2]:null;
     const hasCriticalMarker=!!source&&Object.prototype.hasOwnProperty.call(source,'_sr29AttackCriticalPending');
-    const pendingCritical=source?._sr29AttackCriticalPending===true;
-    const criticalSource=pendingCritical||source?.lastAttackCritical===true;
     const result=sr29PriorMultiplayerDamageHero.call(this,player,...args);
     if(c&&wasStable&&!c.stable){delete c.stableRecoveryHours;delete c.stableElapsedHours;}
-    if(c&&downedBefore&&damageAfterGuard>0&&!c.mpDead){
-      delete c.stableRecoveryHours;delete c.stableElapsedHours;
-      c.stable=false;c.mpDowned=true;c.unconscious=true;
-      const critical=criticalSource;
-      const massive=damageAfterGuard>=Math.max(1,Number(c.maxHp)||Infinity);
-      const failures=massive?3:(critical?2:1);
-      console.log('V29 MP downed damage diagnostic',{amount,damageAfterGuard,maxHp:c.maxHp,critical,massive,priorFailures:c.deathFailure,failures,source});
-      c.deathFailure=Math.min(3,(Number(c.deathFailure)||0)+failures);
-      if(massive||c.deathFailure>=3){
-        c.mpDead=true;c.mpDowned=true;c.deathAt=Date.now();
-        log(massive?'Massive damage at 0 HP causes instant death.':`Damage causes ${failures} failed death save(s); ${player?.name||c.name||'A hero'} has died.`,'badlog');
-      }else{
-        log(`Damage at 0 HP causes ${failures} failed death save(s) (${c.deathFailure}/3).`,'badlog');
-      }
-      if(typeof sr4QueueSync==='function')sr4QueueSync();
+    if(c?.mpDead&&!Number(c.deathAt))c.deathAt=Date.now();
+    // V13.2 already owns multiplayer downed-hit failures. This adapter only
+    // consumes the V29 source marker after that canonical transaction.
+    if(source&&(hasCriticalMarker||source.lastAttackCritical===true)){
+      delete source._sr29AttackCriticalPending;
+      delete source.lastAttackCritical;
     }
-    if(hasCriticalMarker)delete source._sr29AttackCriticalPending;
     return result;
   };
 }
