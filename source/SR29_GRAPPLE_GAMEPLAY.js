@@ -411,12 +411,30 @@ if(typeof sr13ProcessEnemyGroup==='function'&&typeof sr131OldEnemyTurn==='functi
     return acted;
   };
 }
+function sr29AppendageCanGrapple(appendage,explicitList=false){
+  if(appendage===false||appendage==null)return false;
+  if(typeof appendage==='string'){
+    const kind=appendage.toLowerCase();
+    return /hand|arm|tentacle|pseudopod|grasping limb|manipulator/.test(kind);
+  }
+  if(typeof appendage!=='object')return false;
+  if(appendage.canGrapple===false||appendage.grappleCapable===false||appendage.usableForGrapple===false||appendage.functional===false)return false;
+  if(appendage.canGrapple===true||appendage.grappleCapable===true||appendage.usableForGrapple===true)return true;
+  const kind=String(appendage.type??appendage.kind??appendage.name??'').toLowerCase();
+  if(/wing|leg|foot|hoof|fin|antenna|horn|tail|head|jaw/.test(kind))return false;
+  return explicitList&&/hand|arm|tentacle|pseudopod|grasping limb|manipulator/.test(kind);
+}
+function sr29CountGrappleAppendages(collection,explicitList=false){
+  if(Array.isArray(collection))return collection.filter(item=>sr29AppendageCanGrapple(item,explicitList)).length;
+  if(collection&&typeof collection==='object')return Object.values(collection).filter(item=>sr29AppendageCanGrapple(item,explicitList)).length;
+  return null;
+}
 function sr29CreatureGrappleAppendageCapacity(actor){
   const explicit=actor?.grappleAppendageCount??actor?.appendageCount??actor?.handCount??actor?.hands??actor?.tentacleCount;
-  if(Number.isFinite(Number(explicit)))return Math.max(0,Math.floor(Number(explicit)));
-  if(Array.isArray(actor?.grappleAppendages))return actor.grappleAppendages.length;
-  if(Array.isArray(actor?.appendages))return actor.appendages.length;
-  if(actor?.appendages&&typeof actor.appendages==='object')return Object.keys(actor.appendages).length;
+  if(explicit!==undefined&&explicit!==null&&Number.isFinite(Number(explicit)))return Math.max(0,Math.floor(Number(explicit)));
+  if(Array.isArray(actor?.grappleAppendages))return sr29CountGrappleAppendages(actor.grappleAppendages,true);
+  const anatomy=sr29CountGrappleAppendages(actor?.appendages,false);
+  if(anatomy!==null&&anatomy>0)return anatomy;
   const kind=String(actor?.type||actor?.kind||actor?.name||'').toLowerCase();
   return /humanoid|giant|goblin|orc|human|elf|dwarf|gnoll|bandit|guard|veteran|cultist/.test(kind)?2:1;
 }
