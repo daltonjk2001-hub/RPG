@@ -480,7 +480,7 @@ def build_runtime() -> str:
         "V25 campaign rules and d20 contract": "const SR25_VERSION = '25.0.0';",
         "V29 canonical condition engine": "const SR29_VERSION = '29.0.0';",
         "V29.1 live grapple gameplay adapter": "const SR29_GRAPPLE_GAMEPLAY_VERSION='29.1.0';",
-        "V29.50 death-save, revival eligibility and return penalties": "const SR29_DEATH_SAVES_VERSION='29.50.0';",
+        "V29.51 resurrection caster tax and return penalties": "const SR29_DEATH_SAVES_VERSION='29.51.0';",
     }
     missing = [label for label, marker in required_contracts.items() if marker not in combined]
     if missing:
