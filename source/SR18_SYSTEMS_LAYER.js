@@ -22,7 +22,8 @@ function sr18InferSpellEffect(name,sp,base={kind:'utility'}){
  const damage=sr18DamageExpr(sp),area=sr18Area(sp,desc),save=sr18SaveAbility(sp,desc),condition=sr18Text(sp?.condition||'').toLowerCase()||sr18DetectCondition(desc);
  if(area.active){effect.area=true;effect.shape=area.shape;effect.size=area.size;}
  const damageType=sr18Text(sp?.damageType||desc.match(/\b(bludgeoning|piercing|slashing|acid|cold|fire|force|lightning|necrotic|poison|psychic|radiant|thunder)\s+damage\b/i)?.[1]||'').toLowerCase();if(damageType)effect.type=damageType;
- if(sp?.heal||/regains?[^.]{0,140}hit points|hit points?[^.]{0,140}regain|restores?[^.]{0,100}hit points/i.test(desc))effect.kind='heal';
+ if(name==='Reincarnate')effect.kind='revive';
+ else if(sp?.heal||/regains?[^.]{0,140}hit points|hit points?[^.]{0,140}regain|restores?[^.]{0,100}hit points/i.test(desc))effect.kind='heal';
  else if(/returns? (?:the creature|a creature|the target|it) to life|resurrect|revive|dead creature.*returns? to life/i.test(desc))effect.kind='revive';
  else if(base.kind==='utility'&&/(?:teleport|teleports|transport(?:s)? .*? instantly|you disappear|reappear in an unoccupied space|move instantly to)/i.test(desc))effect.kind='teleport';
  else if(base.kind==='utility'&&/(?:summon|conjure|calls? forth|creates? .*?(?:spirit|creature|servant)|manifests? .*? ally)/i.test(desc))effect.kind='summon';
@@ -620,6 +621,7 @@ function sr18RunTests(){
   const spells=[
    ['A flame spell',{description:'Each creature in a 20-foot-radius Sphere makes a Dexterity saving throw, taking 8d6 fire damage on a failed save.',damage:'8d6',save:true,saveAbility:'DEX',area:20,areaShape:'sphere',damageType:'fire'},{kind:'saveDamage',area:true,shape:'sphere',size:20,save:'DEX',type:'fire'}],
    ['Restorative magic',{description:'A creature regains 2d8 hit points.',heal:true,damage:'2d8'},{kind:'heal'}],
+   ['Reincarnate',{description:'You touch a dead Humanoid or a piece of one. The spell forms a new body for it and calls the soul to enter that body.'},{kind:'revive'}],
    ['Binding magic',{description:'The target must succeed on a Wisdom saving throw or be restrained for 1 minute.',condition:'restrained',save:true,saveAbility:'WIS'},{kind:'control',condition:'restrained',save:'WIS'}],
    ['Summoning magic',{description:'You summon a spectral creature that obeys your commands.'},{kind:'summon'}],
    ['Protective magic',{description:'You gain resistance to fire damage for 1 hour.'},{kind:'resistance'}],
