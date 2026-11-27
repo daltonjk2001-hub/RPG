@@ -1,7 +1,7 @@
-/* SOLO REALMS V29.60 — Structured spell-slot payment at long-cast completion.
-   V29.59 interruptible long-casting activity and campaign minute clock.
+/* SOLO REALMS V29.61 — Completion-time slot accounting for long casts.
+   V29.60 structured spell-slot payment at long-cast completion.
    Death saves occur at the downed hero's turn start; three successes stabilize at 0 HP. */
-const SR29_DEATH_SAVES_VERSION='29.60.0';
+const SR29_DEATH_SAVES_VERSION='29.61.0';
 function sr29SoloRemoveUnconscious(c){
   if(!c)return;
   c.unconscious=false;
@@ -904,7 +904,7 @@ if(typeof createCharacter==='function'){
   };
 }
 
-// V29.60: long-cast slot payment uses the structured regular/pact choice and never double-spends.
+// V29.61: compare the slot count immediately before resolution, not before the activity began.
 let SR29_LONG_CAST_SEQUENCE=0;
 function sr29LongCastMinutes(spell){
   const value=String(spell?.castingTime||'Action').trim();
@@ -1028,10 +1028,10 @@ function sr29CommitLongCastSpellSlot(pending,caster){
   const kind=pending?.slotKind==='pact'?'pact':'regular';
   const map=kind==='pact'?caster?.pactSlotsByLevel:caster?.spellSlotsByLevel;
   if(map&&typeof map==='object'){
-    const before=Number(pending.slotCountBefore),current=Number(map[level])||0;
+    const before=Number(pending.completionSlotCountBefore??pending.slotCountBefore),current=Number(map[level])||0;
     if(Number.isFinite(before)&&current<before){
       caster.spellSlotSpentThisTurn=true;
-      return {ok:true,spent:true,alreadySpent:true,level,kind};
+      return {ok:true,spent:true,alreadySpent:true,level,kind,beforeCount:before,afterCount:current};
     }
     if(current<=0)return {ok:false,spent:false,reason:`The selected ${kind} level ${level} slot is no longer available.`};
     if(typeof sr7ConsumeCastSlot==='function')sr7ConsumeCastSlot(caster,{level,kind});
@@ -1041,14 +1041,14 @@ function sr29CommitLongCastSpellSlot(pending,caster){
       else if(kind==='regular')caster.spellSlots=Math.max(0,(Number(caster.spellSlots)||0)-1);
     }
     caster.spellSlotSpentThisTurn=true;
-    return {ok:true,spent:true,alreadySpent:false,level,kind};
+    return {ok:true,spent:true,alreadySpent:false,level,kind,beforeCount:Number.isFinite(before)?before:null,afterCount:Number(map[level])||0};
   }
-  const before=Number(pending.legacySpellSlotsBefore),current=Number(caster?.spellSlots);
+  const before=Number(pending.completionLegacySpellSlotsBefore??pending.legacySpellSlotsBefore),current=Number(caster?.spellSlots);
   if(Number.isFinite(before)&&Number.isFinite(current)){
-    if(current<before){caster.spellSlotSpentThisTurn=true;return {ok:true,spent:true,alreadySpent:true,level,kind:'legacy'};}
+    if(current<before){caster.spellSlotSpentThisTurn=true;return {ok:true,spent:true,alreadySpent:true,level,kind:'legacy',beforeCount:before,afterCount:current};}
     if(current<=0)return {ok:false,spent:false,reason:'No spell slot remains at long-cast completion.'};
     caster.spellSlots=current-1;caster.spellSlotSpentThisTurn=true;
-    return {ok:true,spent:true,alreadySpent:false,level,kind:'legacy'};
+    return {ok:true,spent:true,alreadySpent:false,level,kind:'legacy',beforeCount:before,afterCount:caster.spellSlots};
   }
   return {ok:false,spent:false,reason:'The selected spell slot could not be committed.'};
 }
@@ -1066,6 +1066,9 @@ function sr29AdvancePendingLongCast(minutes=10){
   log(`${pending.spellName}: ${pending.elapsedMinutes}/${pending.requiredMinutes} minutes of focused casting complete.`,'rolllog');
   if(remaining>0){sr29LongCastSaveAndRender();return {ok:true,completed:false,elapsedMinutes:pending.elapsedMinutes,remainingMinutes:remaining,world};}
   const player={id:pending.casterId,name:pending.casterName,character:caster};
+  const completionMap=pending.slotKind==='pact'?caster?.pactSlotsByLevel:caster?.spellSlotsByLevel;
+  pending.completionSlotCountBefore=completionMap&&typeof completionMap==='object'?Number(completionMap[pending.slotLevel])||0:null;
+  pending.completionLegacySpellSlotsBefore=Number.isFinite(Number(caster?.spellSlots))?Number(caster.spellSlots):null;
   const result=sr29CastBeforeLongCasting.call(null,player,pending.spellName,pending.targetId,pending.fromMP,pending.castMode);
   const slotPayment=result?sr29CommitLongCastSpellSlot(pending,caster):{ok:false,spent:false,reason:'Spell resolution failed.'};
   const completed=!!result&&slotPayment.ok;

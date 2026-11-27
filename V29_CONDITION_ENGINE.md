@@ -340,3 +340,10 @@ Still incomplete: Reincarnate's complete species-specific trait automation and p
 - At completion, the payment step checks whether the existing spell resolver already decremented the selected pool. If so, it does not charge again; otherwise it spends exactly one selected regular or pact slot and updates slot totals.
 - If the spell cannot resolve or the selected slot is no longer available, completion is not reported as successful. No slot is spent when the cast is interrupted.
 - Regression coverage checks regular-slot payment, pact-slot payment, and idempotent no-double-charge behavior. Death/recovery remains **Partial**.
+
+
+## V29.61 — Completion-time slot accounting
+
+- Pending casts still retain the selected slot level and regular/Pact Magic type. The final slot transaction now snapshots the live slot count immediately before the underlying resolver runs, rather than comparing against a count captured when the cast began.
+- If the resolver has already spent one selected slot, the long-cast completion step records that payment and does not spend again. If the resolver leaves the count unchanged, the completion step commits one slot from the saved regular or pact pool.
+- End-to-end Raise Dead, Reincarnate, Resurrection and True Resurrection regressions now compare the live before/after slot count and require an exact one-slot decrease, independent of character normalization.
