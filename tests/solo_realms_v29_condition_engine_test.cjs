@@ -1090,7 +1090,15 @@ try{
   const priorSoloCriticalRandom=math.random;math.random=()=>0.5;
   try{D.soloMonsterAttack(soloCriticalEnemy);}finally{math.random=priorSoloCriticalRandom;}
   assert('V10 solo initiative monster attacks gain Advantage and automatic critical damage against a Paralyzed target within 5 feet',soloCriticalHero.hp===22&&T18.state.log.some(x=>/Critical hit/.test(x.msg)),JSON.stringify({hp:soloCriticalHero.hp,log:T18.state.log}));
-  assert('V10 solo initiative monster attacks use the canonical condition attack and critical resolvers',html.includes('conditionMode=sr29AttackState(e,c,{melee:true,distance:5})')&&html.includes('automaticCritical=hit&&sr29CriticalOnHit(c,{hit,distance:5})')&&html.includes('if(critical)dmg+=rollDice(e.damage||\'1d4\');'));
+  assert('V10 solo initiative monster attacks use the canonical condition attack and critical resolvers',html.includes('conditionMode=sr29AttackState(e,c,{melee:true,distance:5})')&&html.includes('automaticCritical=hit&&sr29CriticalOnHit(c,{hit,distance:5})')&&html.includes('const criticalDice=sr18CriticalExtraDice(e.damage||\'1d4\');if(critical&&criticalDice)dmg+=rollDice(criticalDice);'));
+
+  const soloFlatCriticalHero=actor({id:'solo-flat-critical-hero',name:'Solo Flat Critical Hero',hp:30,maxHp:30,armor:'Traveler’s clothes'});
+  const soloFlatCriticalEnemy={id:'solo-flat-critical-enemy',name:'Solo Flat Critical Monster',attack:100,damage:'1d6+3',pos:{x:2,y:1}};
+  T18.state={character:soloFlatCriticalHero,campaign:{companions:[]},combat:{mp:null,heroPos:{x:1,y:1},enemies:[soloFlatCriticalEnemy],map:{width:8,height:6,terrain:[]},round:1},log:[]};
+  T.apply(soloFlatCriticalHero,'paralyzed','permanent','solo flat critical regression');
+  const priorSoloFlatRandom=math.random;math.random=()=>0.5;
+  try{D.soloMonsterAttack(soloFlatCriticalEnemy);}finally{math.random=priorSoloFlatRandom;}
+  assert('V10 solo monster critical damage doubles dice without doubling flat modifiers',soloFlatCriticalHero.hp===19&&T18.state.log.some(x=>/Critical hit/.test(x.msg)),JSON.stringify({hp:soloFlatCriticalHero.hp,log:T18.state.log}));
   const deathHero=actor({id:'solo-death-hero',name:'Solo Death Hero',hp:0,maxHp:20,deathSuccess:2,deathFailure:0,stable:false,unconscious:true,conditions:[{name:'unconscious',duration:999}]});
   T18.state={character:deathHero,campaign:{companions:[],day:1},combat:{mp:null,downed:true,round:2,enemies:[]},log:[]};
   const priorDeathRandom=math.random;math.random=()=>0.5;
