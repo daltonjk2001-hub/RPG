@@ -4240,6 +4240,7 @@ function sr12DeathSave(player){
 function sr12HeroAction(player,action,spellName,targetId,data={}){
   const c=player?.character,b=state.combat;if(!b?.mp||!player||!c)return false;
   const current=sr12TurnActor();if(current?.kind!=='hero'||current.id!==player.id){toast(`It is ${current?.name||'another actor'}’s turn.`);return false;}
+  if(!sr136ActionAvailable(c,action))return false;
   let ok=false,endTurn=false;
   sr12WithHero(player,()=>{
     switch(action){
@@ -5474,6 +5475,12 @@ function sr136MoveTiedHero(b,index,direction){
   b.initiativeOrder=order.map(x=>({...x,indexes:x.indexes?[...x.indexes]:undefined}));
   return true;
 }
+function sr136ActionAvailable(character,action){
+  const actionCost=['attack','defend','dodge','disengage','shove','grapple','help','hide','ready','interact','flee','potion'];
+  if(!actionCost.includes(String(action||'')))return true;
+  if(character?.actionSpent){toast('Your Action is already spent.');return false;}
+  return true;
+}
 function sr136ReadyAction(player){
   const c=player?.character;if(!c)return false;
   if(c.actionSpent){toast('Your Action is already spent.');return false;}
@@ -5550,6 +5557,9 @@ function sr136RunTests(){
     ok('Alert uses the acting character level for its proficiency bonus, not the host character',sr13InitiativeModifier({character:{level:9,stats:{DEX:14},feats:['Alert']}},true)===6);
     state=beforeAlertState;
     ok('Monster initiative falls back to its Dexterity score when nullable modifier fields are absent',sr13InitiativeModifier({initiativeModifier:null,dex:null,stats:{DEX:18}},false)===4);
+    const actionNames=['attack','defend','dodge','disengage','shove','grapple','help','hide','ready','interact','flee','potion'];
+    ok('Central Action ledger rejects every Action-costing multiplayer command after the Action is spent',actionNames.every(name=>!sr136ActionAvailable({actionSpent:true},name)));
+    ok('Central Action ledger permits Action-costing commands when the Action is available',actionNames.every(name=>sr136ActionAvailable({actionSpent:false},name)));
     const readyAvailable={name:'Ready Hero',character:{actionSpent:false,reactionAvailable:true,readiedAttack:false}};
     ok('Ready consumes the Action while preserving an available Reaction',sr136ReadyAction(readyAvailable)&&readyAvailable.character.actionSpent&&readyAvailable.character.readiedAttack&&readyAvailable.character.reactionAvailable===true);
     const readySpentAction={name:'Spent Hero',character:{actionSpent:true,reactionAvailable:true,readiedAttack:false}};
@@ -5594,7 +5604,7 @@ function sr136RunTests(){
 }
 const sr136OldTestV13=sr13RunTests;
 sr13RunTests=function(){return [...sr136OldTestV13(),...sr136RunTests()];};
-globalThis.__SR13_TEST={...globalThis.__SR13_TEST,version:SR136_VERSION,initiativeModifier:sr13InitiativeModifier,moveTiedHero:sr136MoveTiedHero,reorderTie:sr136ReorderTie,readyAction:sr136ReadyAction,isIncapacitated:sr136IsIncapacitated,refreshEnemyReaction:sr136RefreshEnemyReaction,tests:sr13RunTests};
+globalThis.__SR13_TEST={...globalThis.__SR13_TEST,version:SR136_VERSION,initiativeModifier:sr13InitiativeModifier,moveTiedHero:sr136MoveTiedHero,reorderTie:sr136ReorderTie,actionAvailable:sr136ActionAvailable,readyAction:sr136ReadyAction,isIncapacitated:sr136IsIncapacitated,refreshEnemyReaction:sr136RefreshEnemyReaction,tests:sr13RunTests};
 
 
 
