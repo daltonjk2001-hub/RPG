@@ -1108,6 +1108,7 @@ try{
   const priorDownedCriticalRandom=math.random;math.random=()=>0.5;
   try{D.soloMonsterAttack(downedCriticalEnemy);}finally{math.random=priorDownedCriticalRandom;}
   assert('A solo monster critical hit against an unconscious hero at 0 HP causes two failed death saves',downedCriticalHero.hp===0&&downedCriticalHero.deathFailure===2&&!downedCriticalHero.mpDead&&!downedCriticalEnemy._sr29AttackCriticalPending,JSON.stringify({hp:downedCriticalHero.hp,failures:downedCriticalHero.deathFailure,dead:downedCriticalHero.mpDead,log:T18.state.log}));
+  assert('The active solo monster turn dispatcher does not skip a downed hero as its target',html.includes('if(sr9Dist(e.pos,b.heroPos)<=5)sr10EnemyAttack(e);')&&!html.includes('if(sr9Dist(e.pos,b.heroPos)<=5&&state.character.hp>0)sr10EnemyAttack(e);'));
   const deathHero=actor({id:'solo-death-hero',name:'Solo Death Hero',hp:0,maxHp:20,deathSuccess:2,deathFailure:0,stable:false,unconscious:true,conditions:[{name:'unconscious',duration:999}]});
   T18.state={character:deathHero,campaign:{companions:[],day:1},combat:{mp:null,downed:true,round:2,enemies:[]},log:[]};
   const priorDeathRandom=math.random;math.random=()=>0.5;
