@@ -163,3 +163,15 @@ No claim of complete 2024 D&D rules coverage should be made until those integrat
 ## V29.19 — Revalidate pending player grapple challenges
 
 A pending player-versus-player grapple save prompt is only a provisional challenge, not an already-established Grappled condition. The host now cancels it if the grappler becomes Incapacitated or if the current tactical positions place the participants beyond the stored grapple reach before the target responds. This prevents a delayed client response from applying a grapple after forced displacement or other movement invalidates the attempt. Regression coverage exercises both cancellation reasons; challenges without usable position data retain the previous behavior and still rely on the saved attempt context.
+
+## V29.20–V29.25 — equipment and anatomy hardening
+
+- Hand occupancy now distinguishes equipment slots from inventory records: an unequipped off-hand item or shield does not consume a hand, while an equipped shield does.
+- Main-hand and off-hand object configurations respect explicit `equipped:false` / `isEquipped:false` flags. Slot-based configurations count as equipped unless explicitly disabled.
+- A shield already represented in the off-hand slot is counted once, not twice.
+- Hand Crossbow is explicitly kept one-handed even when other crossbow families use two hands; weapon metadata remains authoritative for other custom weapons.
+- Creature grapple capacity now distinguishes grasping appendages from locomotion/sensory anatomy. Wings, legs, fins, tails, horns, and similar non-grasping parts are not automatically counted; explicit `canGrapple`, `grappleCapable`, and `usableForGrapple` metadata can identify unusual anatomy.
+- Explicit `grappleAppendageCount` / `grappleAppendages` remain authoritative. Unknown anatomy continues to use the conservative fallback rather than assuming every appendage can hold a creature.
+- Added 12 regression assertions for custom equipment slots, unequipped inventory shields, equipped shields, hand-crossbow handling, appendage capability flags, and non-grasping anatomy.
+
+Verification is pending for the new commit. These changes do not replace the outstanding live multiplayer/device tests or the broader rules-coverage work.
