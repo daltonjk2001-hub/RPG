@@ -90,6 +90,7 @@ if(typeof damagePlayer==='function'){
     const result=sr29SoloPriorDamagePlayer.call(this,amount,...args);
     if(c&&b&&!b.mp){
       if(downedBefore){
+        if(!b.downed)sr29SoloMarkDowned();
         const source=args[1]&&typeof args[1]==='object'?args[1]:null;
         const meta=args[2]&&typeof args[2]==='object'?args[2]:{};
         sr29SoloDamageAtZero(amount,source,meta);
@@ -106,7 +107,7 @@ if(typeof heal==='function'){
     const c=state?.character,b=state?.combat,before=Number(c?.hp)||0;
     if(c?.mpDead&&b&&!b.mp)return 0;
     const result=sr29SoloPriorHeal.call(this,amount,...args);
-    if(c&&b&&!b.mp&&!c.mpDead&&before<=0&&Number(c.hp)>0)sr29SoloClearDowned(c);
+    if(c&&!b?.mp&&!c.mpDead&&before<=0&&Number(c.hp)>0)sr29SoloClearDowned(c);
     return result;
   };
 }
