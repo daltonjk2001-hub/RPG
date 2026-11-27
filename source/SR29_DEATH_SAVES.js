@@ -1,6 +1,7 @@
-/* SOLO REALMS V29.53 — Reincarnate species and trait replacement.
+/* SOLO REALMS V29.54 — Dragonborn lineage resistance integration.
+   V29.53 Reincarnate species and trait replacement.
    Death saves occur at the downed hero's turn start; three successes stabilize at 0 HP. */
-const SR29_DEATH_SAVES_VERSION='29.53.0';
+const SR29_DEATH_SAVES_VERSION='29.54.0';
 function sr29SoloRemoveUnconscious(c){
   if(!c)return;
   c.unconscious=false;
@@ -325,7 +326,29 @@ function sr29SetDraconicAncestry(character,choice){
   character.draconicAncestryChoice=name;
   character.draconicDamageType=damageType;
   character.darkvisionRange=60;
+  character.dragonbornBreathUsesMax=sr29DragonbornProficiencyBonus(character);
+  const uses=Number(character.dragonbornBreathUses);
+  character.dragonbornBreathUses=Number.isFinite(uses)?Math.max(0,Math.min(character.dragonbornBreathUsesMax,Math.floor(uses))):0;
   return true;
+}
+// Route a Dragonborn's selected lineage resistance through the same multiplier used by monster damage.
+// Apply it temporarily so an existing resistance array is neither mutated nor permanently duplicated.
+if(typeof sr14DamageMultiplier==='function'){
+  const sr29PriorDraconicDamageMultiplier=sr14DamageMultiplier;
+  sr14DamageMultiplier=function(target,type,...args){
+    const incoming=String(type||'physical').trim().toLowerCase();
+    const lineage=String(target?.draconicDamageType||'').trim().toLowerCase();
+    if(target?.ancestry!=='Dragonborn'||!lineage||incoming!==lineage)
+      return sr29PriorDraconicDamageMultiplier.call(this,target,type,...args);
+    const hadOwn=Object.prototype.hasOwnProperty.call(target,'resistances');
+    const original=target.resistances;
+    const current=Array.isArray(original)?original:[];
+    const alreadyCovered=current.some(value=>{const key=String(value||'').trim().toLowerCase();return key==='all'||key===lineage;});
+    if(alreadyCovered)return sr29PriorDraconicDamageMultiplier.call(this,target,type,...args);
+    target.resistances=[...current,lineage];
+    try{return sr29PriorDraconicDamageMultiplier.call(this,target,type,...args);}
+    finally{if(hadOwn)target.resistances=original;else delete target.resistances;}
+  };
 }
 function sr29DragonbornProficiencyBonus(character){
   const level=Math.max(1,Math.min(20,Math.floor(Number(character?.level)||1)));
@@ -699,7 +722,7 @@ if(typeof sr14CastSpellComplete==='function'){
   if(globalThis.__SR29_TEST?.gameplay)globalThis.__SR29_TEST.gameplay.castSpell=sr14CastSpellComplete;
 }
 globalThis.__SR29_DEATH_TEST={
-  version:SR29_DEATH_SAVES_VERSION,reincarnateSpecies:SR29_REINCARNATE_SPECIES,reincarnateSpeciesFromRoll:sr29ReincarnateSpeciesFromRoll,applyReincarnateSpecies:sr29ApplyReincarnateSpecies,recordDeathSnapshot:sr29RecordDeathSnapshot,isOldAgeDeath:sr29IsOldAgeDeath,wasUndeadAtDeath:sr29WasUndeadAtDeath,isHumanoidAtDeath:sr29IsHumanoidAtDeath,missingBodyParts:sr29MissingBodyParts,hasMissingVitalParts:sr29HasMissingVitalParts,clearRevivalDeathMetadata:sr29ClearRevivalDeathMetadata,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestPenaltyRecovery:sr29ApplyLongRestPenaltyRecovery,hasResurrectionCasterTax:sr29HasResurrectionCasterTax,setResurrectionCasterTax:sr29SetResurrectionCasterTax,setDraconicAncestry:sr29SetDraconicAncestry,dragonbornBreath:sr29DragonbornBreath,dragonbornBreathDamageDice:sr29DragonbornBreathDamageDice,dragonbornProficiencyBonus:sr29DragonbornProficiencyBonus,clearResurrectionCasterTax:sr29ClearResurrectionCasterTax,applyResurrectionTaxD20Result:sr29ApplyResurrectionTaxD20Result,rejectCastDuringResurrectionTax:sr29RejectCastDuringResurrectionTax,canonicalAbilityCheck:typeof sr29CanonicalAbilityCheck==='function'?sr29CanonicalAbilityCheck:null,attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
+  version:SR29_DEATH_SAVES_VERSION,reincarnateSpecies:SR29_REINCARNATE_SPECIES,reincarnateSpeciesFromRoll:sr29ReincarnateSpeciesFromRoll,applyReincarnateSpecies:sr29ApplyReincarnateSpecies,recordDeathSnapshot:sr29RecordDeathSnapshot,isOldAgeDeath:sr29IsOldAgeDeath,wasUndeadAtDeath:sr29WasUndeadAtDeath,isHumanoidAtDeath:sr29IsHumanoidAtDeath,missingBodyParts:sr29MissingBodyParts,hasMissingVitalParts:sr29HasMissingVitalParts,clearRevivalDeathMetadata:sr29ClearRevivalDeathMetadata,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestPenaltyRecovery:sr29ApplyLongRestPenaltyRecovery,hasResurrectionCasterTax:sr29HasResurrectionCasterTax,setResurrectionCasterTax:sr29SetResurrectionCasterTax,setDraconicAncestry:sr29SetDraconicAncestry,damageMultiplier:typeof sr14DamageMultiplier==='function'?sr14DamageMultiplier:null,dragonbornBreath:sr29DragonbornBreath,dragonbornBreathDamageDice:sr29DragonbornBreathDamageDice,dragonbornProficiencyBonus:sr29DragonbornProficiencyBonus,clearResurrectionCasterTax:sr29ClearResurrectionCasterTax,applyResurrectionTaxD20Result:sr29ApplyResurrectionTaxD20Result,rejectCastDuringResurrectionTax:sr29RejectCastDuringResurrectionTax,canonicalAbilityCheck:typeof sr29CanonicalAbilityCheck==='function'?sr29CanonicalAbilityCheck:null,attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
   clearDowned:sr29SoloClearDowned,damageAtZero:sr29SoloDamageAtZero,hasUnconscious:sr29SoloHasUnconscious,
   heal:typeof heal==='function'?heal:null,damagePlayer:typeof damagePlayer==='function'?damagePlayer:null,
   soloMonsterAttack:typeof sr10EnemyAttack==='function'?sr10EnemyAttack:null,soloHeroAttack:typeof sr11HeroAttack==='function'?sr29TestSoloHeroAttack:null,advanceStableTime:sr29SoloAdvanceStableTime,

@@ -274,4 +274,19 @@ Death/recovery remains **Partial**. The next gaps are spell-specific eligibility
 - Regressions cover old-age rejection for Revivify/Resurrection/True Resurrection, no extra old-age ban on Raise Dead/Reincarnate, Undead-at-death restrictions, True Resurrection's Undead eligibility, Reincarnate's Humanoid requirement, missing limbs versus missing vital organs, death snapshot metadata, and Resurrection clearing missing-part records.
 - **Verification on commit `69704e6a7bcd72000b402ef846d3587374abea81`:** [full regression run #46025160905](https://github.com/daltonjk2001-hub/RPG/actions/runs/46025160905) passed; [V18 hardening run #46025160722](https://github.com/daltonjk2001-hub/RPG/actions/runs/46025160722) passed; V29 condition-engine suite **378/378 assertions passed**.
 
-Still incomplete: Reincarnate's 1d10 species selection and replacement of previous species traits with the new species traits; True Resurrection's explicit non-Undead form restoration, poison/magical-contagion neutralization, curse removal, and new-body creation when the original no longer exists; priced/consumed material component ownership and consumption; actual hour-long casting-time progress and interruption; old-age cause entry/inference and player-facing body-injury metadata; alternate companion/legacy healing/revival routes; full Long Rest UI integration; and live solo/two-device co-op acceptance. Death/recovery remains **Partial**.
+Still incomplete: Reincarnate's complete species-specific trait automation and player-facing lineage selection across all supported ancestries; True Resurrection's explicit non-Undead form restoration, poison/magical-contagion neutralization, curse removal, and new-body creation when the original no longer exists; priced/consumed material component ownership and consumption; actual hour-long casting-time progress and interruption; old-age cause entry/inference and player-facing body-injury metadata; alternate companion/legacy healing/revival routes; full Long Rest UI integration; and live solo/two-device co-op acceptance. Death/recovery remains **Partial**.
+
+
+## V29.53 — Reincarnate species and trait replacement
+
+- Added the 2024 ten-result 1d10 species table and a validated optional DM override while retaining the rolled species in the transformation result.
+- The new-body transaction replaces supported ancestry ability-score bonuses, applies/removes the app's Dwarf maximum-HP adjustment, manages ancestry-granted Ember Bolt, resets tracked former-species trait-use state, and initializes supported Dragonborn/Dragonkin/Aasimar trait fields.
+- The cast path applies the transformation to an explicitly selected remote campaign ally outside combat. Regressions cover the table, invalid rolls, species replacement, retained class/background/level/feats/proficiencies, supported feature replacement, and a remote Reincarnate cast.
+- Full feature parity and a player-facing lineage/trait selection interface for all ten outcomes remain open.
+
+## V29.54 — Dragonborn lineage resistance integration
+
+- The selected Dragonborn draconic damage type now grants resistance through the shared `sr14DamageMultiplier` used by the live monster-damage adapter.
+- The wrapper applies resistance only for a matching incoming type and restores the original resistance array immediately, preserving separate equipment, spell, immunity, and vulnerability data.
+- Selecting a lineage also initializes the Breath Weapon use maximum from proficiency bonus and clamps saved use counts to that maximum.
+- Added an end-to-end regression: a Red-lineage Dragonborn takes half fire damage, takes normal cold damage, and retains its pre-existing necrotic resistance list.

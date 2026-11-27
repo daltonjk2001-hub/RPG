@@ -94,6 +94,13 @@ try{
  const humanToDragonborn=actor({ancestry:'Human',level:5,maxHp:40,stats:{STR:11,DEX:11,CON:11,INT:11,WIS:11,CHA:11},spells:[]});
  const dragonbornTransformation=RV.applyReincarnateSpecies(humanToDragonborn,2,null,'Red');
  assert('Reincarnate can create a Dragonborn body with its own draconic ancestry choice and no legacy Dragonkin ability-score bonus',dragonbornTransformation.ok&&humanToDragonborn.ancestry==='Dragonborn'&&humanToDragonborn.stats.STR===10&&humanToDragonborn.stats.DEX===10&&humanToDragonborn.draconicAncestryChoice==='Red'&&humanToDragonborn.dragonbornBreathUsesMax===3,JSON.stringify({dragonbornTransformation,character:humanToDragonborn}));
+ const dragonbornDefense=actor({id:'dragonborn-defense',name:'Red-lineage Dragonborn',ancestry:'Dragonborn',level:5,hp:30,maxHp:30,stats:{STR:10,DEX:10,CON:14,INT:10,WIS:10,CHA:10},resistances:['necrotic']});
+ const lineageSet=RV.setDraconicAncestry(dragonbornDefense,'Red');
+ T18.state={character:dragonbornDefense,campaign:{},combat:{mp:false},log:[]};
+ const dragonbornPlayer={id:'dragonborn-defense',name:dragonbornDefense.name,character:dragonbornDefense};
+ const resistedFire=T18.monsterDamage({player:dragonbornPlayer},10,'fire',{name:'Fire attacker'});
+ const ordinaryCold=T18.monsterDamage({player:dragonbornPlayer},10,'cold',{name:'Cold attacker'});
+ assert('Dragonborn lineage resistance halves matching damage in the live monster damage path without changing unrelated damage or stored resistances',lineageSet&&resistedFire===5&&ordinaryCold===10&&dragonbornDefense.hp===15&&JSON.stringify(dragonbornDefense.resistances)===JSON.stringify(['necrotic']),JSON.stringify({lineageSet,resistedFire,ordinaryCold,hp:dragonbornDefense.hp,resistances:dragonbornDefense.resistances}));
  const humanToDragonkin=actor({ancestry:'Human',level:5,maxHp:40,stats:{STR:11,DEX:11,CON:11,INT:11,WIS:11,CHA:11},spells:[]});
  RV.applyReincarnateSpecies(humanToDragonkin,2,'Dragonkin');
  assert('A DM species override may choose another supported playable species while preserving the rolled 1d10 result',humanToDragonkin.ancestry==='Dragonkin'&&humanToDragonkin.dragonBreathUsed===false);
@@ -1270,7 +1277,7 @@ try{
   assert('Monster critical bonus dice preserve flat attack damage modifiers',T18.criticalExtraDice('2d6+4')==='2d6'&&T18.criticalExtraDice('1d8 + 1d6 + 3')==='1d8+1d6'&&T18.criticalExtraDice('1d10-2')==='1d10');
 
   const D=context.__SR29_DEATH_TEST;
-  assert('V29.53 Reincarnate species transformation and revival lifecycle is installed',!!D&&D.version==='29.53.0'&&typeof D.deathSave==='function');
+  assert('V29.54 Dragonborn lineage resistance and revival lifecycle is installed',!!D&&D.version==='29.54.0'&&typeof D.deathSave==='function');
 
   const soloCriticalHero=actor({id:'solo-critical-hero',name:'Solo Critical Hero',hp:30,maxHp:30,armor:'Traveler’s clothes'});
   const soloCriticalEnemy={id:'solo-critical-enemy',name:'Solo Critical Monster',attack:100,damage:'1d6',pos:{x:2,y:1}};
