@@ -1221,6 +1221,21 @@ try{
   mpStableHero.hp=1;D.clearMultiplayerDowned(mpStableHero);
   assert('Multiplayer healing cleanup removes stable recovery metadata',!mpStableHero.stable&&mpStableHero.stableRecoveryHours===undefined&&mpStableHero.stableElapsedHours===undefined);
 
+  const mpCriticalDownedHero=actor({id:'mp-critical-downed',name:'MP Critical Downed',hp:0,maxHp:20,mpDowned:true,mpDead:false,stable:false,deathFailure:0,deathSuccess:0,unconscious:true,conditions:[{name:'unconscious',duration:999}]});
+  const mpCriticalDownedPlayer={id:'mp-critical-downed',name:'MP Critical Downed',connected:true,character:mpCriticalDownedHero};
+  T18.state={character:mpCriticalDownedHero,campaign:{multiplayer:{active:true,players:[mpCriticalDownedPlayer]}},combat:{mp:{heroPositions:{'mp-critical-downed':{x:1,y:1}},turnOrder:[],index:0},enemies:[]},log:[]};
+  const explicitCriticalSource={id:'critical-source',lastAttackCritical:true};
+  D.multiplayerDamageHero(mpCriticalDownedPlayer,2,'physical',explicitCriticalSource);
+  assert('Explicit critical-source metadata causes two multiplayer death-save failures at 0 HP',mpCriticalDownedHero.deathFailure===2&&!mpCriticalDownedHero.mpDead);
+  const mpAttackDownedHero=actor({id:'mp-attack-downed',name:'MP Attack Downed',hp:0,maxHp:20,mpDowned:true,mpDead:false,stable:false,deathFailure:0,deathSuccess:0,unconscious:true,conditions:[{name:'unconscious',duration:999}]});
+  const mpAttackDownedPlayer={id:'mp-attack-downed',name:'MP Attack Downed',connected:true,character:mpAttackDownedHero};
+  const mpDownedAttacker={id:'mp-down-attacker',name:'MP Downed Attacker',attack:100,damage:'1d6',pos:{x:2,y:1},lastAttackCritical:false};
+  const mpDownedTerrain=[];for(let x=0;x<8;x++)for(let y=0;y<6;y++)mpDownedTerrain.push({x,y,kind:'floor'});
+  T18.state={character:mpAttackDownedHero,campaign:{multiplayer:{active:true,players:[mpAttackDownedPlayer]}},combat:{round:1,mp:{heroPositions:{'mp-attack-downed':{x:1,y:1}},turnOrder:[],index:0},enemies:[mpDownedAttacker],map:{width:8,height:6,terrain:mpDownedTerrain}},log:[]};
+  const priorMpDownedAttackRandom=math.random;math.random=()=>0.5;
+  try{D.multiplayerEnemyTurn(mpDownedAttacker);}finally{math.random=priorMpDownedAttackRandom;}
+  assert('Multiplayer monster critical hits against an Unconscious hero cause two death-save failures',mpAttackDownedHero.deathFailure===2&&mpDownedAttacker.lastAttackCritical===true&&mpDownedAttacker._sr29AttackCriticalPending===undefined,JSON.stringify({failures:mpAttackDownedHero.deathFailure,critical:mpDownedAttacker.lastAttackCritical,marker:mpDownedAttacker._sr29AttackCriticalPending,log:T18.state.log.slice(0,5)}));
+
   const mpDownedCriticalHero=actor({id:'mp-downed-critical-hero',name:'MP Downed Critical Hero',hp:0,maxHp:20,tempHP:100,mpDowned:true,mpDead:false,stable:false,unconscious:true,deathSuccess:0,deathFailure:0,conditions:[{name:'unconscious',duration:999}]});
   const mpDownedCriticalPlayer={id:'mp-downed-critical-hero',name:'MP Downed Critical Hero',connected:true,character:mpDownedCriticalHero};
   const mpDownedCriticalEnemy={id:'mp-downed-critical-enemy',name:'MP Downed Critical Monster',attack:100,damage:'1d6+3',pos:{x:2,y:1}};
