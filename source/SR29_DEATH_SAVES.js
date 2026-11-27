@@ -147,6 +147,17 @@ if(typeof sr18AdvanceWorld==='function'){
     return result;
   };
 }
+function sr29ApplyLongRestPenaltyRecovery(campaign=state?.campaign,character=state?.character){
+  const targets=[character,...(campaign?.multiplayer?.players||[]).map(player=>player?.character),...(campaign?.companions||[])];
+  const seen=new Set();let reduced=0;
+  for(const target of targets){
+    if(!target||typeof target!=='object'||seen.has(target))continue;
+    seen.add(target);
+    const before=sr29RevivalD20Penalty(target),after=sr29ReduceRevivalPenaltyAfterLongRest(target);
+    if(after<before)reduced++;
+  }
+  return reduced;
+}
 if(typeof longRest==='function'){
   const sr29PriorSoloLongRest=longRest;
   longRest=function(...args){
@@ -157,9 +168,7 @@ if(typeof longRest==='function'){
     const completed=afterDay>beforeDay||afterWorldDay>beforeWorldDay;
     if(c&&!state?.combat?.mp&&!c.mpDead&&Number(c.hp)>0)sr29SoloClearDowned(c);
     if(completed){
-      const targets=[c,...(state?.campaign?.multiplayer?.players||[]).map(p=>p?.character),...(state?.campaign?.companions||[])];
-      const seen=new Set();
-      for(const target of targets)if(target&&typeof target==='object'&&!seen.has(target)){seen.add(target);sr29ReduceRevivalPenaltyAfterLongRest(target);}
+      sr29ApplyLongRestPenaltyRecovery(state?.campaign,c);
       if(typeof save==='function')save();
     }
     return result;
@@ -369,7 +378,7 @@ if(typeof sr14CastSpellComplete==='function'){
   if(globalThis.__SR29_TEST?.gameplay)globalThis.__SR29_TEST.gameplay.castSpell=sr14CastSpellComplete;
 }
 globalThis.__SR29_DEATH_TEST={
-  version:SR29_DEATH_SAVES_VERSION,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestRecovery:typeof longRest==='function'?(...args)=>{const priorRender=render;render=()=>{};try{return longRest(...args);}finally{render=priorRender;}}:null,canonicalAbilityCheck:typeof sr29CanonicalAbilityCheck==='function'?sr29CanonicalAbilityCheck:null,attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
+  version:SR29_DEATH_SAVES_VERSION,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestPenaltyRecovery:sr29ApplyLongRestPenaltyRecovery,canonicalAbilityCheck:typeof sr29CanonicalAbilityCheck==='function'?sr29CanonicalAbilityCheck:null,attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
   clearDowned:sr29SoloClearDowned,damageAtZero:sr29SoloDamageAtZero,hasUnconscious:sr29SoloHasUnconscious,
   heal:typeof heal==='function'?heal:null,damagePlayer:typeof damagePlayer==='function'?damagePlayer:null,
   soloMonsterAttack:typeof sr10EnemyAttack==='function'?sr10EnemyAttack:null,soloHeroAttack:typeof sr11HeroAttack==='function'?sr29TestSoloHeroAttack:null,advanceStableTime:sr29SoloAdvanceStableTime,
