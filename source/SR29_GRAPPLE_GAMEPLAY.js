@@ -1092,7 +1092,6 @@ function sr29TrackDirectCreatureDamage(fn){
     }
   };
 }
-if(typeof sr14RunFeature==='function')sr14RunFeature=sr29TrackDirectCreatureDamage(sr14RunFeature);
 if(typeof sr14CastSpellComplete==='function')sr14CastSpellComplete=sr29TrackDirectCreatureDamage(sr14CastSpellComplete);
 if(typeof sr12CastSpell==='function')sr12CastSpell=sr29TrackDirectCreatureDamage(sr12CastSpell);
 if(typeof sr12HeroAttack==='function')sr12HeroAttack=sr29TrackDirectCreatureDamage(sr12HeroAttack);
