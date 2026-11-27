@@ -1236,6 +1236,15 @@ try{
   try{D.multiplayerEnemyTurn(mpDownedAttacker);}finally{math.random=priorMpDownedAttackRandom;}
   assert('Multiplayer monster critical hits against an Unconscious hero cause two death-save failures',mpAttackDownedHero.deathFailure===2&&!mpDownedAttacker.lastAttackCritical&&mpDownedAttacker._sr29AttackCriticalPending===undefined&&mpDownedAttacker._sr29LastAttackAdvantage===true&&mpDownedAttacker._sr29LastAttackCritical===true,JSON.stringify({failures:mpAttackDownedHero.deathFailure,criticalMarker:mpDownedAttacker.lastAttackCritical,pending:mpDownedAttacker._sr29AttackCriticalPending,log:T18.state.log.slice(0,5)}));
 
+
+  const mpStandingCriticalHero=actor({id:'mp-standing-critical-hero',name:'MP Standing Critical Hero',hp:30,maxHp:30,tempHP:100,mpDowned:false,mpDead:false,stable:false,conditions:[]});
+  const mpStandingCriticalPlayer={id:'mp-standing-critical-hero',name:'MP Standing Critical Hero',connected:true,character:mpStandingCriticalHero};
+  const mpStandingCriticalEnemy={id:'mp-standing-critical-enemy',name:'MP Critical Monster',attack:100,damage:'1d6+3',pos:{x:2,y:1}};
+  T18.state={character:mpStandingCriticalHero,campaign:{multiplayer:{active:true,players:[mpStandingCriticalPlayer]},companions:[]},combat:{mp:{heroPositions:{'mp-standing-critical-hero':{x:1,y:1}},turnOrder:[],index:0},enemies:[mpStandingCriticalEnemy],map:{width:8,height:6,terrain:[]},round:1},log:[]};
+  const priorMpStandingCriticalRandom=math.random;math.random=()=>0.999;
+  try{D.multiplayerEnemyTurn(mpStandingCriticalEnemy);}finally{math.random=priorMpStandingCriticalRandom;}
+  assert('Multiplayer monster natural-20 critical damage doubles dice but not the flat modifier',mpStandingCriticalHero.hp===30&&mpStandingCriticalHero.tempHP===85&&mpStandingCriticalEnemy._sr29LastAttackCritical===true&&!mpStandingCriticalEnemy.lastAttackCritical,JSON.stringify({hp:mpStandingCriticalHero.hp,tempHP:mpStandingCriticalHero.tempHP,critical:mpStandingCriticalEnemy._sr29LastAttackCritical}));
+
   const mpDownedCriticalHero=actor({id:'mp-downed-critical-hero',name:'MP Downed Critical Hero',hp:0,maxHp:20,tempHP:100,mpDowned:true,mpDead:false,stable:false,unconscious:true,deathSuccess:0,deathFailure:0,conditions:[{name:'unconscious',duration:999}]});
   const mpDownedCriticalPlayer={id:'mp-downed-critical-hero',name:'MP Downed Critical Hero',connected:true,character:mpDownedCriticalHero};
   const mpDownedCriticalEnemy={id:'mp-downed-critical-enemy',name:'MP Downed Critical Monster',attack:100,damage:'1d6+3',pos:{x:2,y:1}};
