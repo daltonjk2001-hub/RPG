@@ -1335,12 +1335,13 @@ try{
   assert('Monster critical bonus dice preserve flat attack damage modifiers',T18.criticalExtraDice('2d6+4')==='2d6'&&T18.criticalExtraDice('1d8 + 1d6 + 3')==='1d8+1d6'&&T18.criticalExtraDice('1d10-2')==='1d10');
 
   const D=context.__SR29_DEATH_TEST;
-  assert('V29.65 turn-by-turn Magic actions and V7 V3 slot persistence are installed',!!D&&D.version==='29.65.0'&&typeof D.deathSave==='function');
+  assert('V29.66 solo caster identity and active-player Magic-action routing are installed',!!D&&D.version==='29.66.0'&&typeof D.deathSave==='function');
  const turnCastCaster=actor({id:'turn-cast-caster',name:'Turn Cast Cleric',classId:'Cleric',level:9,classLevels:{Cleric:9},spellSlotsByLevel:{5:1},spellSlotProgressionVersion:3,actionSpent:false});
  const turnCastPlayer={id:'turn-cast-caster',name:'Turn Cast Cleric',connected:true,character:turnCastCaster};
  const turnCastTarget=actor({id:'turn-cast-target',name:'Turn Cast Target',hp:0,maxHp:30,mpDead:true,dead:true,deathAt:Date.now()-24*60*60*1000});
  T18.state={character:turnCastCaster,campaign:{day:1,region:'Turn Cast Test',location:'Turn Cast Test',sr29:{pendingLongCast:{id:'turn-cast-test',spellName:'Raise Dead',requiredMinutes:1,requiredSeconds:60,elapsedMinutes:0,elapsedSeconds:0,casterId:turnCastPlayer.id,casterName:turnCastPlayer.name,casterIsMain:false,startedInCombat:true,targetId:turnCastTarget.id,slotLevel:5,slotKind:'regular',slotCountBefore:1,castMode:{}}},multiplayer:{active:true,players:[turnCastPlayer,{id:turnCastTarget.id,name:turnCastTarget.name,connected:true,character:turnCastTarget}]}},combat:{round:1,mp:{turnOrder:[{kind:'hero',id:turnCastPlayer.id}],index:0},enemies:[{id:'turn-enemy',name:'Turn Enemy',hp:12,maxHp:12,ac:12,pos:{x:4,y:4}}]},log:[]};
  T18.setActivePlayerId(turnCastPlayer.id);
+ const turnCastRender=context.render;context.render=()=>{};
  const turnCastTick=RV.continueLongCastCombatTurn(turnCastPlayer,{advanceTurn:false});
  assert('A long cast spends one Magic action and advances exactly six in-game seconds on the caster’s multiplayer turn',turnCastTick?.ok===true&&turnCastTick.magicAction===true&&turnCastTick.elapsedSeconds===6&&RV.pendingLongCast()?.elapsedSeconds===6&&turnCastCaster.actionSpent===true&&turnCastCaster.spellSlotsByLevel[5]===1&&turnCastTarget.hp===0,JSON.stringify({turnCastTick,pending:RV.pendingLongCast(),slots:turnCastCaster.spellSlotsByLevel}));
  turnCastCaster.actionSpent=false;T18.state.combat.mp.turnOrder=[{kind:'enemy',index:0,id:'turn-enemy'}];
@@ -1349,6 +1350,14 @@ try{
  T18.state.combat.mp.turnOrder=[{kind:'hero',id:turnCastPlayer.id}];
  const turnCastPanel=RV.combatLongCastPanel();
  assert('The combat screen exposes the six-second Magic action only on the active caster’s turn',turnCastPanel.includes('data-action="mp-combat"')&&turnCastPanel.includes('data-move="long-cast-continue"')&&turnCastPanel.includes('6 seconds'));
+ const soloTurnCaster=actor({id:'solo-turn-caster',name:'Solo Long-Cast Cleric',classId:'Cleric',level:9,classLevels:{Cleric:9},spellSlotsByLevel:{5:1},spellSlotProgressionVersion:3,actionSpent:false});
+ const soloStateBefore=T18.state;
+ T18.state={character:soloTurnCaster,campaign:{day:1,region:'Solo Turn Cast',location:'Solo Turn Cast',sr29:{pendingLongCast:{id:'solo-turn-cast',spellName:'Raise Dead',requiredMinutes:1,requiredSeconds:60,elapsedMinutes:0,elapsedSeconds:0,casterId:'solo-turn-caster',casterName:soloTurnCaster.name,casterIsMain:true,startedInCombat:true,slotLevel:5,slotKind:'regular',slotCountBefore:1,castMode:{}}}},combat:{round:1,enemies:[{id:'solo-turn-enemy',name:'Solo Turn Enemy',hp:12,maxHp:12,ac:12,pos:{x:4,y:4}}],map:{width:8,height:6,terrain:[]}},log:[]};
+ const soloTurnTick=RV.continueLongCastCombatTurn(null,{advanceTurn:false});
+ assert('Solo combat resolves the pending caster from the main character and spends a six-second Magic action',soloTurnTick?.ok===true&&soloTurnTick.magicAction===true&&soloTurnCaster.actionSpent===true&&RV.pendingLongCast()?.elapsedSeconds===6&&soloTurnCaster.spellSlotsByLevel[5]===1,JSON.stringify({soloTurnTick,pending:RV.pendingLongCast(),slots:soloTurnCaster.spellSlotsByLevel}));
+ const soloTurnPanel=RV.combatLongCastPanel();
+ assert('The solo combat screen provides the same six-second Magic-action continuation control',soloTurnPanel.includes('data-sr29-long-cast="combat-continue"')&&soloTurnPanel.includes('6 seconds'));
+ context.render=turnCastRender;T18.state=soloStateBefore;T18.setActivePlayerId('');
  T18.state.combat=null;T18.state.campaign.sr29.pendingLongCast=null;
  const noDoubleSpendCaster=actor({spellSlotsByLevel:{5:1},pactSlotsByLevel:{3:2}});
  const regularSlotPending={slotLevel:5,slotKind:'regular',slotCountBefore:1,legacySpellSlotsBefore:3};

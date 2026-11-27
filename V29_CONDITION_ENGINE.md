@@ -379,3 +379,10 @@ Still incomplete: Reincarnate's complete species-specific trait automation and p
 - Solo and multiplayer combat pages expose a dedicated Magic-action continuation control only on the active caster's turn. Other heroes and enemies may act normally. If the caster takes another action or ends their turn without continuing, the activity is interrupted; damage-triggered Constitution saves and incapacitation checks continue to interrupt it.
 - At completion, the spell resolver temporarily receives an available Action for validation, then the spent Action is restored. Spell-slot and consumed-material expenditure remain deferred until successful completion.
 - Regression coverage verifies a six-second multiplayer Magic action, Action expenditure, no premature slot use, active-turn enforcement, and the combat continuation control. A full 600-turn and live multi-device playtest remain outstanding, so death/recovery remains **Partial**.
+
+
+## V29.66 — Solo and multiplayer long-cast caster identity
+
+- Corrected caster lookup for a cast started in solo combat: solo combat uses the main character record even though the cast began during combat. Multiplayer casts continue to resolve the caster by roster ID.
+- The multiplayer combat panel now recognizes the active local player ID exposed by the runtime/test harness, while still showing the Magic-action button only when the local hero is the active caster.
+- Added a solo-combat six-second continuation regression alongside multiplayer active-turn, Action-spending, no-early-slot-spend, and panel-routing checks.

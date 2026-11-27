@@ -1,7 +1,7 @@
-/* SOLO REALMS V29.65 — Turn-by-turn Magic actions for minute-plus spellcasting.
-   V29.64 preserves V7 V3 slot expenditure through legacy save/render migration.
+/* SOLO REALMS V29.66 — Solo caster identity and active-player combat-panel routing.
+   V29.65 turn-by-turn Magic actions for minute-plus spellcasting.
    Death saves occur at the downed hero's turn start; three successes stabilize at 0 HP. */
-const SR29_DEATH_SAVES_VERSION='29.65.0';
+const SR29_DEATH_SAVES_VERSION='29.66.0';
 function sr29SoloRemoveUnconscious(c){
   if(!c)return;
   c.unconscious=false;
@@ -1027,7 +1027,7 @@ function sr29StartLongCast(playerOrNull,name,allyId=null,args=[]){
   const clock=sr29LongCastClock();
   const pending={
     id:`long-cast-${Date.now()}-${++SR29_LONG_CAST_SEQUENCE}`,spellName:String(name),requiredMinutes,requiredSeconds:requiredMinutes*60,elapsedMinutes:0,elapsedSeconds:0,
-    casterId:String(player.id||'solo'),casterName:String(player.name||caster.name||'Caster'),casterIsMain:!inCombat&&!state.combat?.mp&&caster===state.character,startedInCombat:inCombat,
+    casterId:String(player.id||'solo'),casterName:String(player.name||caster.name||'Caster'),casterIsMain:!state.combat?.mp&&caster===state.character,startedInCombat:inCombat,
     targetId,fromMP:!!args[0],castMode:{...castOptions},slotLevel:chosenSlotLevel,slotKind:chosenSlotKind,
     slotCountBefore:chosenSlotCountBefore,legacySpellSlotsBefore,startedAt:new Date().toISOString(),
     startedDay:Number(clock?.day)||Number(state.campaign.day)||1,startedMinuteOfDay:Number(clock?.minuteOfDay)||0
@@ -1195,7 +1195,8 @@ if(typeof sr12HandleCombat==='function'){
 function sr29CombatLongCastPanel(){
   const pending=sr29LongCastPending();if(!pending||!state?.combat)return '';
   const caster=sr29LongCastCaster(pending),active=state.combat.mp&&typeof sr12TurnActor==='function'?sr12TurnActor():null,isMp=!!state.combat.mp;
-  const mine=isMp?active?.kind==='hero'&&String(active.id)===String(pending.casterId)&&String(SR4?.myPlayerId||'')===String(pending.casterId):!!caster&&caster===state.character;
+  const localPlayerId=String(SR4?.myPlayerId||SR12?.activePlayerId||'');
+  const mine=isMp?active?.kind==='hero'&&String(active.id)===String(pending.casterId)&&localPlayerId===String(pending.casterId):!!caster&&caster===state.character;
   const action=mine?(isMp?'<button class="btn primary" data-action="mp-combat" data-move="long-cast-continue">Magic action · Continue casting (6 seconds)</button>':'<button class="btn primary" data-action="long-cast-continue" data-sr29-long-cast="combat-continue">Magic action · Continue casting (6 seconds)</button>'):'';
   const status=mine?'It is the caster’s turn. Take the Magic action to maintain the spell.':`Waiting for ${esc(pending.casterName)} to take the Magic action on their turn.`;
   const elapsed=Math.floor(Number(pending.elapsedSeconds)||0),required=Math.max(1,Number(pending.requiredSeconds)||Number(pending.requiredMinutes)*60),percent=Math.max(0,Math.min(100,100*elapsed/required));
