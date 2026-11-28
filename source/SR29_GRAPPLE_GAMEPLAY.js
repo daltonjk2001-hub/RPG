@@ -808,15 +808,20 @@ function sr29ParseForcedDisplacement(description){
 function sr29SpellDisplacementSpec(spell){return sr29ParseForcedDisplacement(spell?.description||spell?.desc||'');}
 function sr29ParseRepeatSave(description){
   const d=String(description||'');
-  const endsOnSuccess=/ending (?:the spell|the effect) on itself on a success|ending (?:the spell|effect) on a success/i.test(d);
+  const endsOnSuccess=
+    /ending (?:the spell|the effect|the condition|it) (?:on itself )?on a success/i.test(d)||
+    /\b(?:the spell|the effect|the condition) ends? on a success/i.test(d)||
+    /\bon a success[^.!?]{0,90}\b(?:the spell|the effect|the condition) ends?/i.test(d);
   if(!endsOnSuccess)return null;
-  let trigger=null;
-  if(/at the end of each of (?:its|their) turns?/i.test(d)&&/repeats? the (?:saving throw|save)/i.test(d))trigger='end-turn';
-  else if(/whenever (?:the )?target takes damage/i.test(d)&&/repeats? the (?:saving throw|save)/i.test(d))trigger='damage';
-  if(!trigger)return null;
+  const repeatsSave=/\b(?:repeat(?:s)?|make(?:s)?|can make|must make)\b[^.!?]{0,100}\b(?:saving throw|save)\b/i.test(d);
+  if(!repeatsSave)return null;
+  const triggers=[];
+  if(/at the end of (?:each of )?(?:its|their|the target's|the creature's) turns?/i.test(d))triggers.push('end-turn');
+  if(/(?:whenever|when|each time) (?:the )?(?:target|creature|it) takes damage/i.test(d))triggers.push('damage');
+  if(!triggers.length)return null;
   const match=d.match(/\b(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma) saving throw\b/i);
   const ability=match?({strength:'STR',dexterity:'DEX',constitution:'CON',intelligence:'INT',wisdom:'WIS',charisma:'CHA'}[match[1].toLowerCase()]):null;
-  return {trigger,endsOnSuccess:true,ability};
+  return {trigger:triggers[0],triggers,endsOnSuccess:true,ability};
 }
 function sr29RepeatSaveSpecForSpell(spellName,spell){
   const parsed=sr29ParseRepeatSave(spell?.description||spell?.desc||'');
@@ -858,7 +863,7 @@ function sr29AttachRepeatSave(target,condition,spellName,caster,ability,dc,spec,
   if(!target||!condition||!spec||!ability||!Number.isFinite(Number(dc)))return false;
   const normalized=sr29NormalizeSaveAbility(ability),entries=sr29Entries(target),matches=entries.filter(item=>item.name===String(condition).toLowerCase()&&item.source===String(spellName));
   const item=matches[matches.length-1];if(!item)return false;
-  item.repeatSave={trigger:spec.trigger,endsOnSuccess:true,ability:normalized,dc:Number(dc),sourceSpell:String(spellName),sourceId:String(sourceIdOverride||caster?.id||''),sourceName:String(caster?.name||''),appliedRound:Number(state?.combat?.round)||sr29CurrentCycle()};
+  item.repeatSave={trigger:spec.trigger,triggers:Array.isArray(spec.triggers)?spec.triggers.filter(value=>['end-turn','damage'].includes(value)):undefined,endsOnSuccess:true,ability:normalized,dc:Number(dc),sourceSpell:String(spellName),sourceId:String(sourceIdOverride||caster?.id||''),sourceName:String(caster?.name||''),appliedRound:Number(state?.combat?.round)||sr29CurrentCycle()};
   target.conditions=entries;return true;
 }
 function sr29SpellTargetFailedSave(target,entries){
