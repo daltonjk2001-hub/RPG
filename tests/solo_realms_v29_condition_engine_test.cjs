@@ -481,8 +481,10 @@ try{
  assert('Each condition instance expires on its own duration',tick.expired===1&&T.entries(stacked).length===1&&T.entries(stacked)[0].rounds===2&&T.has(stacked,'poisoned'));
  const holdRepeat=T.gameplay.parseRepeatSave('Choose a Humanoid that you can see within range. The target must succeed on a Wisdom saving throw or have the Paralyzed condition for the duration. At the end of each of its turns, the target repeats the save, ending the spell on itself on a success.');
  const dominateRepeat=T.gameplay.parseRepeatSave('One Humanoid you can see within range must succeed on a Wisdom saving throw or have the Charmed condition for the duration. Whenever the target takes damage, it repeats the save, ending the spell on itself on a success.');
+ const alternateRepeat=T.gameplay.parseRepeatSave('At the end of each of its turns, the target makes another Wisdom saving throw. On a success, the spell ends.');
+ const dualTriggerRepeat=T.gameplay.parseRepeatSave('At the end of each of its turns, the target can make another Wisdom saving throw. Whenever it takes damage, it can make another Wisdom saving throw. On a success, the effect ends.');
  const nonEndingRepeat=T.gameplay.parseRepeatSave('At the start of each of its turns, the target must succeed on a Wisdom saving throw or take the Dodge action.');
- assert('Repeat-save parser distinguishes end-turn and damage triggers and ignores non-ending recurring saves',holdRepeat?.trigger==='end-turn'&&holdRepeat.endsOnSuccess&&holdRepeat.ability==='WIS'&&dominateRepeat?.trigger==='damage'&&nonEndingRepeat===null);
+ assert('Repeat-save parser supports alternate make-another wording, multiple triggers, and ignores non-ending recurring saves',holdRepeat?.trigger==='end-turn'&&holdRepeat.endsOnSuccess&&holdRepeat.ability==='WIS'&&dominateRepeat?.trigger==='damage'&&alternateRepeat?.trigger==='end-turn'&&dualTriggerRepeat?.triggers?.includes('end-turn')&&dualTriggerRepeat?.triggers?.includes('damage')&&nonEndingRepeat===null);
  const holdSpellData={kind:'control',classes:['Wizard'],desc:'Paralyze a humanoid foe with binding magic.'};
  const holdSpellEffect=T.gameplay.spellEffectComplete('Hold Person',holdSpellData);
  const holdSpellRule=T.gameplay.repeatSaveSpecForSpell('Hold Person',holdSpellData);
@@ -507,6 +509,13 @@ try{
  const wrongTrigger=T.processRepeatSaves(dominatedTarget,'end-turn','dominated-end',[20]);
  const damageTrigger=T.processRepeatSaves(dominatedTarget,'damage','dominated-damage',[20]);
  assert('Damage-triggered repeat saves resolve only on damage and remove the affected condition on success',dominateAttached&&wrongTrigger.attempted===0&&damageTrigger.ended===1&&!T.has(dominatedTarget,'charmed'));
+ const dualTriggerTarget=actor({id:'dual-trigger-target',name:'Dual Trigger Target',classId:'Wizard',level:1});
+ T18.state={character:dualTriggerTarget,combat:{round:1},campaign:{},log:[]};
+ T.apply(dualTriggerTarget,'frightened',10,'Dual Trigger Spell');
+ const dualTriggerAttached=T.gameplay.attachRepeatSave(dualTriggerTarget,'frightened','Dual Trigger Spell',dualTriggerTarget,'WIS',13,dualTriggerRepeat);
+ const dualEndFailure=T.processRepeatSaves(dualTriggerTarget,'end-turn','dual-end-turn',[1]);
+ const dualDamageSuccess=T.processRepeatSaves(dualTriggerTarget,'damage','dual-damage',[20]);
+ assert('A repeat-save effect can trigger at end of turn and again on damage, with one success ending it',dualTriggerAttached&&dualEndFailure.failed===1&&T.has(dualTriggerTarget,'frightened')&&dualDamageSuccess.ended===1&&!T.has(dualTriggerTarget,'frightened'),JSON.stringify({dualTriggerAttached,dualEndFailure,dualDamageSuccess,condition:T.has(dualTriggerTarget,'frightened')}));
  const concentrationCaster=actor({id:'concentration-caster',name:'Concentration Caster',concentration:{spell:'Dominate Person'},activeEffects:[{name:'Dominate Person',concentration:true}]});
  const dominatedFirst=actor({id:'dominated-first',name:'Dominated First'}),dominatedSecond=actor({id:'dominated-second',name:'Dominated Second'});
  T18.state={character:concentrationCaster,combat:{round:1,enemies:[dominatedFirst,dominatedSecond]},campaign:{},log:[]};
