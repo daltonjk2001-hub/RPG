@@ -47,14 +47,14 @@ function sr29SoloFreeHands(actor){
   const weaponName=String((typeof mainSource==='object'?(mainSource.name??mainSource.item??mainSource.id):mainSource)||'').trim();
   const weapon=WEAPONS?.[weaponName]||{};
   const unarmed=!mainEquipped||!weaponName||/^(none|unarmed|unarmed strike)$/i.test(weaponName);
-  const declaredHands=Number(mainSource?.hands??weapon.hands);
+  const declaredHands=Number(mainSource?.hands??mainSource?.handedness??weapon.hands??weapon.handedness);
   const propertyValues=[
     ...(Array.isArray(weapon.properties)?weapon.properties:typeof weapon.properties==='string'?[weapon.properties]:[]),
     ...(Array.isArray(mainSource?.properties)?mainSource.properties:typeof mainSource?.properties==='string'?[mainSource.properties]:[])
   ].map(x=>String(x).toLowerCase());
   const handedness=String(mainSource?.handedness??weapon.handedness??'').toLowerCase().replace(/[\s_-]+/g,'');
   const twoHanded=!/^hand crossbow$/i.test(weaponName)&&(weapon.twoHanded===true||mainSource?.twoHanded===true||
-    Number(mainSource?.hands??weapon.hands)===2||handedness==='twohanded'||handedness==='2handed'||
+    (Number.isFinite(declaredHands)&&declaredHands===2)||handedness==='twohanded'||handedness==='2handed'||
     propertyValues.some(value=>/two[- ]handed/.test(value))||
     /two-handed/i.test(String(weapon.desc||weapon.description||mainSource?.description||mainSource?.desc||''))||
     /^(greatsword|greataxe|longbow|light crossbow|heavy crossbow)$/i.test(weaponName));
