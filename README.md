@@ -72,9 +72,12 @@ V23 is the first Director-first foundation, not the completed game. The full des
 
 1. **Complete game design** — the player experience, DM responsibilities, rules, story/campaign model, living world, NPCs, memory, connected/offline modes, and completion criteria.
 2. **Target technical architecture** — domain boundaries, transaction and event contracts, authoritative rules services, AI gateway, memory, and persistence.
-3. **Implementation roadmap** — the build sequence, dependencies, acceptance gates, and an explicit list of what V23 has and has not delivered.
+3. **Implementation roadmap** — the build sequence, dependencies, acceptance gates, and an explicit list of what remains.
+4. **D&D reference-to-implementation backlog** — a code-audited map from the six-pillar D&D Complete Master Reference to current Solo Realms capabilities, partial/missing systems, dependency gates, and concrete acceptance tests.
 
-Read these before adding another standalone gameplay feature. New work should advance the roadmap's next foundation phase instead of creating disconnected systems.
+Read these before adding another standalone gameplay feature. The detailed backlog is the operational cross-reference for the D&D reference and current V24 repository baseline. New work should advance the dependency-ordered phases instead of creating disconnected systems.
+
+See [DND_IMPLEMENTATION_BACKLOG.md](DND_IMPLEMENTATION_BACKLOG.md) for the full audit and first implementation sprint.
 
 ## V23 Director-first gameplay
 
