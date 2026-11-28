@@ -1222,6 +1222,15 @@ try{
  const spentActionActor=actor({id:'spent-action',name:'Spent Action',actionSpent:true});
  const spentBonusActor=actor({id:'spent-bonus',name:'Spent Bonus',bonusActionSpent:true});
  assert('The canonical action-economy gate rejects already-spent Actions and Bonus Actions',!T.gameplay.actionEconomyGate(spentActionActor,'action',true)&&!T.gameplay.actionEconomyGate(spentBonusActor,'bonus-action',true));
+ const outOfCombatRogue=actor({id:'out-of-combat-rogue',name:'Out of Combat Rogue',classId:'Rogue',level:2,classLevels:{Rogue:2},baseMovement:30,movement:30,speed:30,bonusActionSpent:true});
+ const outOfCombatRoguePlayer={id:'out-of-combat-rogue',name:'Out of Combat Rogue',character:outOfCombatRogue};
+ T18.state={character:outOfCombatRogue,campaign:{},combat:null,log:[]};
+ const outOfCombatCunningDash=T.gameplay.cunningAction(outOfCombatRoguePlayer,'dash');
+ const outOfCombatBarbarian=actor({id:'out-of-combat-barbarian',name:'Out of Combat Barbarian',classId:'Barbarian',level:1,classLevels:{Barbarian:1},rageRounds:0,bonusActionSpent:true});
+ const outOfCombatBarbarianPlayer={id:'out-of-combat-barbarian',name:'Out of Combat Barbarian',character:outOfCombatBarbarian};
+ T18.state={character:outOfCombatBarbarian,campaign:{},combat:null,log:[]};
+ const outOfCombatRage=T.gameplay.runFeature(outOfCombatBarbarianPlayer,'rage');
+ assert('Stale combat Bonus Action flags do not block out-of-combat Cunning Action or Rage',outOfCombatCunningDash===true&&outOfCombatRage===true,JSON.stringify({outOfCombatCunningDash,outOfCombatRage,rogue:outOfCombatRogue,barbarian:outOfCombatBarbarian}));
  const reactionAttackHero=actor({id:'reaction-attack-hero',name:'Reaction Attack Hero',classId:'Fighter',level:1,weapon:'Dagger',actionSpent:false,bonusActionSpent:false,reactionAvailable:true});
  const reactionAttackPlayer={id:'reaction-attack-hero',name:'Reaction Attack Hero',connected:true,character:reactionAttackHero};
  const reactionAttackTarget=actor({id:'reaction-attack-target',name:'Reaction Attack Target',hp:100,maxHp:100,ac:1,size:'Medium',pos:{x:2,y:1}});
