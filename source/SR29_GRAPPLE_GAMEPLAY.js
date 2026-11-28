@@ -1062,10 +1062,10 @@ if(typeof sr12ConsumeSlot==='function'){
     return sr29PriorConsumeSlot.apply(this,arguments);
   };
 }
+let SR29_LAST_CAST_COMMIT_TRACE=null;
 if(typeof sr14CastSpellComplete==='function'){
   const sr29PriorCastSpell=sr14CastSpellComplete;
-  let SR29_LAST_CAST_COMMIT_TRACE=null;
-sr14CastSpellComplete=function(...args){
+  sr14CastSpellComplete=function(...args){
     const playerArg=args[0],spellName=args[1],spell=SRD52_SPELLS?.[spellName];
     const caster=playerArg?.character||state?.character;
     const player=playerArg||{id:typeof SR4!=='undefined'?(SR4.myPlayerId||'solo'):'solo',name:caster?.name||'Hero',character:caster};
