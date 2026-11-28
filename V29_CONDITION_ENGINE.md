@@ -408,3 +408,11 @@ Still incomplete: Reincarnate's complete species-specific trait automation and p
 - Explicit negative metadata such as `canGrapple: false`, `grappleCapable: false`, `usableForGrapple: false`, or `functional: false` still excludes that appendage. Locomotion and sensory structures such as wings, legs, fins, tails, horns, antennae, heads, and jaws are not inferred to be grasping appendages.
 - Added regression coverage for structured array records, named object-map anatomy, and explicit negative capability overrides. Full regression and V18 hardening passed on the current branch head.
 - This improves the anatomy data contract but does not complete the creature-by-creature anatomy catalogue. Unusual/custom creatures still need explicit anatomy or `grappleAppendages` data; unknown anatomy retains the conservative fallback. Multi-target dragging remains blocked on the single-occupant tactical grid rather than overlapping creature tokens.
+
+
+## V29.69 — Custom weapon hand metadata and empty equipment sentinels
+
+- Custom main-hand weapons now recognize numeric hand counts, string handedness values such as `two-handed`, boolean `twoHanded`, and either array- or string-valued weapon properties. Hand Crossbow retains its explicit one-handed exception.
+- Empty strings and `none` / `empty` / `unarmed` off-hand sentinels no longer consume a hand. Explicit unequipped flags continue to take precedence.
+- Added regressions for custom `handedness: "two-handed"`, string-valued `properties`, and empty/none off-hand values.
+- Full regression passed with **429/429 V29 assertions**; V18 hardening passed. Unusual custom equipment records still need real save/import and two-device playtesting; the engine continues to prefer explicit equipped-slot metadata over guessing.
