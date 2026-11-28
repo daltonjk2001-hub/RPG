@@ -1120,12 +1120,13 @@ if(typeof sr14CastSpellComplete==='function'){
       if(currentCount>=slotCountBefore){
         if(typeof reservedSlot==='object'&&typeof sr7ConsumeCastSlot==='function'){
           try{sr7ConsumeCastSlot(caster,reservedSlot);}catch(error){console.warn('V29 slot helper failed; applying the verified slot fallback.',error);}
-          const afterHelper=Number(slotMap?.[slotLevel])||0;
-          // Some remote-player/legacy resolver routes can return success while the
-          // shared slot helper declines the remote character object. Verify the
-          // actual tier changed before considering the resource paid.
-          if(afterHelper>=currentCount&&slotMap){
-            slotMap[slotLevel]=Math.max(0,currentCount-1);
+          const liveSlotMap=slotKind==='pact'?caster?.pactSlotsByLevel:caster?.spellSlotsByLevel;
+          const afterHelper=Number(liveSlotMap?.[slotLevel])||0;
+          // Some helper routes replace the slot-map object while applying a cast.
+          // Re-read the live map after the helper, then use a direct decrement only
+          // if the selected tier is still unchanged.
+          if(afterHelper>=currentCount&&liveSlotMap){
+            liveSlotMap[slotLevel]=Math.max(0,currentCount-1);
             if(typeof sr7UpdateSlotTotals==='function')sr7UpdateSlotTotals(caster);
           }
           if(castKind!=='reaction')caster.spellSlotSpentThisTurn=true;
