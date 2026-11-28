@@ -300,7 +300,11 @@ try{
  const selectedPlayerTeleport=T.gameplay.playerTeleportPlan(teleportPlayer,30,{x:1,y:2});
  const blockedSelectedTeleport=T.gameplay.playerTeleportPlan(teleportPlayer,30,{x:6,y:3});
  const outOfRangeSelectedTeleport=T.gameplay.playerTeleportPlan(teleportPlayer,5,{x:4,y:3});
- assert('Player-selected teleport destinations are honored only when visible, unoccupied, and within the spell range',selectedPlayerTeleport?.to.x===1&&selectedPlayerTeleport?.to.y===2&&selectedPlayerTeleport.travelFeet<=30&&blockedSelectedTeleport===null&&outOfRangeSelectedTeleport===null,JSON.stringify({selectedPlayerTeleport,blockedSelectedTeleport,outOfRangeSelectedTeleport}));
+ T18.state.combat.allies=[{id:'teleport-ally',name:'Tactical Ally',hp:10,pos:{x:3,y:2}}];
+ const companionOccupiedTeleport=T.gameplay.playerTeleportPlan(teleportPlayer,30,{x:3,y:2});
+ T18.state.campaign.companions=[{id:'campaign-companion',name:'Campaign Companion',hp:10,position:{x:4,y:2}}];
+ const campaignCompanionOccupiedTeleport=T.gameplay.playerTeleportPlan(teleportPlayer,30,{x:4,y:2});
+ assert('Player-selected teleport destinations are honored only when visible, unoccupied, and within the spell range',selectedPlayerTeleport?.to.x===1&&selectedPlayerTeleport?.to.y===2&&selectedPlayerTeleport.travelFeet<=30&&blockedSelectedTeleport===null&&outOfRangeSelectedTeleport===null&&companionOccupiedTeleport===null&&campaignCompanionOccupiedTeleport===null,JSON.stringify({selectedPlayerTeleport,blockedSelectedTeleport,outOfRangeSelectedTeleport,companionOccupiedTeleport,campaignCompanionOccupiedTeleport}));
  assert('Player teleport planner stays within 30 feet, avoids occupied and blocked cells, and respects line of sight',!!legalPlayerTeleport&&legalPlayerTeleport.travelFeet<=30&&!(legalPlayerTeleport.to.x===teleportEnemy.pos.x&&legalPlayerTeleport.to.y===teleportEnemy.pos.y)&&!(legalPlayerTeleport.to.x===2&&legalPlayerTeleport.to.y===3)&&T18.state.combat.mp.heroPositions['teleport-hero'].x===1);
  T.apply(teleportEnemy,'grappled','permanent','Teleport Hero',{sourceId:'teleport-hero',grapplerId:'teleport-hero',grappleRange:5});
  const playerTeleportApplied=legalPlayerTeleport&&T.gameplay.applyPlayerTeleport(teleportPlayer,legalPlayerTeleport);
