@@ -980,7 +980,6 @@ function sr29QueueTeleportDestination(player,spellName,args,range){
   if(typeof sr4Broadcast==='function')sr4Broadcast();
   toast('Choose a legal destination to complete '+String(spellName)+'. No resources have been spent yet.');
   sr29RenderTeleportPrompt();
-  if(typeof render==='function')render();
   return true;
 }
 function sr29ResolvePendingTeleport(player,x,y){
