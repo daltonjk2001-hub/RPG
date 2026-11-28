@@ -34,7 +34,7 @@ function sr29SoloActiveGrapples(actor){
 }
 function sr29EquipmentIsEquipped(item,defaultWhenSlotted=false){
   if(item===false||item==null)return false;
-  if(typeof item!=='object')return true;
+  if(typeof item!=='object')return String(item).trim()!==''&&!/^(none|empty|unarmed)$/i.test(String(item).trim());
   if(item.equipped===false||item.isEquipped===false)return false;
   if(item.equipped===true||item.isEquipped===true)return true;
   const slot=String(item.equippedSlot??item.slot??'').toLowerCase();
@@ -47,10 +47,16 @@ function sr29SoloFreeHands(actor){
   const weaponName=String((typeof mainSource==='object'?(mainSource.name??mainSource.item??mainSource.id):mainSource)||'').trim();
   const weapon=WEAPONS?.[weaponName]||{};
   const unarmed=!mainEquipped||!weaponName||/^(none|unarmed|unarmed strike)$/i.test(weaponName);
-  const declaredHands=Number(mainSource?.hands??mainSource?.handedness??weapon.hands??weapon.handedness);
-  const properties=[...(Array.isArray(weapon.properties)?weapon.properties:[]),...(Array.isArray(mainSource?.properties)?mainSource.properties:[])].map(x=>String(x).toLowerCase());
-  const twoHanded=!/^hand crossbow$/i.test(weaponName)&&(weapon.twoHanded===true||mainSource?.twoHanded===true||properties.includes('two-handed')||
-    /two-handed/i.test(String(weapon.desc||mainSource?.description||''))||
+  const declaredHands=Number(mainSource?.hands??weapon.hands);
+  const propertyValues=[
+    ...(Array.isArray(weapon.properties)?weapon.properties:typeof weapon.properties==='string'?[weapon.properties]:[]),
+    ...(Array.isArray(mainSource?.properties)?mainSource.properties:typeof mainSource?.properties==='string'?[mainSource.properties]:[])
+  ].map(x=>String(x).toLowerCase());
+  const handedness=String(mainSource?.handedness??weapon.handedness??'').toLowerCase().replace(/[\\s_-]+/g,'');
+  const twoHanded=!/^hand crossbow$/i.test(weaponName)&&(weapon.twoHanded===true||mainSource?.twoHanded===true||
+    Number(mainSource?.hands??weapon.hands)===2||handedness==='twohanded'||handedness==='2handed'||
+    propertyValues.some(value=>/two[- ]handed/.test(value))||
+    /two-handed/i.test(String(weapon.desc||weapon.description||mainSource?.description||mainSource?.desc||''))||
     /^(greatsword|greataxe|longbow|light crossbow|heavy crossbow)$/i.test(weaponName));
   const mainHands=unarmed?0:(Number.isFinite(declaredHands)&&declaredHands>0
     ?Math.min(2,Math.floor(declaredHands)):(twoHanded?2:1));
