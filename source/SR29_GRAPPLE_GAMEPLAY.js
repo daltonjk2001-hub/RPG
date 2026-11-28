@@ -422,7 +422,9 @@ function sr29AppendageCanGrapple(appendage,explicitList=false){
   if(appendage.canGrapple===true||appendage.grappleCapable===true||appendage.usableForGrapple===true)return true;
   const kind=String(appendage.type??appendage.kind??appendage.name??'').toLowerCase();
   if(/wing|leg|foot|hoof|fin|antenna|horn|tail|head|jaw/.test(kind))return false;
-  return explicitList&&/hand|arm|tentacle|pseudopod|grasping limb|manipulator/.test(kind);
+  // Generic anatomy records are valid evidence when the appendage is inherently grasping;
+  // the explicit grappleAppendages list is not required to repeat that capability flag.
+  return /hand|arm|tentacle|pseudopod|grasping limb|manipulator/.test(kind);
 }
 function sr29CountGrappleAppendages(collection,explicitList=false){
   if(Array.isArray(collection))return collection.filter(item=>sr29AppendageCanGrapple(item,explicitList)).length;
