@@ -1456,7 +1456,7 @@ if(typeof sr14RunFeature==='function'){
     const action=new Set(['divineSpark','eldritchBlast']);
     const free=new Set(['actionSurge']);
     const kind=k==='cuttingWords'?'reaction':bonus.has(k)?'bonus-action':action.has(k)?'action':free.has(k)?'free':null;
-    if(kind&&!sr29ActionEconomyGate(c,kind,!free.has(k)))return false;
+    if(kind&&!sr29ActionEconomyGate(c,kind,!!state?.combat&&!free.has(k)))return false;
     const previousBonus=c?.bonusActionSpent;
     if(k==='actionSurge'&&c)c.bonusActionSpent=false;
     let result;
@@ -1488,7 +1488,7 @@ if(typeof sr12ClassPower==='function'){
 if(typeof sr137CunningAction==='function'){
   const sr29PriorCunningAction=sr137CunningAction;
   sr137CunningAction=function(player,mode,...args){
-    if(!sr29ActionEconomyGate(player?.character,'bonus-action',true))return false;
+    if(!sr29ActionEconomyGate(player?.character,'bonus-action',!!state?.combat))return false;
     return sr29PriorCunningAction.call(this,player,mode,...args);
   };
 }
@@ -1498,7 +1498,7 @@ if(typeof sr12HeroAttack==='function'){
     const kind=reaction?'reaction':'action',character=player?.character;
     const target=targetOverride||(typeof sr4Target==='function'?sr4Target():null);
     if(sr29CannotHarm(character,target)){toast('The Charmed condition prevents you from harming its source.');return false;}
-    if(!sr29ActionEconomyGate(character,kind,true))return false;
+    if(!sr29ActionEconomyGate(character,kind,!!state?.combat))return false;
     const weapon=String(character?.weapon||''),mastery=sr29WeaponMasteryFor(character,weapon);
     const beforeLog=(state?.log||[]).length,beforeLogHead=(state?.log||[])[0]||null,origin=state?.combat?.mp?sr12PlayerPos(player?.id):null;
     const actionSpentBefore=character?.actionSpent,bonusActionSpentBefore=character?.bonusActionSpent;
