@@ -152,7 +152,7 @@ try{
  const raiseDeadStarted=T.gameplay.castSpell(raiseCasterPlayer,'Raise Dead','raise-target',true);
  assert('Raise Dead begins as a pending one-hour cast without spending its slot or reviving the target',raiseDeadStarted?.started===true&&raiseTarget.hp===0&&raiseTarget.mpDead===true&&raiseCaster.spellSlotsByLevel[5]===1&&raiseCaster.spellSlotProgressionVersion===3&&RV.pendingLongCast()?.requiredMinutes===60);
  const raiseDeadPanel=RV.longCastPanel();
- assert('Out-of-combat long casts offer one Finish action and explain that only in-game time advances',raiseDeadPanel.includes('data-sr29-long-cast')&&raiseDeadPanel.includes('real-world timer')&&!raiseDeadPanel.includes('Continue 10 minutes'));
+ assert('Out-of-combat long casts offer one Finish action and explain that only in-game time advances',raiseDeadPanel.includes('data-sr29-long-cast="finish"')&&raiseDeadPanel.includes('real-world timer')&&!raiseDeadPanel.includes('data-sr29-long-cast="advance"'));
  const raiseDeadCompletion=RV.completePendingLongCast();
  const raiseDeadClock=RV.campaignClock();
  assert('One Finish action advances the full hour in-game and processes six ten-minute world segments without a real-time wait',raiseDeadCompletion?.completed===true&&raiseDeadCompletion.elapsedSeconds===3600&&raiseDeadClock.minuteOfDay===60&&raiseDeadClock.secondOfMinute===0&&raiseDeadClock.actionTicks===6&&raiseTarget.hp===0&&raiseCaster.spellSlotsByLevel[5]===1);
