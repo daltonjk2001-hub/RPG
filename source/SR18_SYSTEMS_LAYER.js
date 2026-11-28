@@ -2,6 +2,16 @@
  * Built as an additive layer over V17 so earlier campaign/rules/multiplayer/save data remains readable.
  */
 const SR18_VERSION='18.0.0';
+if(typeof ANCESTRIES==='object'&&!ANCESTRIES.Dragonborn){
+  ANCESTRIES.Dragonborn={
+    bonus:{},
+    creatureType:'Humanoid',
+    size:'Medium',
+    speed:30,
+    draconicAncestors:{Black:'acid',Blue:'lightning',Brass:'fire',Bronze:'lightning',Copper:'acid',Gold:'fire',Green:'poison',Red:'fire',Silver:'cold',White:'cold'},
+    trait:'Draconic ancestry: choose a dragon lineage for Breath Weapon and matching Damage Resistance; Darkvision 60 ft.; Draconic Flight at level 5.'
+  };
+}
 const SR18_WATCHES_PER_DAY=6;
 const SR18_SAVE_DB='solo-realms-v18-save-archive';
 const SR18_SLOT_PREFIX='sr18-save-slot-';
@@ -10,6 +20,8 @@ const SR18_MAX_SLOTS=8;
 let SR18_DB_PROMISE=null, SR18_RECOVERY_TIMER=null, SR18_LAST_RECOVERY=0, SR18_RECOVERY_SEQ=0;
 
 function sr18Text(x){return String(x??'');}
+function sr18CanUseAction(actor){return typeof sr29CanAct!=='function'||sr29CanAct(actor,'action');}
+function sr18CanUseReaction(actor){return typeof sr29CanAct!=='function'||sr29CanAct(actor,'reaction');}
 function sr18DiceAverage(expr){const m=sr18Text(expr).replace(/\s/g,'').match(/^(\d+)?d(\d+)([+-]\d+)?$/i);return m?(Number(m[1]||1)*(Number(m[2])+1)/2+Number(m[3]||0)):0;}
 function sr18DamageExpr(sp){return sr18Text(sp?.damage||'').replace(/\s/g,'')||sr18Text(sp?.description||'').match(/\b\d+d\d+(?:\s*[+-]\s*\d+)?\b/i)?.[0]?.replace(/\s/g,'')||'';}
 function sr18SaveAbility(sp,desc){const direct=sr18Text(sp?.saveAbility||'').toUpperCase().slice(0,3);if(['STR','DEX','CON','INT','WIS','CHA'].includes(direct))return direct;const m=sr18Text(desc).match(/\b(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma) saving throw\b/i);return m?m[1].slice(0,3).toUpperCase():'DEX';}
@@ -20,7 +32,8 @@ function sr18InferSpellEffect(name,sp,base={kind:'utility'}){
  const damage=sr18DamageExpr(sp),area=sr18Area(sp,desc),save=sr18SaveAbility(sp,desc),condition=sr18Text(sp?.condition||'').toLowerCase()||sr18DetectCondition(desc);
  if(area.active){effect.area=true;effect.shape=area.shape;effect.size=area.size;}
  const damageType=sr18Text(sp?.damageType||desc.match(/\b(bludgeoning|piercing|slashing|acid|cold|fire|force|lightning|necrotic|poison|psychic|radiant|thunder)\s+damage\b/i)?.[1]||'').toLowerCase();if(damageType)effect.type=damageType;
- if(sp?.heal||/regains?[^.]{0,140}hit points|hit points?[^.]{0,140}regain|restores?[^.]{0,100}hit points/i.test(desc))effect.kind='heal';
+ if(name==='Reincarnate')effect.kind='revive';
+ else if(sp?.heal||/regains?[^.]{0,140}hit points|hit points?[^.]{0,140}regain|restores?[^.]{0,100}hit points/i.test(desc))effect.kind='heal';
  else if(/returns? (?:the creature|a creature|the target|it) to life|resurrect|revive|dead creature.*returns? to life/i.test(desc))effect.kind='revive';
  else if(base.kind==='utility'&&/(?:teleport|teleports|transport(?:s)? .*? instantly|you disappear|reappear in an unoccupied space|move instantly to)/i.test(desc))effect.kind='teleport';
  else if(base.kind==='utility'&&/(?:summon|conjure|calls? forth|creates? .*?(?:spirit|creature|servant)|manifests? .*? ally)/i.test(desc))effect.kind='summon';
@@ -38,6 +51,7 @@ function sr18InferSpellEffect(name,sp,base={kind:'utility'}){
  else if(base.kind==='utility'&&/damage|attack roll/i.test(d)&&area.active)effect.kind='saveDamage';
  if(['attack','saveDamage','control','debuff'].includes(effect.kind)){
   effect.save=effect.save||save;effect.condition=effect.condition||condition;
+  if(effect.kind==='control'&&typeof sr29ParseForcedDisplacement==='function'&&sr29ParseForcedDisplacement(desc)&&!condition)effect.condition='';
   if(area.active){effect.area=true;effect.shape=effect.shape||area.shape;effect.size=effect.size||area.size;}
   if(effect.kind==='saveDamage'&&!effect.type)effect.type=sr18Text(sp?.damageType||'force').toLowerCase();
  }
@@ -183,7 +197,7 @@ sr11RollAttack=function(base,actor,target,melee=false){
  let extra=0,spellAdv=false;for(const e of sr18ActiveEffect(actor)){if(e.bonusType==='attack'||e.bonusType==='attackSave')extra+=Number(e.bonus||0)+(e.bonusDice?rollDice(e.bonusDice):0);if(e.attackAdvantage)spellAdv=true;}
  const out=sr18AttackBase(Number(base||0)+extra,actor,target,melee);if(spellAdv&&!out.adv&&!out.dis){const r2=die(20);out.r2=r2;out.r1=out.r;out.r=Math.max(out.r,r2);out.adv=true;out.total=out.r+Number(base||0)+extra;}if(actor&&typeof actor==='object')actor.lastAttackRoll=out;for(const x of sr18ActiveEffect(actor).filter(x=>x.once&&(x.bonusType==='attack'||x.bonusType==='attackSave'))){actor.activeEffects=actor.activeEffects.filter(y=>y!==x);if(actor.concentration?.spell===x.name)actor.concentration=null;}
  // A monster's Parry reaction can turn one otherwise-hit melee attack into a miss.
- if(target&&target.hp!==undefined&&target.reactions?.length&&target.reactionAvailable!==false&&melee&&!target._sr18ParryUsed&&out.r!==1){
+ if(target&&target.hp!==undefined&&target.reactions?.length&&target.reactionAvailable!==false&&sr18CanUseReaction(target)&&melee&&!target._sr18ParryUsed&&out.r!==1){
   const parry=target.reactions.find(x=>/parry|adds?\s+\d+\s+to its AC|increases? its AC/i.test(`${x.name} ${x.description}`));
   const bonus=Number((sr18Text(parry?.description).match(/(?:adds?|increase[sd]?)\s+(\d+)\s+to (?:its )?AC/i)||[])[1]||3);
   const ac=Number(target.ac)||10;if(parry&&out.total>=ac&&out.total<ac+bonus){out.total-=bonus;target.reactionAvailable=false;target._sr18ParryUsed=true;log(`${target.name} uses ${parry.name||'Parry'} to turn the blow aside.`,'rolllog');}
@@ -235,20 +249,155 @@ function sr18MonsterTargetsForAction(enemy,action,target,save){
  const area=sr18Area({},action?.description||'');if(!area.active||!state.combat?.mp)return [target];
  const center=target?.pos||state.combat.heroPos;return sr12AllHeroPositions().filter(h=>h.player.character?.hp>0&&sr14AreaHit({pos:h.pos},enemy.pos,center,area.shape,area.size)).map(h=>({player:h.player,pos:h.pos}));
 }
+// Apply monster Push/Pull effects through one collision-aware tactical displacement transaction.
+function sr18DisplacementPlan(from,source,direction,feet,isOpen){
+ if(!from||!source||!Number.isFinite(Number(from.x))||!Number.isFinite(Number(from.y))||!Number.isFinite(Number(source.x))||!Number.isFinite(Number(source.y)))return null;
+ const dx=Math.sign(Number(from.x)-Number(source.x))*(direction==='pull'?-1:1),dy=Math.sign(Number(from.y)-Number(source.y))*(direction==='pull'?-1:1);
+ if(!dx&&!dy)return null;
+ const steps=Math.max(1,Math.floor(Math.max(5,Number(feet)||5)/5)),path=[];
+ let at={x:Number(from.x),y:Number(from.y)};
+ for(let i=0;i<steps;i++){
+  const next={x:at.x+dx,y:at.y+dy};
+  if(typeof isOpen==='function'&&!isOpen(next))break;
+  path.push(next);at=next;
+ }
+ return path.length?{from:{x:Number(from.x),y:Number(from.y)},to:at,path,feet:path.length*5}:null;
+}
+function sr18DisplaceCombatant(target,source,description){
+ const d=sr18Text(description),mode=/\b(?:pulls?|pulled)\b/i.test(d)?'pull':/\b(?:pushes?|pushed)\b/i.test(d)?'push':null;
+ if(!mode||!state.combat)return false;
+ const b=state.combat,player=target?.player,enemyTarget=target?.enemy;
+ const feet=Number((d.match(/(?:up to\s+)?(\d+)\s*feet?/i)||[])[1])||5;
+ // Theater-of-the-mind combat stores separation on the monster, not on a tactical grid.
+ // Apply the same forced-movement outcome to that distance model and then reconcile grapples.
+ if(!b.mp){
+  if(player?.id!=='solo'||!Number.isFinite(Number(source?.distance)))return false;
+  const before=Math.max(0,Number(source.distance));
+  const after=mode==='push'?before+feet:Math.max(0,before-feet);
+  if(after===before)return false;
+  source.distance=after;
+  if(typeof sr29ReconcileAbstractGrapples==='function')sr29ReconcileAbstractGrapples();
+  if(typeof sr29ReconcileCombatGrapples==='function')sr29ReconcileCombatGrapples();
+  log((player.name||'The target')+' is '+(mode==='push'?'pushed':'pulled')+' '+Math.abs(after-before)+' feet.','rolllog');
+  return true;
+ }
+ if(typeof sr9Cell!=='function')return false;
+ const from=player?.id==='solo'?b.heroPos:(player?.id?b.mp.heroPositions?.[player.id]:(enemyTarget?.pos||enemyTarget?.position));
+ const sourcePos=source?.pos||source?.position;
+ if(!from||!sourcePos)return false;
+ const isOpen=pos=>{
+  const cell=sr9Cell(pos.x,pos.y);
+  if(!cell||cell.blocked===true||cell.walkable===false||/^(?:wall|void|blocked)$/i.test(String(cell.kind||cell.type||'')))return false;
+  for(const [id,pos2] of Object.entries(b.mp.heroPositions||{})){
+   if(id!==String(player?.id||'')&&pos2&&Number(pos2.x)===pos.x&&Number(pos2.y)===pos.y)return false;
+  }
+  for(const other of b.enemies||[]){
+   if(other!==source&&other!==enemyTarget&&other.hp>0){
+    const p=other.pos||other.position;if(p&&Number(p.x)===pos.x&&Number(p.y)===pos.y)return false;
+   }
+  }
+  return true;
+ };
+ const plan=sr18DisplacementPlan(from,sourcePos,mode,feet,isOpen);
+ if(!plan)return false;
+ if(player?.id==='solo')b.heroPos={...plan.to};
+ else if(player?.id)b.mp.heroPositions[player.id]={...plan.to};
+ else if(enemyTarget)enemyTarget.pos={...plan.to};
+ else return false;
+ if(typeof sr29ReconcileAbstractGrapples==='function')sr29ReconcileAbstractGrapples();
+ if(typeof sr29ReconcileCombatGrapples==='function')sr29ReconcileCombatGrapples();
+ log((target?.player?.name||target?.enemy?.name||'The target')+' is '+(mode==='push'?'pushed':'pulled')+' '+plan.feet+' feet.','rolllog');
+ return true;
+}
+// Select a legal teleport destination that advances toward the current target without occupying its space.
+function sr18TeleportPlan(from,target,feet,isOpen,hasLOS){
+ if(!from||!target||!Number.isFinite(Number(from.x))||!Number.isFinite(Number(from.y))||!Number.isFinite(Number(target.x))||!Number.isFinite(Number(target.y)))return null;
+ const limit=Math.max(5,Number(feet)||5),candidates=[];
+ for(let x=Math.floor(from.x-limit/5);x<=Math.ceil(from.x+limit/5);x++)for(let y=Math.floor(from.y-limit/5);y<=Math.ceil(from.y+limit/5);y++){
+  const p={x,y};if(x===Number(from.x)&&y===Number(from.y))continue;
+  const travel=sr12Distance(from,p),remaining=sr12Distance(p,target);
+  if(travel>limit||remaining<5||typeof isOpen==='function'&&!isOpen(p)||typeof hasLOS==='function'&&!hasLOS(p,target))continue;
+  candidates.push({to:p,travelFeet:travel,remainingFeet:remaining});
+ }
+ candidates.sort((a,b)=>a.remainingFeet-b.remainingFeet||a.travelFeet-b.travelFeet||a.to.y-b.to.y||a.to.x-b.to.x);
+ return candidates[0]||null;
+}
+function sr18TeleportMonster(enemy,target,description){
+ const d=sr18Text(description);
+ if(!/\bteleport(?:s|ed|ing)?\b/i.test(d))return false;
+ const match=d.match(/teleport(?:s|ed|ing)?[^.]{0,100}?(?:up to |within |no more than )?(\d+)\s*feet?/i)||d.match(/(\d+)\s*feet?[^.]{0,80}teleport/i);
+ const feet=Math.max(5,Number(match?.[1])||30),b=state.combat;
+ if(!b)return false;
+ if(!b.mp&&typeof sr29CanMoveToward==='function'&&!sr29CanMoveToward(enemy,target?.player?.character))return false;
+ if(!b.mp){
+  const before=Math.max(0,Number(enemy?.distance)||0),after=Math.max(5,before-feet);
+  if(after>=before)return false;
+  enemy.distance=after;
+  if(typeof sr29ReconcileAbstractGrapples==='function')sr29ReconcileAbstractGrapples();
+  if(typeof sr29ReconcileCombatGrapples==='function')sr29ReconcileCombatGrapples();
+  log(enemy.name+' teleports '+(before-after)+' feet closer to '+(target?.player?.name||'its target')+'.','rolllog');
+  return true;
+ }
+ const from=enemy?.pos||enemy?.position,to=target?.pos;
+ if(!from||!to||typeof sr9Cell!=='function')return false;
+ const isOpen=p=>{
+  const cell=sr9Cell(p.x,p.y);
+  if(!cell||cell.blocked===true||cell.walkable===false||/^(?:wall|void|blocked)$/i.test(String(cell.kind||cell.type||'')))return false;
+  for(const [id,p2] of Object.entries(b.mp.heroPositions||{}))if(p2&&Number(p2.x)===p.x&&Number(p2.y)===p.y)return false;
+  for(const other of b.enemies||[]){if(other!==enemy&&other.hp>0){const p2=other.pos||other.position;if(p2&&Number(p2.x)===p.x&&Number(p2.y)===p.y)return false;}}
+  return true;
+ };
+ const plan=sr18TeleportPlan(from,to,feet,isOpen,(a,z)=>sr11HasLOS(a,z));
+ if(!plan)return false;
+ if(typeof sr29FrightenedMovementBlocked==='function'&&sr29FrightenedMovementBlocked(enemy,from,plan.to,state))return false;
+ enemy.pos={...plan.to};if(enemy.position)enemy.position={...plan.to};
+ if(typeof sr29ReconcileAbstractGrapples==='function')sr29ReconcileAbstractGrapples();
+ if(typeof sr29ReconcileCombatGrapples==='function')sr29ReconcileCombatGrapples();
+ log(enemy.name+' teleports to an unoccupied space '+plan.travelFeet+' feet away.','rolllog');
+ return true;
+}
+function sr18CriticalExtraDice(expression){const terms=sr18Text(expression).match(/[+-]?\s*(?:\d+)?d\d+/gi)||[];return terms.map((term,index)=>{const value=term.replace(/\s/g,'');return index===0?value.replace(/^\+/,''):(value.startsWith('-')||value.startsWith('+')?value:'+'+value);}).join('');}
 function sr18ResolveMonsterAction(enemy,action,target){
- if(!target?.player?.character||!action)return false;
+ if(!target?.player?.character||!action||!sr18CanUseAction(enemy))return false;
  const p=target.player,c=p.character,desc=sr18Text(action.description),save=sr14ParseMonsterSave(desc),dice=sr14MonsterActionDamage(action)||'1d4',type=sr18Text(action.damage?.[0]?.type||'physical').toLowerCase();
- const range=sr18ParseActionRange(action),dist=enemy.pos&&target.pos?sr12Distance(enemy.pos,target.pos):0;
- if(!range.ranged&&dist>range.reach){if(state.combat?.mp)sr12EnemyStep(enemy,target.pos);else if(typeof sr10EnemyMove==='function')sr10EnemyMove(enemy);return false;}
+ const teleportIntent=/\bteleport(?:s|ed|ing)?\b/i.test(desc);
+ sr18TeleportMonster(enemy,target,desc);
+ // A teleport-only stat-block action consumes its action; it must not fall through to the legacy default 1d4 attack.
+ if(teleportIntent&&!save&&!sr14MonsterActionDamage(action)&&!action.damage?.length&&!/\b(?:attack roll|melee attack|ranged attack|hit:|damage)\b/i.test(desc))return true;
+ const range=sr18ParseActionRange(action),dist=enemy.pos&&target.pos?sr12Distance(enemy.pos,target.pos):null;
+ if(!range.ranged&&dist!==null&&dist>range.reach){if(state.combat?.mp)sr12EnemyStep(enemy,target.pos);else if(typeof sr10EnemyMove==='function')sr10EnemyMove(enemy);return false;}
  if(enemy.pos&&target.pos&&!sr11HasLOS(enemy.pos,target.pos))return false;
  const targets=save?sr18MonsterTargetsForAction(enemy,action,target,save):[target];let did=false;
  for(const t of targets){const hero=t.player,cc=hero.character;if(!cc||cc.hp<=0)continue;
-  if(save){const result=sr133HeroSave(cc,save.ability,hero,enemy),raw=rollDice(dice),half=/half damage/i.test(desc),damage=result.success?(half?Math.floor(raw/2):0):raw,actual=sr18MonsterApplyDamage(t,damage,type,enemy),condition=sr18ParseCondition(desc);
-   if(!result.success&&condition&&!sr18ConditionImmunity(t,condition))sr11Add(cc,condition,Math.max(1,Number((desc.match(/(?:until the end of|for) (?:its|the target's|your) next turn/i)||[]).length?1:1),1),enemy.name);
-   log(`${enemy.name} uses ${action.name}; ${hero.name} makes a ${save.ability} save (${result.total} vs DC ${save.dc}) and takes ${actual} ${type} damage${condition&&!result.success?` and gains ${condition}`:''}.`,'badlog');
+  if(save){
+   const result=sr133HeroSave(cc,save.ability,hero,enemy),raw=rollDice(dice),half=/half damage/i.test(desc);
+   // Keep the structured resolver authoritative, but guard against legacy result
+   // records whose success flag disagrees with their reported total and DC.
+   const total=Number(result?.total),dc=Number(save?.dc);
+   const failedSave=result?.autoFail===true||result?.success===false||
+     (Number.isFinite(total)&&Number.isFinite(dc)&&total<dc&&result?.legendaryResistanceUsed!==true);
+   const damage=failedSave?raw:(half?Math.floor(raw/2):0),actual=sr18MonsterApplyDamage(t,damage,type,enemy),condition=sr18ParseCondition(desc);
+   if(failedSave&&condition&&!sr18ConditionImmunity(t,condition)){
+    const conditionDuration=Math.max(1,Number((desc.match(/(?:until the end of|for) (?:its|the target's|your) next turn/i)||[]).length?1:1),1);
+    const sourceId=String(enemy.id||enemy.name||'unknown-monster');
+    if(condition==='grappled'&&typeof sr29Apply==='function'){
+     const grappleRange=Math.max(5,Number(range.ranged?range.normalRange:range.reach)||5);
+     sr29Apply(cc,condition,conditionDuration,enemy.name,{sourceId,grapplerId:sourceId,grappleRange});
+    }else if(typeof sr29Apply==='function')sr29Apply(cc,condition,conditionDuration,enemy.name,{sourceId});
+    else sr11Add(cc,condition,conditionDuration,enemy.name);
+    // Reuse the canonical repeat-save contract for monster-applied conditions.
+    // Attach only after the failed save actually applied the condition.
+    const repeatSave=typeof sr29ParseRepeatSave==='function'?sr29ParseRepeatSave(desc):null;
+    if(repeatSave&&typeof sr29AttachRepeatSave==='function'){
+     const ability=save?.ability||repeatSave.ability;
+     if(ability&&Number.isFinite(dc))sr29AttachRepeatSave(cc,condition,enemy.name,enemy,ability,dc,repeatSave,sourceId);
+    }
+   }
+   if(failedSave)sr18DisplaceCombatant(t,enemy,desc);
+   log(`${enemy.name} uses ${action.name}; ${hero.name} makes a ${save.ability} save (${result.total} vs DC ${save.dc}) and takes ${actual} ${type} damage${condition&&failedSave?` and gains ${condition}`:''}.`,'badlog');
   }else{
    const bonus=Number(action.attack_bonus??enemy.attack)||0,r=sr11RollAttack(bonus,enemy,cc,!range.ranged),ac=sr12WithHero(hero,()=>computeAC())+(cc.buffRounds>0?2:0)+(state.combat?.mp?sr11Cover(t.pos,enemy.pos):0),d20=sr25ResolveAttackRecord(r,ac),hit=d20.success;
-   if(hit){let amount=rollDice(dice);if(d20.critical)amount+=rollDice(dice);const actual=sr18MonsterApplyDamage(t,amount,type,enemy);log(`${enemy.name} uses ${action.name} against ${hero.name}: hit for ${actual} ${type} damage.`,'badlog');}else log(`${enemy.name} uses ${action.name} against ${hero.name}: miss.`,'rolllog');
+   if(hit){let amount=rollDice(dice);const automaticCritical=dist!==null&&typeof sr29CriticalOnHit==='function'&&sr29CriticalOnHit(cc,{hit,distance:dist}),critical=!!d20.critical||automaticCritical;if(critical){const extraDice=sr18CriticalExtraDice(dice);if(extraDice)amount+=rollDice(extraDice);}const actual=sr18MonsterApplyDamage(t,amount,type,enemy);sr18DisplaceCombatant(t,enemy,desc);log(`${enemy.name} uses ${action.name} against ${hero.name}: ${critical?'critical hit':'hit'} for ${actual} ${type} damage.`,'badlog');}else log(`${enemy.name} uses ${action.name} against ${hero.name}: miss.`,'rolllog');
   }
  }
  did=true;return did;
@@ -261,7 +410,7 @@ function sr18PrepareMonsterTurn(enemy){
  }
 }
 function sr18ChooseMonsterAction(enemy,target){
- const actions=(enemy.actions||[]).filter(a=>!/^multiattack$/i.test(a.name||'')&&(sr14MonsterActionDamage(a)||sr14ParseMonsterSave(a.description)||/restrain|grapple|swallow|knock prone|pushes?|pulls?/i.test(a.description||'')));
+ const actions=(enemy.actions||[]).filter(a=>!/^multiattack$/i.test(a.name||'')&&(sr14MonsterActionDamage(a)||sr14ParseMonsterSave(a.description)||/restrain|grapple|swallow|knock prone|pushes?|pulls?|teleport(?:s|ed|ing)?/i.test(a.description||'')));
  const ready=actions.filter(a=>{const recharge=sr18ParseRecharge(a);return !recharge||enemy._sr18Recharge?.[a.name]!==false;});
  const dist=enemy.pos&&target?.pos?sr12Distance(enemy.pos,target.pos):0;
  return ready.sort((a,b)=>{
@@ -280,7 +429,7 @@ function sr18MonsterMorale(enemy){
 function sr18MonsterTurnSolo(entry){
  const b=state.combat,enemy=b?.enemies?.[entry?.index];if(!enemy?.statBlock||enemy._sr18ActedTurn===`${b.round}:${entry.index}`)return false;
  sr18PrepareMonsterTurn(enemy);enemy._sr18ActedTurn=`${b.round}:${entry.index}`;
- if((enemy.conditions||[]).some(x=>['incapacitated','stunned','paralyzed','unconscious'].includes(typeof x==='string'?x:x.name))){log(`${enemy.name} cannot act because of a condition.`,'muted');return true;}
+ if(!sr18CanUseAction(enemy)){log(`${enemy.name} cannot act because of a condition.`,'muted');return true;}
  const target=sr18MonsterTarget(enemy);if(!target)return false;
  const seq=sr18AvailableMultiattack(enemy);let action=seq?.[0]||sr18ChooseMonsterAction(enemy,target);
  if(!action)return false;
@@ -302,14 +451,14 @@ sr12EnemyTurn=function(enemy){
  if(!enemy?.statBlock)return sr18MPMonsterTurnBase(enemy);
  sr18PrepareMonsterTurn(enemy);
  const target=sr18MonsterTarget(enemy);if(!target)return;
- if((enemy.conditions||[]).some(x=>['incapacitated','stunned','paralyzed','unconscious'].includes(typeof x==='string'?x:x.name))){log(`${enemy.name} cannot act because of a condition.`,'muted');return;}
+ if(!sr18CanUseAction(enemy)){log(`${enemy.name} cannot act because of a condition.`,'muted');return;}
  const seq=sr18AvailableMultiattack(enemy),action=seq?.[0]||sr18ChooseMonsterAction(enemy,target);if(!action)return sr18MPMonsterTurnBase(enemy);
  if(seq){const d=sr18ParseActionRange(seq[0]),dist=enemy.pos&&target.pos?sr12Distance(enemy.pos,target.pos):0;if(!d.ranged&&dist>d.reach){sr12EnemyStep(enemy,target.pos);if(sr12Distance(enemy.pos,target.pos)>d.reach){enemy.specialUsedRound=state.combat.round;return;}}let done=0;for(const a of seq){if(target.player.character.hp<=0)break;if(sr18ResolveMonsterAction(enemy,a,target)){done++;sr18MarkRechargeUsed(enemy,a);}}if(done)log(`${enemy.name} completes its Multiattack (${done} attacks resolved).`,'badlog');}
  else{const d=sr18ParseActionRange(action),dist=enemy.pos&&target.pos?sr12Distance(enemy.pos,target.pos):0;if(!d.ranged&&dist>d.reach){sr12EnemyStep(enemy,target.pos);if(sr12Distance(enemy.pos,target.pos)>d.reach){enemy.specialUsedRound=state.combat.round;return;}}if(sr18ResolveMonsterAction(enemy,action,target))sr18MarkRechargeUsed(enemy,action);}
  sr18MonsterMorale(enemy);enemy.specialUsedRound=state.combat.round;return;
 };
 function sr18RunLegendaryAction(enemy){
- if(!enemy?.legendaryActions?.length||enemy.hp<=0)return false;
+ if(!enemy?.legendaryActions?.length||enemy.hp<=0||!sr18CanUseAction(enemy))return false;
  const max=Number(enemy.statBlock?.legendary_actions_per_round||3);enemy.legendaryRemaining=Number(enemy.legendaryRemaining??max);const target=sr18MonsterTarget(enemy);if(!target||enemy.legendaryRemaining<=0)return false;
  const available=enemy.legendaryActions.map(a=>({a,cost:Number(a.cost)||Number((sr18Text(a.description).match(/costs?\s+(\d+)\s+actions?/i)||[])[1]||1)})).filter(x=>x.cost<=enemy.legendaryRemaining);
  const selected=available.sort((x,y)=>sr18DiceAverage(sr14MonsterActionDamage(y.a))-sr18DiceAverage(sr14MonsterActionDamage(x.a)))[0];if(!selected)return false;
@@ -323,7 +472,7 @@ sr14LegendaryActionsAfterTurn=function(){if(!state.combat?.mp)return;for(const e
 const sr18ApplyDamageBase=sr12ApplyDamage;
 sr12ApplyDamage=function(enemy,amount,type='physical'){
  let n=Number(amount)||0;
- if(enemy?.reactions?.length&&enemy.reactionAvailable!==false&&!enemy._sr18ReductionUsed){const reaction=enemy.reactions.find(x=>/reduce[s]? (?:the )?damage|takes? .*?less damage|halve[s]? the damage/i.test(`${x.name} ${x.description}`));if(reaction){const formula=(reaction.description.match(/\b\d+d\d+(?:\s*[+-]\s*\d+)?\b/i)||[])[0];const reduction=formula?rollDice(formula):0;if(reduction>0){n=Math.max(0,n-reduction);enemy.reactionAvailable=false;enemy._sr18ReductionUsed=true;log(`${enemy.name} uses ${reaction.name} to reduce the damage by ${reduction}.`,'rolllog');}}}
+ if(enemy?.reactions?.length&&enemy.reactionAvailable!==false&&sr18CanUseReaction(enemy)&&!enemy._sr18ReductionUsed){const reaction=enemy.reactions.find(x=>/reduce[s]? (?:the )?damage|takes? .*?less damage|halve[s]? the damage/i.test(`${x.name} ${x.description}`));if(reaction){const formula=(reaction.description.match(/\b\d+d\d+(?:\s*[+-]\s*\d+)?\b/i)||[])[0];const reduction=formula?rollDice(formula):0;if(reduction>0){n=Math.max(0,n-reduction);enemy.reactionAvailable=false;enemy._sr18ReductionUsed=true;log(`${enemy.name} uses ${reaction.name} to reduce the damage by ${reduction}.`,'rolllog');}}}
  const applied=sr18ApplyDamageBase(enemy,n,type);if(applied>0&&enemy.hp>0)sr18MonsterMorale(enemy);return applied;
 };
 
@@ -482,6 +631,7 @@ function sr18RunTests(){
   const spells=[
    ['A flame spell',{description:'Each creature in a 20-foot-radius Sphere makes a Dexterity saving throw, taking 8d6 fire damage on a failed save.',damage:'8d6',save:true,saveAbility:'DEX',area:20,areaShape:'sphere',damageType:'fire'},{kind:'saveDamage',area:true,shape:'sphere',size:20,save:'DEX',type:'fire'}],
    ['Restorative magic',{description:'A creature regains 2d8 hit points.',heal:true,damage:'2d8'},{kind:'heal'}],
+   ['Reincarnate',{description:'You touch a dead Humanoid or a piece of one. The spell forms a new body for it and calls the soul to enter that body.'},{kind:'revive'}],
    ['Binding magic',{description:'The target must succeed on a Wisdom saving throw or be restrained for 1 minute.',condition:'restrained',save:true,saveAbility:'WIS'},{kind:'control',condition:'restrained',save:'WIS'}],
    ['Summoning magic',{description:'You summon a spectral creature that obeys your commands.'},{kind:'summon'}],
    ['Protective magic',{description:'You gain resistance to fire damage for 1 hour.'},{kind:'resistance'}],
@@ -514,6 +664,6 @@ function sr18RunTests(){
  }catch(e){ok('V18 rules, living world and save tests execute without runtime errors',false,String(e?.stack||e));}
  return out;
 }
-globalThis.__SR18_TEST={version:SR18_VERSION,openDB:sr18OpenDB,inferSpell:sr18InferSpellEffect,area:sr18Area,condition:sr18DetectCondition,expandMultiattack:sr18ExpandMultiattack,availableMultiattack:sr18AvailableMultiattack,rechargeReady:sr18RechargeReady,recharge:sr18ParseRecharge,parseActionRange:sr18ParseActionRange,markRechargeUsed:sr18MarkRechargeUsed,prepareMonsterTurn:sr18PrepareMonsterTurn,chooseMonsterAction:sr18ChooseMonsterAction,resolveMonsterAction:sr18ResolveMonsterAction,monsterTurnSolo:sr18MonsterTurnSolo,monsterDamage:sr18MonsterApplyDamage,typedDamage:sr12ApplyDamage,applySpellUtility:sr18ApplySpellUtility,classifyImprovisation:sr18ClassifyImprovisation,improvisationDecision:sr18ImprovisationDecision,ensureWorld:sr18EnsureWorld,advanceWorld:sr18AdvanceWorld,addWorldEvent:sr18AddWorldEvent,validateSave:sr18ValidateSave,normalizeImport:sr18NormalizeImported,snapshot:sr18Snapshot,storeSlot:sr18StoreSlot,readSlot:sr18ReadSlot,deleteSlot:sr18DeleteSlot,writeRecovery:sr18WriteRecovery,restore:sr18RestoreState,latestRecovery:sr18LatestRecovery,exportSave:sr18SaveExport,importFile:sr18ImportFile,saveCenter:sr18SaveCenter,render:render,header:header,adventurePage:adventurePage,tests:sr18RunTests,get state(){return state;},set state(v){state=v;}};
+globalThis.__SR18_TEST={ancestryNames:Object.keys(ANCESTRIES),ancestryData:ANCESTRIES,targetList:sr14TargetListComplete,areaHit:typeof sr14AreaHit==='function'?sr14AreaHit:null,heroSavingThrow:sr14SavingThrow,version:SR18_VERSION,canUseAction:sr18CanUseAction,canUseReaction:sr18CanUseReaction,attackRoll:sr11RollAttack,openDB:sr18OpenDB,inferSpell:sr18InferSpellEffect,area:sr18Area,condition:sr18DetectCondition,expandMultiattack:sr18ExpandMultiattack,availableMultiattack:sr18AvailableMultiattack,rechargeReady:sr18RechargeReady,recharge:sr18ParseRecharge,parseActionRange:sr18ParseActionRange,markRechargeUsed:sr18MarkRechargeUsed,prepareMonsterTurn:sr18PrepareMonsterTurn,chooseMonsterAction:sr18ChooseMonsterAction,resolveMonsterAction:sr18ResolveMonsterAction,criticalExtraDice:sr18CriticalExtraDice,monsterTurnSolo:sr18MonsterTurnSolo,monsterDamage:sr18MonsterApplyDamage,typedDamage:sr12ApplyDamage,spellDamage:sr12SpellDamage,setActivePlayerId:id=>{SR12.activePlayerId=id;},applySpellUtility:sr18ApplySpellUtility,displacementPlan:sr18DisplacementPlan,displaceCombatant:sr18DisplaceCombatant,teleportPlan:sr18TeleportPlan,teleportMonster:sr18TeleportMonster,classifyImprovisation:sr18ClassifyImprovisation,improvisationDecision:sr18ImprovisationDecision,ensureWorld:sr18EnsureWorld,advanceWorld:sr18AdvanceWorld,addWorldEvent:sr18AddWorldEvent,validateSave:sr18ValidateSave,normalizeImport:sr18NormalizeImported,snapshot:sr18Snapshot,save:()=>save(),storeSlot:sr18StoreSlot,readSlot:sr18ReadSlot,deleteSlot:sr18DeleteSlot,writeRecovery:sr18WriteRecovery,restore:sr18RestoreState,latestRecovery:sr18LatestRecovery,exportSave:sr18SaveExport,importFile:sr18ImportFile,saveCenter:sr18SaveCenter,render:render,header:header,adventurePage:adventurePage,tests:sr18RunTests,get state(){return state;},set state(v){state=v;}};
 // Re-render after the additive systems are installed so the V18 header and Save Center are visible on first boot.
 try { render(); } catch (error) { console.warn('V18 initial render:', error); }

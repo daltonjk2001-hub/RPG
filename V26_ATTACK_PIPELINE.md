@@ -63,3 +63,22 @@ This is not a claim that every possible legacy attack or attack-like action in t
 ## Current evidence boundary
 
 The V26 change proves that the 13 inventoried shared-roll call sites call the typed resolver in the generated runtime and that the automated build/test runner checks that wiring. It does not prove every feature-specific exception, all direct-die handlers, human tabletop balance, or live multiplayer behavior. Keep those areas Partial until separately audited and tested.
+
+
+## V29 follow-up — active critical-hit paths audited
+
+The V29.45–V29.47 passes extend the original V26 hit-resolution migration into the active damage paths:
+
+- Solo and multiplayer player weapon attacks use the canonical Paralyzed/Unconscious critical rule within 5 feet. Weapon dice, Rogue Sneak Attack dice, and Hunter's Mark dice receive critical extra dice without doubling flat modifiers.
+- Solo and multiplayer monster attacks use source-aware critical markers. Multiplayer monster turn attacks and opportunity attacks apply dice-only critical damage; the existing V13.2 downed-hit handler remains the sole owner of multiplayer death-save failure increments.
+- The complete SRD spell resolver and legacy multiplayer spell attack resolver now apply condition-based criticals within 5 feet and add only the damage dice terms.
+- Player opportunity attacks reuse the canonical multiplayer player weapon resolver. Monster opportunity attacks against a moving player now preserve natural-20 dice-only critical damage.
+- Seeded regression coverage includes non-natural-20 Paralyzed-target spell criticals, solo Rogue Sneak Attack, multiplayer Fighter Extra Attack, monster downed criticals, and monster opportunity attacks.
+
+## Remaining attack/damage audit
+
+1. Companion direct-die attacks and older companion/feature handlers still need a reachability inventory and an explicit critical-damage policy; do not assume their fixed-damage expressions are dice.
+2. Cleave/Nick, class-feature and other direct-roll legacy paths still need reachability and critical-order audits.
+3. Complete the seeded matrix for Help, Vex, invisibility, Dodge, threatened ranged attacks, range, reach, cover, and condition interactions across solo and multiplayer.
+4. Damage-type mitigation ordering (resistance, immunity, vulnerability, guard, temporary HP), rounding, and every spell/feature/companion source still need a unified end-to-end audit.
+5. Automated tests do not replace human solo and two-device co-op playtests; these paths remain Partial until those are completed.

@@ -59,6 +59,11 @@ T9.state.character.classId='Wizard';T9.state.character.spells=['Fire Bolt'];T9.s
 const T10=context.__SR10_TEST;assert('V10 ordered-combat controller is installed',T10.version==='10.0.0');for(const r of T10.tests())assert('V10 '+r.name,r.pass);
 const T11=context.__SR11_TEST;assert('V11 condition-aware tactical layer installed',T11.version==='11.0.0');for(const r of T11.tests())assert('V11 '+r.name,r.pass);
 const T12=context.__SR12_TEST;assert('V12 shared-table rules layer installed',T12.version==='14.1.0');for(const r of T12.tests())assert('V12 '+r.name,r.pass);const T13=context.__SR13_TEST;assert('V14 initiative engine is installed',T13.version==='14.1.0');for(const r of T13.tests())assert('V13 '+r.name,r.pass,r.detail||'');
+assert('Incapacitated condition imposes Disadvantage on Initiative',T13.initiativeMode({character:{conditions:['incapacitated']}},true).disadvantage===true);
+assert('Petrified inherits Incapacitated Initiative Disadvantage',T13.initiativeMode({character:{conditions:['petrified']}},true).disadvantage===true);
+assert('Unconscious inherits Incapacitated Initiative Disadvantage',T13.initiativeMode({character:{conditions:['unconscious']}},true).disadvantage===true);
+assert('Invisible still grants Initiative Advantage when not Incapacitated',T13.initiativeMode({character:{conditions:['invisible']}},true).advantage===true);
+assert('Invisible and Incapacitated cancel for Initiative',!T13.initiativeMode({character:{conditions:['invisible','petrified']}},true).advantage&&!T13.initiativeMode({character:{conditions:['invisible','petrified']}},true).disadvantage);
 for(const x of checks)console.log(`${x.pass?'PASS':'FAIL'} ${x.name}${x.detail?' — '+x.detail:''}`);
 console.log(`\nRESULT ${checks.filter(x=>x.pass).length}/${checks.length} core, progression, tactical, shared-table and V13 initiative checks passed`);
 if(checks.some(x=>!x.pass))process.exitCode=1;

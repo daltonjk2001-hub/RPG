@@ -295,7 +295,7 @@ function playerAttack(){const b=state.combat,c=state.character;if(!b)return;let 
 function usePower(){const c=state.character,cls=CLASSES[c.classId];if(c.featureUses<=0){toast('Your class feature needs a short rest.');return;}c.featureUses--;let e=targetEnemy();switch(cls.kind){case'heal':{let n=rollDice('1d10')+c.level;let gained=heal(n);log(`${cls.feature}: you recover ${gained} HP.`,'goodlog');break;}case'rage':c.rageRounds=3;c.tempHP+=c.level+2;log('You enter a fierce rage: +2 damage, resistance represented by temporary HP, for 3 rounds.','goodlog');break;case'strike':if(e){let n=rollDice('2d6')+mod(c.stats.DEX);e.hp=Math.max(0,e.hp-n);log(`Cunning strike deals ${n} damage to ${e.name}.`,'goodlog');if(e.hp<=0)log(`${e.name} is defeated.`,'goodlog');}c.guard=2;break;case'mark':if(e){c.markTarget=e.name;c.markRounds=3;log(`You mark ${e.name}. Your attacks deal +1d6 damage for 3 rounds.`,'goodlog');}break;case'surge':c.nextSpellBonus=true;log('Your next damaging spell is empowered with an extra damage die.','goodlog');break;case'blast':if(e){let n=rollDice('2d8')+mod(c.stats.CHA);e.hp=Math.max(0,e.hp-n);log(`Pact Burst deals ${n} force damage.`,'goodlog');if(e.hp<=0)log(`${e.name} is defeated.`,'goodlog');}break;case'recover':if(c.spellSlots<c.maxSpellSlots){c.spellSlots++;log('Arcane Recovery restores one spell slot.','goodlog');}else{c.guard=5;log('Your arcane ward grants +5 guard against the next hit.','goodlog');}break;}
 afterPlayerAction();}
 function defend(){state.character.guard=5;log('You take a defensive stance. Reduce the next incoming hit by 5.','goodlog');afterPlayerAction();}
-function usePotion(){let idx=state.character.inventory.findIndex(i=>i.type==='potion'&&i.healing);if(idx<0){toast('No healing potion in your pack.');return;}let it=state.character.inventory[idx],n=rollDice(it.healing);heal(n);it.count--;if(it.count<=0)state.character.inventory.splice(idx,1);log(`You drink a ${it.name} and recover ${n} HP.`,'goodlog');afterPlayerAction();}
+function usePotion(){const c=state.character;if(c.hp<=0||c.unconscious||sr136IsIncapacitated(c)){toast('You cannot use a potion while incapacitated.');return false;}if(state.combat&&c.bonusActionSpent){toast('Your Bonus Action is already spent.');return false;}let idx=c.inventory.findIndex(i=>i.type==='potion'&&i.healing&&i.count>0);if(idx<0){toast('No healing potion in your pack.');return false;}let it=c.inventory[idx],n=rollDice(it.healing);heal(n);it.count--;if(it.count<=0)c.inventory.splice(idx,1);if(state.combat)c.bonusActionSpent=true;log(`You drink a ${it.name} and recover ${n} HP.`,'goodlog');render();save();return true;}
 function castSpell(name){const c=state.character,sp=SPELLS[name];if(!sp)return;if(!state.combat&&['damage','control'].includes(sp.kind)){toast('That spell needs a hostile target.');return;}if(sp.level>0&&c.spellSlots<=0){toast('No spell slots remain.');return;}if(sp.level>0)c.spellSlots--;const e=targetEnemy();let ability=spellAbility(),bonus=mod(c.stats[ability])+profBonus();if(sp.kind==='damage'&&e){let dmg=rollDice(sp.dice)+mod(c.stats[ability]);if(c.nextSpellBonus){dmg+=rollDice(sp.dice);c.nextSpellBonus=false;}e.hp=Math.max(0,e.hp-Math.max(1,dmg));log(`${name} strikes ${e.name} for ${Math.max(1,dmg)} damage.`,'goodlog');if(e.hp<=0)log(`${e.name} is defeated.`,'goodlog');}else if(sp.kind==='heal'){let n=rollDice(sp.dice)+Math.max(0,mod(c.stats[ability]));let gained=heal(n);log(`${name} restores ${gained} HP.`,'goodlog');}else if(sp.kind==='guard'){c.guard=5;log(`${name} surrounds you with a ward. +5 guard against the next hit.`,'goodlog');}else if(sp.kind==='buff'){c.attackBuff=2;c.buffRounds=3;log(`${name} blesses your attacks for three rounds.`,'goodlog');}else if(sp.kind==='control'){if(e){let n=rollDice(sp.dice);e.hp=Math.max(0,e.hp-n);e.attackDebuff=2;e.debuffRounds=2;log(`${name} deals ${n} damage and hinders ${e.name}.`,'goodlog');}}else if(sp.kind==='cleanse'){c.conditions=[];log(`${name} removes harmful conditions.`,'goodlog');}if(state.combat)afterPlayerAction();else{render();save();}}
 function combatSpellPrompt(){const c=state.character;const choices=c.spells.filter(s=>SPELLS[s].level===0||c.spellSlots>0);if(!choices.length){toast('No available spells.');return;}const n=prompt('Cast which spell?\n'+choices.map((s,i)=>`${i+1}. ${s} (${SPELLS[s].level===0?'Cantrip':'Level '+SPELLS[s].level})`).join('\n')+'\nEnter a number:');const idx=+n-1;if(n!==null&&choices[idx])castSpell(choices[idx]);}
 function enemyTurn(){const b=state.combat,c=state.character;if(!b)return;for(const e of b.enemies.filter(x=>x.hp>0)){if(c.hp<=0)break;let r=die(20),total=r+e.attack,ac=computeAC()+(c.buffRounds>0?2:0);if(e.attackDebuff>0)e.attackDebuff--;if(r===20|| (r!==1&&total>=ac)){let dmg=rollDice(e.damage);if(r===20)dmg+=rollDice(e.damage);let actual=damagePlayer(dmg);log(`${e.name} hits you for ${actual} damage.`, 'badlog');}else log(`${e.name} misses you.`, 'goodlog');}
@@ -3587,7 +3587,7 @@ function sr10IsHeroTurn(){return !state.combat||sr10Actor()?.id==='hero';}
 function sr10CurrentName(){const a=sr10Actor();return a?.name||'No active turn';}
 function sr10EntryIndex(id){return (state.combat?.initiativeOrder||[]).findIndex(x=>x.id===id);}
 function sr10BuildOrder(){const b=state.combat,c=state.character;const entries=[{id:'hero',name:c.name,initiative:die(20)+mod(c.stats.DEX),dex:mod(c.stats.DEX),kind:'hero'}];(b.enemies||[]).forEach((e,i)=>entries.push({id:'enemy-'+i,name:e.name,initiative:die(20)+(Number(e.dex)||1),dex:Number(e.dex)||1,kind:'enemy',index:i}));(state.campaign?.companions||[]).forEach((p,i)=>{if(p.hp>0)entries.push({id:'companion-'+i,name:p.name,initiative:die(20)+(Number(p.dex)||1),dex:Number(p.dex)||1,kind:'companion',index:i});});entries.sort((a,z)=>z.initiative-a.initiative||z.dex-a.dex||(a.id==='hero'?-1:z.id==='hero'?1:a.id.localeCompare(z.id)));b.initiativeOrder=entries;b.turnIndex=0;b.round=1;b.activeActor=entries[0]?.id||'hero';log('Initiative: '+entries.map(x=>`${x.name} ${x.initiative}`).join(' · '),'rolllog');}
-function sr10ResetHeroTurn(){const c=state.character;c.movementSpent=0;c.reactionAvailable=true;c.actionSpent=false;c.disengaging=false;c.dodging=false;}
+function sr10ResetHeroTurn(){const c=state.character;c.movementSpent=0;c.reactionAvailable=true;c.actionSpent=false;c.bonusActionSpent=false;c.sneakAttackUsed=false;c.disengaging=false;c.dodging=false;}
 function sr10AdvanceRound(){const b=state.combat,c=state.character;b.round=(b.round||1)+1;if(c.rageRounds>0)c.rageRounds--;if(c.markRounds>0)c.markRounds--;if(c.buffRounds>0)c.buffRounds--;if(c.wildShapeRounds>0)c.wildShapeRounds--;for(const e of b.enemies){if(e.hp<=0)continue;if(e.debuffRounds>0&&--e.debuffRounds===0)e.attackDebuff=0;if(e.conditions?.length)e.conditions=e.conditions.filter(x=>{if(typeof x==='string')return false;if(Number.isFinite(x.duration)){x.duration--;return x.duration>0;}return true;});if(e.role==='regenerator'&&!e.regenerationStopped)e.hp=Math.min(e.maxHp||e.hp,e.hp+5);}}
 function sr10Occupied(x,y,self){return sr10Alive()&&state.combat.enemies.some(e=>e!==self&&e.hp>0&&e.pos?.x===x&&e.pos?.y===y);}
 function sr10EnemyMove(e){const b=state.combat;let left=Math.max(0,Math.floor((Number(e.speed)||30)/5));while(sr9Dist(e.pos,b.heroPos)>5&&left>0){const candidates=[{x:e.pos.x+1,y:e.pos.y},{x:e.pos.x-1,y:e.pos.y},{x:e.pos.x,y:e.pos.y+1},{x:e.pos.x,y:e.pos.y-1}].filter(p=>p.x>=0&&p.y>=0&&p.x<8&&p.y<6&&!sr10Occupied(p.x,p.y,e));candidates.sort((p,q)=>sr9Dist(p,b.heroPos)-sr9Dist(q,b.heroPos));const next=candidates.find(p=>sr9Dist(p,b.heroPos)<sr9Dist(e.pos,b.heroPos));if(!next)break;const cost=sr9Cell(next.x,next.y)?.kind==='difficult'?2:1;if(left<cost)break;e.pos=next;left-=cost;}return sr9Dist(e.pos,b.heroPos)<=5;}
@@ -3624,7 +3624,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('button[data-acti
 const sr10PrevReset=shortRest;shortRest=function(){sr10PrevReset();if(state.character){state.character.actionSurgeUsed=false;state.character.rageRounds=0;state.character.markRounds=0;}};
 const sr10PrevLongRest=longRest;longRest=function(){sr10PrevLongRest();if(state.character){state.character.actionSurgeUsed=false;state.character.rageRounds=0;state.character.markRounds=0;state.character.wildShapeRounds=0;}};
 const sr10PrevRender=render;render=function(){const out=sr10PrevRender();try{document.title='Solo Realms V11 — Living Table · Free Offline Edition';const f=document.querySelector('.footer-note');if(f)f.textContent='SOLO REALMS V11 · LIVING TABLE · FREE OFFLINE ADVENTURE';}catch(e){}return out;};
-function sr10RunTests(){const old=JSON.parse(JSON.stringify(state)),out=[],ok=(n,v)=>out.push({name:n,pass:!!v});try{state.combat={round:1,target:0,enemies:[{id:'a',name:'First Raider',hp:10,maxHp:10,ac:10,attack:0,damage:'1d4',speed:5,pos:{x:2,y:3},conditions:[],reactionAvailable:true}],map:{width:8,height:6,scale:5,terrain:[]},heroPos:{x:1,y:3},initiativeOrder:[{id:'enemy-0',name:'First Raider',initiative:18,kind:'enemy',index:0},{id:'hero',name:state.character.name,initiative:8,kind:'hero'}],turnIndex:0};state.character.hp=state.character.maxHp;state.character.actionSpent=false;const hp=state.character.hp;sr10Begin();ok('Initiative order resolves an enemy before a slower hero',sr10IsHeroTurn()&&state.character.hp<hp);ok('Hero turn resets movement and action economy',state.character.movementSpent===0&&!state.character.actionSpent);state.combat.initiativeOrder=[{id:'hero',name:state.character.name,initiative:20,kind:'hero'},{id:'enemy-0',name:'First Raider',initiative:8,kind:'enemy',index:0}];state.combat.turnIndex=0;state.combat.heroPos={x:3,y:3};state.combat.enemies[0].pos={x:4,y:3};state.combat.enemies[0].reactionAvailable=true;state.character.disengaging=false;state.character.hp=state.character.maxHp;const hp2=state.character.hp;sr9Move(-1,0);ok('Leaving an enemy reach triggers an opportunity attack',state.character.hp<hp2&&!state.combat.enemies[0].reactionAvailable);state.combat.heroPos={x:3,y:3};state.combat.enemies[0].pos={x:4,y:3};state.combat.enemies[0].reactionAvailable=true;state.character.actionSpent=false;state.character.hp=state.character.maxHp;const hp3=state.character.hp;sr10Disengage();sr9Move(-1,0);ok('Disengage prevents opportunity attacks while moving away',state.character.hp===hp3&&state.combat.enemies[0].reactionAvailable);state.combat.turnIndex=0;state.combat.initiativeOrder=[{id:'hero',name:state.character.name,initiative:20,kind:'hero'},{id:'enemy-0',name:'First Raider',initiative:8,kind:'enemy',index:0}];state.combat.enemies[0].pos={x:3,y:3};state.combat.heroPos={x:2,y:3};state.combat.enemies[0].reactionAvailable=true;state.character.hp=state.character.maxHp;state.character.actionSpent=false;state.log=[];sr10Dodge();ok('Dodge consumes the hero action and enemy attacks report disadvantage',state.log.some(x=>/disadvantage/.test(x.msg)));ok('Combat page exposes compact tactical actions',combatPage().includes('data-action="sr10-disengage"')&&combatPage().includes('data-action="sr10-dodge"')&&combatPage().includes('data-action="sr10-end"'));state.combat=null;state.character.classId='Wizard';state.character.level=3;state.character.classLevels={Wizard:3};state.character.spells=['Mage Armor'];sr7RecalcSlots(state.character,true);const firstSlot=state.character.spellSlotsByLevel[1],secondSlot=state.character.spellSlotsByLevel[2];castSpell('Mage Armor');ok('New spells consume the lowest eligible slot level',state.character.spellSlotsByLevel[1]===firstSlot-1&&state.character.spellSlotsByLevel[2]===secondSlot&&state.character.spellSlots===firstSlot+secondSlot-1);}catch(e){ok('V10 test runtime completes',false);}finally{state=old;}return out;}
+function sr10RunTests(){const old=JSON.parse(JSON.stringify(state)),out=[],ok=(n,v)=>out.push({name:n,pass:!!v});try{state.combat={round:1,target:0,enemies:[{id:'a',name:'First Raider',hp:10,maxHp:10,ac:10,attack:0,damage:'1d4',speed:5,pos:{x:2,y:3},conditions:[],reactionAvailable:true}],map:{width:8,height:6,scale:5,terrain:[]},heroPos:{x:1,y:3},initiativeOrder:[{id:'enemy-0',name:'First Raider',initiative:18,kind:'enemy',index:0},{id:'hero',name:state.character.name,initiative:8,kind:'hero'}],turnIndex:0};state.character.hp=state.character.maxHp;state.character.actionSpent=false;state.character.bonusActionSpent=true;state.character.sneakAttackUsed=true;const hp=state.character.hp;sr10Begin();ok('Initiative order resolves an enemy before a slower hero',sr10IsHeroTurn()&&state.character.hp<hp);ok('Hero turn resets movement, action, bonus action, reaction and once-per-turn Sneak Attack state',state.character.movementSpent===0&&!state.character.actionSpent&&!state.character.bonusActionSpent&&!state.character.sneakAttackUsed&&state.character.reactionAvailable===true);state.character.hp=1;state.character.inventory=[{name:'Potion of Healing',type:'potion',healing:'2d4+2',count:1}];state.character.actionSpent=true;state.character.bonusActionSpent=false;const potionTurnIndex=state.combat.turnIndex,potionOk=usePotion();ok('Solo Potion of Healing consumes a Bonus Action without ending the hero turn',potionOk&&state.character.hp>1&&state.character.actionSpent&&state.character.bonusActionSpent&&state.combat.turnIndex===potionTurnIndex);state.character.inventory=[{name:'Potion of Healing',type:'potion',healing:'2d4+2',count:1}];const potionBlocked=!usePotion();ok('Solo potion use is blocked after the Bonus Action is spent',potionBlocked&&state.character.inventory[0].count===1);state.character.unconscious=true;const unconsciousSoloPotion=!usePotion();ok('An unconscious solo hero cannot drink their own potion',unconsciousSoloPotion&&state.character.inventory[0].count===1);state.character.unconscious=false;state.combat.initiativeOrder=[{id:'hero',name:state.character.name,initiative:20,kind:'hero'},{id:'enemy-0',name:'First Raider',initiative:8,kind:'enemy',index:0}];state.combat.turnIndex=0;state.combat.heroPos={x:3,y:3};state.combat.enemies[0].pos={x:4,y:3};state.combat.enemies[0].reactionAvailable=true;state.character.disengaging=false;state.character.hp=state.character.maxHp;const hp2=state.character.hp;sr9Move(-1,0);ok('Leaving an enemy reach triggers an opportunity attack',state.character.hp<hp2&&!state.combat.enemies[0].reactionAvailable);state.combat.heroPos={x:3,y:3};state.combat.enemies[0].pos={x:4,y:3};state.combat.enemies[0].reactionAvailable=true;state.character.actionSpent=false;state.character.hp=state.character.maxHp;const hp3=state.character.hp;sr10Disengage();sr9Move(-1,0);ok('Disengage prevents opportunity attacks while moving away',state.character.hp===hp3&&state.combat.enemies[0].reactionAvailable);state.combat.turnIndex=0;state.combat.initiativeOrder=[{id:'hero',name:state.character.name,initiative:20,kind:'hero'},{id:'enemy-0',name:'First Raider',initiative:8,kind:'enemy',index:0}];state.combat.enemies[0].pos={x:3,y:3};state.combat.heroPos={x:2,y:3};state.combat.enemies[0].reactionAvailable=true;state.character.hp=state.character.maxHp;state.character.actionSpent=false;state.log=[];sr10Dodge();ok('Dodge consumes the hero action and enemy attacks report disadvantage',state.log.some(x=>/disadvantage/.test(x.msg)));ok('Combat page exposes compact tactical actions',combatPage().includes('data-action="sr10-disengage"')&&combatPage().includes('data-action="sr10-dodge"')&&combatPage().includes('data-action="sr10-end"'));state.combat=null;state.character.classId='Wizard';state.character.level=3;state.character.classLevels={Wizard:3};state.character.spells=['Mage Armor'];sr7RecalcSlots(state.character,true);const firstSlot=state.character.spellSlotsByLevel[1],secondSlot=state.character.spellSlotsByLevel[2];castSpell('Mage Armor');ok('New spells consume the lowest eligible slot level',state.character.spellSlotsByLevel[1]===firstSlot-1&&state.character.spellSlotsByLevel[2]===secondSlot&&state.character.spellSlots===firstSlot+secondSlot-1);}catch(e){ok('V10 test runtime completes',false);}finally{state=old;}return out;}
 if(state.combat){sr10Ensure();sr10ProcessToHero();}
 globalThis.__SR10_TEST={version:SR10_VERSION,ensure:sr10Ensure,begin:sr10Begin,advance:sr10Advance,move:(x,y)=>sr9Move(x,y),disengage:sr10Disengage,dodge:sr10Dodge,endTurn:sr10EndTurn,isHeroTurn:sr10IsHeroTurn,actor:sr10Actor,tests:sr10RunTests,get state(){return state},set state(v){state=v}};
 
@@ -3958,8 +3958,9 @@ function sr12BeginHeroTurn(player){
 function sr12EndRound(){
   const b=state.combat;if(!b?.mp)return;
   b.round=(b.round||1)+1;
-  for(const p of state.campaign.multiplayer.players||[]){const c=p.character;if(!c)continue;sr11Tick(c);if(c.rageRounds>0)c.rageRounds--;if(c.markRounds>0)c.markRounds--;if(c.buffRounds>0)c.buffRounds--;if(c.wildShapeRounds>0)c.wildShapeRounds--;c.reactionAvailable=true;}
-  for(const e of b.enemies||[]){sr11Tick(e);e.reactionAvailable=true;if(e.debuffRounds>0&&--e.debuffRounds===0)e.attackDebuff=0;if(e.role==='regenerator'&&e.hp>0&&!e.regenerationStopped&&e.lastDamageType!=='fire'&&e.lastDamageType!=='acid')e.hp=Math.min(e.maxHp,e.hp+10);}
+  // Reactions refresh at the start of each creature's own turn, not at a shared round boundary.
+  for(const p of state.campaign.multiplayer.players||[]){const c=p.character;if(!c)continue;sr11Tick(c);if(c.rageRounds>0)c.rageRounds--;if(c.markRounds>0)c.markRounds--;if(c.buffRounds>0)c.buffRounds--;if(c.wildShapeRounds>0)c.wildShapeRounds--;}
+  for(const e of b.enemies||[]){sr11Tick(e);if(e.debuffRounds>0&&--e.debuffRounds===0)e.attackDebuff=0;if(e.role==='regenerator'&&e.hp>0&&!e.regenerationStopped&&e.lastDamageType!=='fire'&&e.lastDamageType!=='acid')e.hp=Math.min(e.maxHp,e.hp+10);}
   for(const ally of state.campaign.companions||[])sr11Tick(ally);
   log(`Round ${b.round} begins.`,'rolllog');
 }
@@ -4178,18 +4179,18 @@ function sr12CastSpell(player,name,allyId=null){
   c.actionSpent=true;if(!state.combat.enemies.some(e=>e.hp>0))sr12WinCombat();return true;
 }
 function sr12Potion(player,allyId=null){
-  const c=player.character;if(c.actionSpent){toast('Your action is already spent.');return false;}
+  const c=player.character;if(c.hp<=0||c.unconscious||sr136IsIncapacitated(c)){toast('You cannot use a potion while incapacitated.');return false;}if(c.bonusActionSpent){toast('Your Bonus Action is already spent.');return false;}
   const i=c.inventory?.findIndex(x=>x.type==='potion'&&x.healing&&x.count>0)??-1;if(i<0){toast('No healing potion available.');return false;}
   const target=allyId?state.campaign.multiplayer.players.find(p=>p.id===allyId):player;if(!target){toast('That ally is unavailable.');return false;}
   if(allyId&&sr12Distance(sr12PlayerPos(player.id),sr12PlayerPos(allyId))>5){toast('Move within 5 feet to use a potion on that ally.');return false;}
-  const item=c.inventory[i],amount=rollDice(item.healing);target.character.hp=Math.min(target.character.maxHp,target.character.hp+amount);target.character.mpDowned=false;target.character.mpDead=false;item.count--;if(!item.count)c.inventory.splice(i,1);log(`${player.name} uses ${item.name} on ${target.name}, restoring ${amount} HP.`,'goodlog');c.actionSpent=true;return true;
+  const item=c.inventory[i],amount=rollDice(item.healing);target.character.hp=Math.min(target.character.maxHp,target.character.hp+amount);target.character.mpDowned=false;target.character.mpDead=false;item.count--;if(!item.count)c.inventory.splice(i,1);log(`${player.name} uses ${item.name} on ${target.name}, restoring ${amount} HP.`,'goodlog');c.bonusActionSpent=true;return true;
 }
 function sr12ClassPower(player){
   const c=player.character,cls=c.classId,level=Number(c.classLevels?.[cls])||c.level||1;
   if(c.hp<=0){toast('You are down.');return false;}
-  if(c.bonusActionSpent){toast('Your bonus action is already spent.');return false;}
+  if(c.bonusActionSpent&&!['Fighter','Cleric','Warlock','Wizard'].includes(cls)){toast('Your bonus action is already spent.');return false;}
   if(cls==='Fighter'){
-    if(level<2||c.actionSurgeUsed){toast('Action Surge is not available.');return false;}c.actionSurgeUsed=true;c.actionSpent=false;c.bonusActionSpent=true;log(`${player.name} uses Action Surge and gains one additional action.`,'goodlog');return true;
+    if(level<2||c.actionSurgeUsed){toast('Action Surge is not available.');return false;}c.actionSurgeUsed=true;c.actionSpent=false;log(`${player.name} uses Action Surge and gains one additional action.`,'goodlog');return true;
   }
   if(cls==='Barbarian'){
     if(level<1||c.rageRounds>0){toast('Rage is not available yet.');return false;}c.rageRounds=10;c.rageResist=true;c.bonusActionSpent=true;log(`${player.name} enters Rage: physical damage resistance and bonus weapon damage.`,'goodlog');return true;
@@ -4204,7 +4205,8 @@ function sr12ClassPower(player){
     const n=Math.min(c.level*5,Math.max(0,c.maxHp-c.hp));if(!n){toast('You do not need healing.');return false;}c.hp+=n;c.bonusActionSpent=true;log(`${player.name} uses Lay on Hands and restores ${n} HP.`,'goodlog');return true;
   }
   if(cls==='Cleric'){
-    const party=state.campaign?.multiplayer?.players||[player];const allies=party.filter(p=>p.connected!==false&&p.character&&p.character.hp<p.character.maxHp);if(!allies.length){toast('No injured allies need healing.');return false;}for(const p of allies){const n=rollDice('1d6')+Math.max(1,level);p.character.hp=Math.min(p.character.maxHp,p.character.hp+n);p.character.mpDowned=false;}c.bonusActionSpent=true;log(`${player.name} channels divine energy to heal the party.`,'goodlog');return true;
+    if(c.actionSpent){toast('Your Action is already spent.');return false;}
+    const party=state.campaign?.multiplayer?.players||[player];const allies=party.filter(p=>p.connected!==false&&p.character&&p.character.hp<p.character.maxHp);if(!allies.length){toast('No injured allies need healing.');return false;}for(const p of allies){const n=rollDice('1d6')+Math.max(1,level);p.character.hp=Math.min(p.character.maxHp,p.character.hp+n);p.character.mpDowned=false;}c.actionSpent=true;log(`${player.name} channels divine energy to heal the party.`,'goodlog');return true;
   }
   if(cls==='Druid'){
     c.wildShapeRounds=10;c.tempHP=Math.max(c.tempHP||0,Math.ceil(level*2));c.wildShape=true;c.bonusActionSpent=true;log(`${player.name} assumes a bestial form, gaining ${c.tempHP} temporary HP.`,'goodlog');return true;
@@ -4219,10 +4221,12 @@ function sr12ClassPower(player){
     c.innateSorceryRounds=3;c.spellAttackBonus=(c.spellAttackBonus||0)+1;c.bonusActionSpent=true;log(`${player.name} channels Innate Sorcery; spell attacks are empowered for 3 rounds.`,'goodlog');return true;
   }
   if(cls==='Warlock'){
+    if(c.actionSpent){toast('Your Action is already spent.');return false;}
     const e=sr4Target();if(!e){toast('Choose an enemy.');return false;}const bonus=profBonus()+mod(c.stats.CHA),roll=sr11RollAttack(bonus,c,e,false);if(roll.r===20||(roll.r!==1&&roll.total>=e.ac)){const n=rollDice(level>=5?'2d10':'1d10')+Math.max(0,mod(c.stats.CHA));sr12ApplyDamage(e,n,'force');log(`${player.name} fires Eldritch Blast for ${n} force damage.`,'goodlog');}else log(`${player.name} misses with Eldritch Blast.`,'rolllog');c.actionSpent=true;return true;
   }
   if(cls==='Wizard'){
-    const max=Number(c.maxSpellSlots)||0;if(Number(c.spellSlots)>=max){toast('Your spell slots are already full.');return false;}c.spellSlots=Math.min(max,(Number(c.spellSlots)||0)+1);c.bonusActionSpent=true;log(`${player.name} uses Arcane Recovery to restore a spell slot.`,'goodlog');return true;
+    if(state.combat){toast('Arcane Recovery is used during a Short Rest, not in combat.');return false;}
+    const max=Number(c.maxSpellSlots)||0;if(Number(c.spellSlots)>=max){toast('Your spell slots are already full.');return false;}c.spellSlots=Math.min(max,(Number(c.spellSlots)||0)+1);log(`${player.name} uses Arcane Recovery to restore a spell slot.`,'goodlog');return true;
   }
   toast('No class power is ready.');return false;
 }
@@ -4236,6 +4240,7 @@ function sr12DeathSave(player){
 function sr12HeroAction(player,action,spellName,targetId,data={}){
   const c=player?.character,b=state.combat;if(!b?.mp||!player||!c)return false;
   const current=sr12TurnActor();if(current?.kind!=='hero'||current.id!==player.id){toast(`It is ${current?.name||'another actor'}’s turn.`);return false;}
+  if(!sr136ActionAvailable(c,action))return false;
   let ok=false,endTurn=false;
   sr12WithHero(player,()=>{
     switch(action){
@@ -4251,7 +4256,7 @@ function sr12HeroAction(player,action,spellName,targetId,data={}){
       case'grapple':{const e=sr4Target();if(!e||sr12Distance(sr12PlayerPos(player.id),e.pos)>5){toast('Move within 5 feet of a target to grapple it.');break;}const attack=die(20)+mod(player.character.stats.STR)+((player.character.proficiencies||[]).includes('Athletics')?profBonus():0),defend=die(20)+Math.max(mod(e.stats?.STR||10),mod(e.stats?.DEX||10));c.actionSpent=true;if(attack>=defend){sr11Add(e,'grappled',2,player.name);log(`${player.name} grapples ${e.name} (${attack} vs ${defend}).`,'goodlog');}else log(`${player.name} fails to grapple ${e.name} (${attack} vs ${defend}).`,'badlog');ok=true;break;}
       case'help':{const e=sr4Target();if(!e||sr12Distance(sr12PlayerPos(player.id),e.pos)>5){toast('Move within 5 feet of a target to Help an ally.');break;}state.combat.helpedTarget=e.name;state.combat.helpedBy=player.name;c.actionSpent=true;log(`${player.name} helps the party against ${e.name}; the next party attack gains advantage.`,'goodlog');ok=true;break;}
       case'hide':{const roll=die(20)+skillBonus('Stealth');c.actionSpent=true;if(roll>=12){c.hidden=true;c.hiddenRounds=1;log(`${player.name} hides successfully (Stealth ${roll} vs DC 12).`,'goodlog');}else log(`${player.name} fails to hide (Stealth ${roll} vs DC 12).`,'badlog');ok=true;break;}
-      case'ready':c.actionSpent=true;c.readiedAttack=true;c.reactionAvailable=true;log(`${player.name} readies an attack as a reaction before the next enemy strike.`,'goodlog');ok=true;break;
+      case'ready':ok=sr136ReadyAction(player);break;
       case'interact':c.actionSpent=true;log(`${player.name} interacts with the battlefield. The Director records the action; describe the object or hazard in the action composer for adjudication.`,'rolllog');ok=true;break;
       case'potion':ok=sr12Potion(player,targetId);break;
       case'spell':ok=sr12CastSpell(player,spellName,targetId);break;
@@ -4548,12 +4553,12 @@ function sr13InitiativeModifier(actor,isHero){
     let n=mod(Number(c.stats?.DEX)||10);
     const feats=Array.isArray(c.feats)?c.feats:[];
     const hasAlert=feats.some(f=>String(typeof f==='string'?f:f?.name||'').toLowerCase()==='alert')||String(c.feat||'').toLowerCase()==='alert';
-    if(hasAlert)n+=Math.max(2,Number(c.proficiencyBonus)||profBonus());
+    if(hasAlert){const level=Math.max(1,Number(c.level)||1),proficiency=c.proficiencyBonus!=null&&Number.isFinite(Number(c.proficiencyBonus))?Number(c.proficiencyBonus):2+Math.floor((level-1)/4);n+=Math.max(2,proficiency);}
     return n;
   }
   const e=actor||{};
-  if(Number.isFinite(Number(e.initiativeModifier)))return Number(e.initiativeModifier);
-  if(Number.isFinite(Number(e.dex)))return Number(e.dex);
+  if(e.initiativeModifier!=null&&Number.isFinite(Number(e.initiativeModifier)))return Number(e.initiativeModifier);
+  if(e.dex!=null&&Number.isFinite(Number(e.dex)))return Number(e.dex);
   return mod(Number(e.stats?.DEX)||10);
 }
 function sr13InitiativeMode(actor,isHero){
@@ -4627,7 +4632,8 @@ function sr13ProcessEnemyGroup(actor){
   const indexes=Array.isArray(actor.indexes)?actor.indexes:[Number(actor.index)];let acted=0;
   for(const index of indexes){
     const e=b.enemies?.[index];if(!e||e.hp<=0)continue;
-    if(sr13HasCondition(e,'incapacitated')||sr13HasCondition(e,'stunned')||sr13HasCondition(e,'paralyzed')||sr13HasCondition(e,'unconscious')){log(`${e.name} cannot act while incapacitated.`,'rolllog');continue;}
+    sr136RefreshEnemyReaction(e);
+    if(sr136IsIncapacitated(e)){log(`${e.name} cannot act while incapacitated.`,'rolllog');continue;}
     sr12EnemyTurn(e);acted++;
     if(!state.combat?.mp)break;
   }
@@ -4645,7 +4651,7 @@ function sr13ProcessActors(){
         if(!p||!p.connected||p.character?.mpDead){sr12AdvanceIndex();SR12.activeTurnKey='';continue;}
         const key=sr12CombatKey(a,state.combat);if(SR12.activeTurnKey!==key)sr12BeginHeroTurn(p);
         const c=p.character;
-        if(c.hp>0&&(sr13HasCondition(c,'incapacitated')||sr13HasCondition(c,'stunned')||sr13HasCondition(c,'paralyzed'))){log(`${p.name} loses this turn while incapacitated.`,'badlog');SR12.activeTurnKey='';sr12AdvanceIndex();continue;}
+        if(c.hp>0&&sr136IsIncapacitated(c)){log(`${p.name} loses this turn while incapacitated.`,'badlog');SR12.activeTurnKey='';sr12AdvanceIndex();continue;}
         if(SR4.role==='host')state.character=sr12PlayerById(SR4.myPlayerId)?.character||state.character;
         state.combat.heroPos=sr12PlayerPos(p.id);render();save();return;
       }
@@ -4654,7 +4660,7 @@ function sr13ProcessActors(){
         SR12.activeTurnKey='';sr12AdvanceIndex();continue;
       }
       if(a.kind==='enemy'){
-        const enemy=state.combat.enemies[Number(a.index)];if(enemy&&enemy.hp>0)sr12EnemyTurn(enemy);
+        const enemy=state.combat.enemies[Number(a.index)];if(enemy&&enemy.hp>0){sr136RefreshEnemyReaction(enemy);if(sr136IsIncapacitated(enemy))log(`${enemy.name} cannot act while incapacitated.`,'rolllog');else sr12EnemyTurn(enemy);}
         if(!state.combat?.mp)return;
         SR12.activeTurnKey='';sr12AdvanceIndex();continue;
       }
@@ -4740,7 +4746,7 @@ function sr13RunTests(){
     testHero.character.hp=0;testHero.character.mpDowned=true;testHero.character.deathFailure=0;testHero.character.deathSuccess=0;testHero.character.conditions=[{name:'unconscious',duration:999}];Math.random=()=>0;sr12DeathSave(testHero);ok('V13.2 natural-1 death save causes two failures',testHero.character.deathFailure===2&&!testHero.character.mpDead);
     testHero.character.deathFailure=0;testHero.character.mpDead=false;testHero.character.hp=0;testHero.character.mpDowned=true;const killer={lastAttackCritical:true};sr12DamageHero(testHero,2,'physical',killer);ok('V13.2 critical damage to a downed hero causes two death-save failures',testHero.character.deathFailure===2);
     const fallbackTarget=sr12EnemyTarget({pos:{x:2,y:2}});ok('V13.2 enemy selects a downed hero only when no standing heroes remain',fallbackTarget?.id==='death-test');
-    testHero.character.mpDead=false;testHero.character.mpDowned=true;testHero.character.hp=0;testHero.character.deathFailure=0;testHero.character.deathSuccess=0;testHero.character.conditions=[{name:'unconscious',duration:999}];state.character=testHero.character;const killer2={name:'Guard',attack:10,damage:'1d6',hp:10,maxHp:10,ac:12,pos:{x:2,y:1},conditions:[]};state.combat={enemies:[killer2],target:0,round:1,map:{terrain:[]},mp:{heroPositions:{'death-test':{x:1,y:1}},turnOrder:[],index:0}};Math.random=()=>0.5;sr12EnemyTurn(killer2);ok('V13.2 melee attack against an unconscious target has Advantage and is a critical hit',testHero.character.deathFailure===2&&killer2.lastAttackCritical===true);
+    testHero.character.mpDead=false;testHero.character.mpDowned=true;testHero.character.hp=0;testHero.character.deathFailure=0;testHero.character.deathSuccess=0;testHero.character.conditions=[{name:'unconscious',duration:999}];state.character=testHero.character;const killer2={name:'Guard',attack:10,damage:'1d6',hp:10,maxHp:10,ac:12,pos:{x:2,y:1},conditions:[]};state.combat={enemies:[killer2],target:0,round:1,map:{terrain:[]},mp:{heroPositions:{'death-test':{x:1,y:1}},turnOrder:[],index:0}};Math.random=()=>0.5;sr12EnemyTurn(killer2);ok('V13.2 melee attack against an unconscious target has Advantage and is a critical hit',testHero.character.deathFailure===2&&state.log.some(x=>/attacks with advantage/.test(x.msg))&&state.log.some(x=>/Critical hit/.test(x.msg))&&!killer2._sr29AttackCriticalPending);
     const stood={id:'stand-test',name:'Stand Test',connected:true,character:{name:'Stand Test',hp:20,maxHp:20,movement:30,movementSpent:0,conditions:[{name:'prone',duration:999}],stats:{STR:10,DEX:10,CON:10}}};state.campaign.multiplayer.players=[stood];state.character=stood.character;state.combat={enemies:[],target:0,round:1,map:{terrain:[]},mp:{heroPositions:{'stand-test':{x:1,y:1}},turnOrder:[],index:0}};const oldRender=render;render=function(){};const stoodMoved=sr12MoveHero(stood,2,1);render=oldRender;ok('V13.2 standing from prone consumes half speed before movement',stoodMoved&&stood.character.movementSpent===20&&!sr11Has(stood.character,'prone'));
     Math.random=oldRand;state=savedState;
   }catch(e){ok('V13 initiative suite runs without runtime errors',false,String(e?.stack||e));}
@@ -5469,6 +5475,33 @@ function sr136MoveTiedHero(b,index,direction){
   b.initiativeOrder=order.map(x=>({...x,indexes:x.indexes?[...x.indexes]:undefined}));
   return true;
 }
+function sr136ActionAvailable(character,action){
+  const actionCost=['attack','defend','dodge','disengage','shove','grapple','help','hide','ready','interact','flee'];
+  if(!actionCost.includes(String(action||'')))return true;
+  if(character?.actionSpent){toast('Your Action is already spent.');return false;}
+  return true;
+}
+function sr136ReadyAction(player){
+  const c=player?.character;if(!c)return false;
+  if(c.actionSpent){toast('Your Action is already spent.');return false;}
+  if(c.reactionAvailable===false){toast('Your Reaction has already been spent.');return false;}
+  c.actionSpent=true;c.readiedAttack=true;
+  log(`${player.name} readies an attack as a Reaction before the next enemy strike.`,'goodlog');
+  return true;
+}
+function sr136IsIncapacitated(actor){
+  return ['incapacitated','stunned','paralyzed','petrified','unconscious'].some(name=>sr13HasCondition(actor,name));
+}
+function sr136RefreshEnemyReaction(enemy){
+  if(!enemy||Number(enemy.hp)<=0)return false;
+  enemy.reactionAvailable=true;
+  return true;
+}
+function sr136ReorderTie(b,index,direction,activeActorId){
+  const changed=sr136MoveTiedHero(b,index,direction);
+  const activeActor=b?.mp?.turnOrder?.[Number(b?.mp?.index)||0]?.id||null;
+  return {changed,activeActor,activeActorChanged:!!changed&&activeActor!==String(activeActorId??'')};
+}
 const sr136OldInitiativeTracker=sr13InitiativeTracker;
 sr13InitiativeTracker=function(b){
   const entries=b?.mp?.turnOrder||[],active=b?.mp?.index??-1;
@@ -5487,7 +5520,13 @@ const sr136OldHandleCombat=sr12HandleCombat;
 sr12HandleCombat=function(player,msg){
   if(msg?.action==='tie-order'){
     if(!state.combat?.mp||!player)return;
-    if(sr136MoveTiedHero(state.combat,Number(msg.index),String(msg.direction||''))){log(`${player.name} adjusts the order of tied heroes by party agreement.`,'rolllog');sr4Broadcast();save();render();}
+    const activeBefore=sr12TurnActor()?.id||null;
+    const result=sr136ReorderTie(state.combat,Number(msg.index),String(msg.direction||''),activeBefore);
+    if(result.changed){
+      log(`${player.name} adjusts the order of tied heroes by party agreement.`,'rolllog');
+      if(result.activeActorChanged){SR12.activeTurnKey='';sr13ProcessActors();}
+      sr4Broadcast();save();render();
+    }
     return;
   }
   return sr136OldHandleCombat(player,msg);
@@ -5511,6 +5550,58 @@ function sr136RunTests(){
     ok('Party can move a tied hero earlier before either tied turn begins',sr136MoveTiedHero(combat,1,'up')&&combat.mp.turnOrder[0].id==='b');
     ok('Party can move a tied hero later within the same Initiative count',sr136MoveTiedHero(combat,0,'down')&&combat.mp.turnOrder[1].id==='b');
     combat.mp.index=1;ok('Party cannot rewrite a tie after the tied group has begun acting',!sr136MoveTiedHero(combat,1,'up'));
+    const conditionCases=['incapacitated','stunned','paralyzed','petrified','unconscious'];
+    ok('Multiplayer initiative skips every condition that includes Incapacitated',conditionCases.every(name=>sr136IsIncapacitated({conditions:[name]})));
+    ok('Ordinary conditions do not incorrectly suppress a multiplayer turn',!sr136IsIncapacitated({conditions:['poisoned','prone']}));
+    const beforeAlertState=state;state={character:{level:1}};
+    ok('Alert uses the acting character level for its proficiency bonus, not the host character',sr13InitiativeModifier({character:{level:9,stats:{DEX:14},feats:['Alert']}},true)===6);
+    state=beforeAlertState;
+    ok('Monster initiative falls back to its Dexterity score when nullable modifier fields are absent',sr13InitiativeModifier({initiativeModifier:null,dex:null,stats:{DEX:18}},false)===4);
+    const actionNames=['attack','defend','dodge','disengage','shove','grapple','help','hide','ready','interact','flee'];
+    ok('Central Action ledger rejects every Action-costing multiplayer command after the Action is spent',actionNames.every(name=>!sr136ActionAvailable({actionSpent:true},name)));
+    ok('Central Action ledger permits Action-costing commands when the Action is available',actionNames.every(name=>sr136ActionAvailable({actionSpent:false},name)));
+    const potionPlayer={id:'potion-test',name:'Potion Hero',character:{hp:1,maxHp:20,actionSpent:true,bonusActionSpent:false,inventory:[{name:'Potion of Healing',type:'potion',healing:'2d4+2',count:1}]}};
+    const potionUsed=sr12Potion(potionPlayer);
+    ok('Potion of Healing uses a Bonus Action and can be used after the Action',potionUsed&&potionPlayer.character.bonusActionSpent&&potionPlayer.character.actionSpent&&potionPlayer.character.inventory.length===0&&potionPlayer.character.hp>1);
+    const potionBlocked={id:'potion-spent',name:'Spent Potion Hero',character:{hp:1,maxHp:20,actionSpent:false,bonusActionSpent:true,inventory:[{name:'Potion of Healing',type:'potion',healing:'2d4+2',count:1}]}};
+    ok('Potion of Healing cannot be used after the Bonus Action is spent',!sr12Potion(potionBlocked)&&potionBlocked.character.inventory[0].count===1);
+    const unconsciousPotion={id:'unconscious-potion',name:'Unconscious Hero',character:{hp:0,maxHp:20,unconscious:true,conditions:['unconscious'],bonusActionSpent:false,inventory:[{name:'Potion of Healing',type:'potion',healing:'2d4+2',count:1}]}};
+    ok('An incapacitated hero cannot use their own Bonus Action to drink a potion',!sr12Potion(unconsciousPotion)&&unconsciousPotion.character.inventory[0].count===1);
+    const readyAvailable={name:'Ready Hero',character:{actionSpent:false,reactionAvailable:true,readiedAttack:false}};
+    ok('Ready consumes the Action while preserving an available Reaction',sr136ReadyAction(readyAvailable)&&readyAvailable.character.actionSpent&&readyAvailable.character.readiedAttack&&readyAvailable.character.reactionAvailable===true);
+    const readySpentAction={name:'Spent Hero',character:{actionSpent:true,reactionAvailable:true,readiedAttack:false}};
+    ok('Ready cannot be taken after the Action is spent',!sr136ReadyAction(readySpentAction)&&!readySpentAction.character.readiedAttack);
+    const readySpentReaction={name:'No Reaction Hero',character:{actionSpent:false,reactionAvailable:false,readiedAttack:false}};
+    ok('Ready cannot restore or use an already-spent Reaction',!sr136ReadyAction(readySpentReaction)&&!readySpentReaction.character.actionSpent&&!readySpentReaction.character.readiedAttack);
+    const beforeActionTests=state;
+    const surgePlayer={id:'surge-test',name:'Surge Test',character:{classId:'Fighter',level:2,classLevels:{Fighter:2},hp:20,actionSpent:true,bonusActionSpent:true,actionSurgeUsed:false}};
+    const surgeOk=sr12ClassPower(surgePlayer);
+    ok('Action Surge works after a Bonus Action and does not consume another Bonus Action',surgeOk&&surgePlayer.character.actionSurgeUsed&&!surgePlayer.character.actionSpent&&surgePlayer.character.bonusActionSpent===true);
+    const cleric={id:'cleric-test',name:'Cleric Test',connected:true,character:{classId:'Cleric',level:2,classLevels:{Cleric:2},hp:5,maxHp:20,actionSpent:false,bonusActionSpent:true}};
+    const ally={id:'cleric-ally',name:'Ally',connected:true,character:{hp:5,maxHp:20}};
+    state={campaign:{multiplayer:{players:[cleric,ally]}},combat:null,log:[]};
+    const clericOk=sr12ClassPower(cleric);
+    ok('Divine Spark legacy action path uses the Action, not the Bonus Action',clericOk&&cleric.character.actionSpent&&cleric.character.bonusActionSpent===true);
+    const wizard={id:'wizard-test',name:'Wizard Test',character:{classId:'Wizard',level:3,classLevels:{Wizard:3},hp:20,maxSpellSlots:4,spellSlots:1,bonusActionSpent:true}};
+    state={campaign:{multiplayer:{players:[]}},combat:null,log:[]};
+    const recoveryOk=sr12ClassPower(wizard);
+    ok('Arcane Recovery is a Short Rest feature and does not consume a Bonus Action',recoveryOk&&wizard.character.spellSlots===2&&wizard.character.bonusActionSpent===true);
+    state=beforeActionTests;
+    const enemyReaction={hp:10,reactionAvailable:false};
+    ok('Enemy Reaction refreshes at the start of its own initiative turn',sr136RefreshEnemyReaction(enemyReaction)&&enemyReaction.reactionAvailable===true);
+    const deadEnemyReaction={hp:0,reactionAvailable:false};
+    ok('Defeated enemies do not receive a refreshed Reaction',!sr136RefreshEnemyReaction(deadEnemyReaction)&&deadEnemyReaction.reactionAvailable===false);
+    const priorReactionState=state;
+    state={combat:{mp:{},round:1,enemies:[{hp:10,reactionAvailable:false,conditions:[]}]},campaign:{multiplayer:{players:[{character:{reactionAvailable:false,conditions:[]}}]},companions:[]},log:[]};
+    sr12EndRound();
+    ok('Round boundary does not prematurely refresh hero or monster Reactions',state.campaign.multiplayer.players[0].character.reactionAvailable===false&&state.combat.enemies[0].reactionAvailable===false);
+    state=priorReactionState;
+    const activeSwap={mp:{index:0,turnOrder:[{kind:'hero',id:'active-a',initiative:12,tieMode:'party-choice'},{kind:'hero',id:'active-b',initiative:12,tieMode:'party-choice'}]}};
+    const activeChanged=sr136ReorderTie(activeSwap,1,'up','active-a');
+    ok('Changing the first tied hero is detected so the host can initialize the newly active turn',activeChanged.changed&&activeChanged.activeActorChanged&&activeChanged.activeActor==='active-b');
+    const laterSwap={mp:{index:0,turnOrder:[{kind:'hero',id:'active-a',initiative:12,tieMode:'party-choice'},{kind:'hero',id:'later-b',initiative:12,tieMode:'party-choice'},{kind:'hero',id:'later-c',initiative:12,tieMode:'party-choice'}]}};
+    const laterChanged=sr136ReorderTie(laterSwap,1,'down','active-a');
+    ok('Reordering later tied heroes does not reset the already active hero turn',laterChanged.changed&&!laterChanged.activeActorChanged&&laterChanged.activeActor==='active-a');
     const page=sr13InitiativeTracker({round:1,mp:{index:0,turnOrder:heroes}});
     ok('Initiative tracker exposes party tie-order controls',page.includes('data-action="mp-tie-order"')&&page.includes('tied · party chooses'));
     ok('Initiative tracker labels automated Director tie rulings',true);
@@ -5520,7 +5611,7 @@ function sr136RunTests(){
 }
 const sr136OldTestV13=sr13RunTests;
 sr13RunTests=function(){return [...sr136OldTestV13(),...sr136RunTests()];};
-globalThis.__SR13_TEST={...globalThis.__SR13_TEST,version:SR136_VERSION,moveTiedHero:sr136MoveTiedHero,tests:sr13RunTests};
+globalThis.__SR13_TEST={...globalThis.__SR13_TEST,version:SR136_VERSION,initiativeModifier:sr13InitiativeModifier,moveTiedHero:sr136MoveTiedHero,reorderTie:sr136ReorderTie,actionAvailable:sr136ActionAvailable,readyAction:sr136ReadyAction,isIncapacitated:sr136IsIncapacitated,refreshEnemyReaction:sr136RefreshEnemyReaction,tests:sr13RunTests};
 
 
 
@@ -5953,7 +6044,7 @@ function sr14RunFeature(player,key,option=''){
  if(ok){if(isMP){player.character=c;sr4Broadcast();}save();render();}return ok;
 }
 
-function sr14FeatureDefinitions(c){const k=c.classId,lv=sr14Level(c,k);const map={Barbarian:[['rage','Rage','Bonus Action · limited uses · physical resistance']],Bard:[['inspiration','Bardic Inspiration','Bonus Action · ally gains a die']],Cleric:[['divineSpark','Divine Spark','Action · heal an ally or harm a foe']],Druid:[['wildShape','Wild Shape','Bonus Action · choose a known beast form']],Fighter:[['secondWind','Second Wind','Bonus Action · heal 1d10 + Fighter level'],...(lv>=2?[['actionSurge','Action Surge','Bonus Action · gain one action']]:[])],Monk:[['flurry','Flurry of Blows','Bonus Action · spend Focus for two strikes']],Paladin:[['layOnHands','Lay on Hands','Bonus Action · spend healing pool']],Ranger:[['huntersMark','Hunter’s Mark','Bonus Action · concentration and bonus damage']],Rogue:[['cunningDash','Cunning Action: Dash','Bonus Action · double movement'],['cunningDisengage','Cunning Action: Disengage','Bonus Action · avoid opportunity attacks'],['cunningHide','Cunning Action: Hide','Bonus Action · Stealth check']],Sorcerer:[['innateSorcery','Innate Sorcery','Bonus Action · improve spellcasting']],Warlock:[['eldritchBlast','Eldritch Blast','Cantrip · ranged spell attack']],Wizard:[['arcaneRecovery','Arcane Recovery','Short Rest · recover spell slots']]};return (map[k]||[]).filter(x=>sr14FeatureAvailable(c,k,x[0]));}
+function sr14FeatureDefinitions(c){const k=c.classId,lv=sr14Level(c,k);const map={Barbarian:[['rage','Rage','Bonus Action · limited uses · physical resistance']],Bard:[['inspiration','Bardic Inspiration','Bonus Action · ally gains a die']],Cleric:[['divineSpark','Divine Spark','Action · heal an ally or harm a foe']],Druid:[['wildShape','Wild Shape','Bonus Action · choose a known beast form']],Fighter:[['secondWind','Second Wind','Bonus Action · heal 1d10 + Fighter level'],...(lv>=2?[['actionSurge','Action Surge','No action cost · gain one Action']]:[])],Monk:[['flurry','Flurry of Blows','Bonus Action · spend Focus for two strikes']],Paladin:[['layOnHands','Lay on Hands','Bonus Action · spend healing pool']],Ranger:[['huntersMark','Hunter’s Mark','Bonus Action · concentration and bonus damage']],Rogue:[['cunningDash','Cunning Action: Dash','Bonus Action · double movement'],['cunningDisengage','Cunning Action: Disengage','Bonus Action · avoid opportunity attacks'],['cunningHide','Cunning Action: Hide','Bonus Action · Stealth check']],Sorcerer:[['innateSorcery','Innate Sorcery','Bonus Action · improve spellcasting']],Warlock:[['eldritchBlast','Eldritch Blast','Cantrip · ranged spell attack']],Wizard:[['arcaneRecovery','Arcane Recovery','Short Rest · recover spell slots']]};return (map[k]||[]).filter(x=>sr14FeatureAvailable(c,k,x[0]));}
 
 // ---- Spell library, preparation and executable spell resolver -------------------------
 function sr14ClassCanCast(c,sp){return Object.entries(c.classLevels||{[c.classId]:c.level||1}).some(([k,l])=>Number(l)>0&&sp.classes.includes(k));}

@@ -17,7 +17,7 @@ for(const relative of ['index.html','manifest.webmanifest','icons/icon-192.png',
   cacheDigest.update(fs.readFileSync(path.join(root,relative)));
   cacheDigest.update(Buffer.from([0]));
 }
-const expectedCacheName='solo-realms-systems-v25-'+cacheDigest.digest('hex').slice(0,16);
+const expectedCacheName='solo-realms-systems-v29-'+cacheDigest.digest('hex').slice(0,16);
 const cacheMatch=sw.match(/^const CACHE_NAME = '([^']+)';$/m);
 assert('Service worker cache is content-versioned from every precached app asset',cacheMatch?.[1]===expectedCacheName);
 assert('Manifest uses correct subfolder scope and start URL',manifest.scope==='./'&&manifest.start_url==='./index.html');
