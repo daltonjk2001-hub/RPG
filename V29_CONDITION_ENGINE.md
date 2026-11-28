@@ -416,3 +416,12 @@ Still incomplete: Reincarnate's complete species-specific trait automation and p
 - Empty strings and `none` / `empty` / `unarmed` off-hand sentinels no longer consume a hand. Explicit unequipped flags continue to take precedence.
 - Added regressions for custom `handedness: "two-handed"`, string-valued `properties`, and empty/none off-hand values.
 - Full regression passed with **429/429 V29 assertions**; V18 hardening passed. Unusual custom equipment records still need real save/import and two-device playtesting; the engine continues to prefer explicit equipped-slot metadata over guessing.
+
+
+## V29.70 — Validated player-selected tactical teleport coordinates
+
+- The tactical teleport planner now exposes all legal destinations and accepts an explicit requested coordinate. A requested cell is honored only when it is inside the map, within the spell's range, visible to the caster, unoccupied, not blocked, and permitted by the Frightened movement rule.
+- The SRD52 cast adapter accepts `castMode.destination` (or `castMode.teleportDestination`) and commits that exact validated cell instead of silently choosing the automatic fallback. Invalid/occupied/out-of-range selections fail before the spell resolver spends the Action/Bonus Action or slot.
+- Regression coverage verifies the requested coordinate, occupied-cell rejection, range rejection, and an actual Misty Step cast committing the selected coordinate with the correct Bonus Action and one slot.
+- Verified on the current code commit: **431/431 V29 assertions passed**; V18 hardening passed.
+- The resolver contract is now ready for a player-facing destination picker. The combat UI does not yet present a clickable map/grid selection, and companion-destination and non-combat travel teleports remain open; unsupported non-combat teleports continue to fail closed.
