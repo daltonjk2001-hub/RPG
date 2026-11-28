@@ -906,7 +906,7 @@ function sr29PlayerTeleportCandidates(player,feet){
     for(const collection of friendlyCollections){
       const entries=Array.isArray(collection)?collection:(collection&&typeof collection==='object'?Object.values(collection):[]);
       if(entries.some(entry=>{
-        if(!entry||entry.dead===true||entry.isDead===true||Number(entry.character?.hp)===0||String(entry.id||entry.playerId||'')===id)return false;
+        if(!entry||entry.dead===true||entry.isDead===true||Number(entry.hp)===0||Number(entry.character?.hp)===0||String(entry.id||entry.playerId||'')===id)return false;
         const p=entry.pos||entry.position||entry;
         return p&&Number(p.x)===x&&Number(p.y)===y;
       }))return true;
