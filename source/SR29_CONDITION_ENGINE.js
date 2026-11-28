@@ -231,7 +231,8 @@ function sr29ProcessRepeatSaves(target,trigger='end-turn',turnKey='',rolls=null)
   let attempted=0,ended=0,failed=0,skipped=0;
   for(const item of entries){
     const spec=item.repeatSave;
-    if(!spec||spec.trigger!==trigger)continue;
+    const allowedTriggers=Array.isArray(spec?.triggers)?spec.triggers:[spec?.trigger];
+    if(!spec||!allowedTriggers.includes(trigger))continue;
     if(spec.lastTriggerKey===key){skipped++;continue;}
     spec.lastTriggerKey=key;attempted++;
     const result=sr29ResolveRepeatSave(target,spec,rolls);
