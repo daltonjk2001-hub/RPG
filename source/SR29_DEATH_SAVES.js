@@ -1115,7 +1115,7 @@ function sr29AdvancePendingLongCast(minutes=10,options={}){
   const completionSpell=SRD52_SPELLS?.[pending.spellName];
   const hadOwnCastingTime=!!completionSpell&&Object.prototype.hasOwnProperty.call(completionSpell,'castingTime');
   const originalCastingTime=completionSpell?.castingTime;
-  const bypassCombatCastingTime=!!state?.combat&&!!completionSpell&&/\\b(minute|minutes|hour|hours|min|hr)\\b/i.test(String(originalCastingTime||''));
+  const bypassCombatCastingTime=!!state?.combat&&!!completionSpell&&/\b(minute|minutes|hour|hours|min|hr)\b/i.test(String(originalCastingTime||''));
   if(bypassCombatCastingTime)completionSpell.castingTime='Action';
   try{result=sr29CastBeforeLongCasting.call(null,player,pending.spellName,pending.targetId,pending.fromMP,pending.castMode);}
   finally{
