@@ -1096,8 +1096,13 @@ if(typeof sr14CastSpellComplete==='function'){
     if(effect?.kind==='teleport'&&combat){
       const teleportRange=sr29PlayerTeleportRange(spellName,spell);
       if(!Number.isFinite(teleportRange)||teleportRange<=0){toast('This teleport needs a supported range and destination rule before it can be used in tactical combat.');return false;}
-      teleportPlan=sr29PlayerTeleportPlan(player,teleportRange,castMode.destination??castMode.teleportDestination??null);
-      if(!teleportPlan){toast('No visible, unoccupied destination is available within this teleport’s range.');return false;}
+      const requestedDestination=castMode.destination??castMode.teleportDestination??null;
+      if(!requestedDestination){
+        if(!sr29QueueTeleportDestination(player,spellName,args,teleportRange)){toast('No visible, unoccupied destination is available within this teleport’s range, or another teleport choice is already pending.');return false;}
+        return false;
+      }
+      teleportPlan=sr29PlayerTeleportPlan(player,teleportRange,requestedDestination);
+      if(!teleportPlan){toast('That destination is not visible, is occupied or blocked, or is outside this teleport’s range.');return false;}
     }
     let targets=[];
     if((displacement||repeatSave)&&combat&&effect&&['saveDamage','control','debuff','attack'].includes(effect.kind)){
