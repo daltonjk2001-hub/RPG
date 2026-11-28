@@ -533,6 +533,8 @@ if(typeof sr12HandleCombat==='function'){
   sr12HandleCombat=function(player,msg){
     if(msg?.action==='grapple-save')return sr29MpResolveGrappleSave(player,msg);
     if(msg?.action==='escape-grapple')return sr12HeroAction(player,'escape-grapple',null,null,{ability:msg.ability});
+    if(msg?.action==='teleport-destination')return sr29ResolvePendingTeleport(player,msg.x,msg.y);
+    if(msg?.action==='teleport-cancel')return sr29CancelPendingTeleport(player);
     return sr29MpPriorHandleCombat(player,msg);
   };
 }
