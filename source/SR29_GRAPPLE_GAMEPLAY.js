@@ -52,7 +52,7 @@ function sr29SoloFreeHands(actor){
     ...(Array.isArray(weapon.properties)?weapon.properties:typeof weapon.properties==='string'?[weapon.properties]:[]),
     ...(Array.isArray(mainSource?.properties)?mainSource.properties:typeof mainSource?.properties==='string'?[mainSource.properties]:[])
   ].map(x=>String(x).toLowerCase());
-  const handedness=String(mainSource?.handedness??weapon.handedness??'').toLowerCase().replace(/[\\s_-]+/g,'');
+  const handedness=String(mainSource?.handedness??weapon.handedness??'').toLowerCase().replace(/[\s_-]+/g,'');
   const twoHanded=!/^hand crossbow$/i.test(weaponName)&&(weapon.twoHanded===true||mainSource?.twoHanded===true||
     Number(mainSource?.hands??weapon.hands)===2||handedness==='twohanded'||handedness==='2handed'||
     propertyValues.some(value=>/two[- ]handed/.test(value))||
