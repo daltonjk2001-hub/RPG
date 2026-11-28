@@ -1291,8 +1291,11 @@ try{
  assert('Unarmed character has two free hands',T.gameplay.freeHands(actor())===2);
  assert('One-handed weapon leaves one free hand',T.gameplay.freeHands(actor({weapon:'Longsword'}))===1);
  assert('Two-handed custom main-hand configuration occupies both hands',T.gameplay.freeHands(actor({equipment:{mainHand:{name:'Custom Greatblade',equipped:true,hands:2}}}))===0);
+ assert('Custom weapon handedness metadata recognizes a two-handed string value',T.gameplay.freeHands(actor({equipment:{mainHand:{name:'Custom Polearm',equipped:true,handedness:'two-handed'}}}))===0);
+ assert('Custom weapon string properties recognize the two-handed property',T.gameplay.freeHands(actor({equipment:{mainHand:{name:'Custom Heavy Blade',equipped:true,properties:'heavy, two-handed'}}}))===0);
  assert('Hand crossbow is not treated as automatically two-handed',T.gameplay.freeHands(actor({weapon:'Hand Crossbow'}))===1);
  assert('Unequipped off-hand item does not consume a hand',T.gameplay.freeHands(actor({weapon:'Longsword',equipment:{offHand:{name:'Dagger',equipped:false}}}))===1);
+ assert('Empty and none off-hand sentinels do not consume a hand',T.gameplay.freeHands(actor({weapon:'Longsword',offHandWeapon:'none'}))===1&&T.gameplay.freeHands(actor({weapon:'Longsword',offHandWeapon:''}))===1);
  assert('Unequipped shield inventory record does not consume a hand',T.gameplay.freeHands(actor({weapon:'Longsword',inventory:[{name:'Shield',type:'shield',equipped:false}]}))===1);
  assert('Equipped shield inventory record consumes the off-hand',T.gameplay.freeHands(actor({weapon:'Longsword',inventory:[{name:'Shield',type:'shield',equipped:true}]}))===0);
  assert('Off-hand shield is counted once rather than double-counted',T.gameplay.freeHands(actor({weapon:'Longsword',offHandWeapon:{name:'Shield',type:'shield',equipped:true},shieldEquipped:true}))===0);
