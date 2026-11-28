@@ -190,7 +190,7 @@ combatPage=function(){
     (hasTarget?'<button class="btn small" data-action="sr29-shove-push">Shove · Push 5 ft</button><button class="btn small" data-action="sr29-shove-prone">Shove · Knock Prone</button>':'')+
     (grappled?'<button class="btn small" data-action="sr29-escape-grapple">Escape Grapple · Action</button>':'')+
     '</div></section>';
-  return html+controls;
+  return html+controls+sr29TeleportDestinationPanel();
 };
 document.addEventListener('click',function(event){
   const button=event.target?.closest?.('button[data-action="sr29-grapple"],button[data-action="sr29-escape-grapple"],button[data-action="sr29-shove-push"],button[data-action="sr29-shove-prone"]');
@@ -552,7 +552,7 @@ if(typeof sr12CombatPage==='function'){
     const targetButtons=mine?targets.map(p=>'<button class="btn small" data-action="sr29-mp-grapple" data-target-id="'+sr29Html(p.id)+'" '+(sr12Distance(sr12PlayerPos(me),sr12PlayerPos(p.id))>5||!mine?'disabled':'')+'>Grapple '+sr29Html(p.name)+'</button>').join(''):'';
     const challenges=(state.combat.mp.grappleChallenges||[]).filter(item=>item.targetId===me);
     const savePrompts=challenges.map(item=>'<section class="card"><h3>Grapple saving throw</h3><p>'+sr29Html(item.attackerName)+' hit you with an Unarmed Strike. Choose Strength or Dexterity against DC '+Number(item.escapeDC)+'.</p><div class="item-actions"><button class="btn primary" data-action="sr29-mp-grapple-save" data-challenge-id="'+sr29Html(item.id)+'" data-ability="STR">Strength save</button><button class="btn primary" data-action="sr29-mp-grapple-save" data-challenge-id="'+sr29Html(item.id)+'" data-ability="DEX">Dexterity save</button></div></section>').join('');
-    return html+(targetButtons?'<section class="card"><h3>Grapple a hero</h3><p class="smalltext muted">Select a connected party member within 5 feet. They choose their own Strength or Dexterity saving throw.</p><div class="item-actions">'+targetButtons+'</div></section>':'')+savePrompts;
+    return html+(targetButtons?'<section class="card"><h3>Grapple a hero</h3><p class="smalltext muted">Select a connected party member within 5 feet. They choose their own Strength or Dexterity saving throw.</p><div class="item-actions">'+targetButtons+'</div></section>':'')+savePrompts+sr29TeleportDestinationPanel();
   };
 }
 document.addEventListener('click',function(event){
@@ -956,7 +956,7 @@ function sr29TeleportDestinationPanel(){
 }
 function sr29RenderTeleportPrompt(){
   const pending=sr29TeleportState()?.pendingTeleport;
-  if(!pending){SR29_TELEPORT_PROMPT_ID='';return;}
+  if(!pending){if(SR29_TELEPORT_PROMPT_ID&&typeof closeModal==='function')closeModal();SR29_TELEPORT_PROMPT_ID='';return;}
   const localId=String(SR4?.myPlayerId||'solo');
   if(String(pending.playerId)!==localId||String(pending.id||'')===SR29_TELEPORT_PROMPT_ID)return;
   const markup=sr29TeleportDestinationPanel();
