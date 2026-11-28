@@ -425,3 +425,10 @@ Still incomplete: Reincarnate's complete species-specific trait automation and p
 - Regression coverage verifies the requested coordinate, occupied-cell rejection, range rejection, and an actual Misty Step cast committing the selected coordinate with the correct Bonus Action and one slot.
 - Verified on the current code commit: **433/433 V29 assertions passed**; V18 hardening passed.
 - The player-facing combat UI now opens a destination modal and keeps the pending picker available in the combat page if the modal is closed. The multiplayer guest sends a destination/cancel response to the host; the host revalidates the coordinate and commits the movement and resource transaction. Pending prompts close when the host clears the selection. Companion-destination and non-combat travel teleports remain open; unsupported non-combat teleports continue to fail closed.
+
+
+## V29.72 — Complete tactical teleport occupancy checks
+
+- Tactical destination validation now rejects cells occupied by enemies, other player heroes, tactical allies, companions, summons, NPCs, and campaign companions with mapped positions. Defeated/dead companion records do not reserve a square.
+- Added regressions for tactical ally occupancy, campaign-companion occupancy, and reusing a defeated companion's square.
+- Verified on the current branch: **433/433 V29 assertions passed** and V18 hardening passed. Real guest/host mobile playtesting remains outstanding.
