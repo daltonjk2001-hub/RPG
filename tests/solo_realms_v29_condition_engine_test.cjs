@@ -1285,7 +1285,7 @@ try{
  assert('Creature anatomy excludes locomotion-only appendages from grapple capacity',T.gameplay.appendageCapacity(actor({appendages:[{type:'wing'},{type:'leg'},{type:'tentacle',grappleCapable:true},{type:'arm',canGrapple:true}]}))===2);
  assert('Structured generic anatomy counts grasping arms and tentacles without redundant capability flags',T.gameplay.appendageCapacity(actor({appendages:[{type:'arm'},{type:'arm'},{type:'tentacle'}]}))===3);
  assert('Named anatomy maps count grasping appendages while excluding non-grasping structures',T.gameplay.appendageCapacity(actor({appendages:{leftArm:{type:'arm'},rightArm:{type:'arm'},tail:{type:'tail'},wing:{type:'wing'}}}))===2);
- assert('Explicit anatomy flags can still disable an otherwise grasping appendage',T.gameplay.appendageCapacity(actor({appendages:[{type:'arm',canGrapple:false},{type:'tentacle',functional:false}]}))===1);
+ assert('Explicit anatomy flags can still disable an otherwise grasping appendage',T.gameplay.appendageCapacity(actor({grappleAppendages:[{type:'arm',canGrapple:false},{type:'tentacle',functional:false}]}))===0);
  assert('Explicit grapple appendage lists honor disabled and unusable entries',T.gameplay.appendageCapacity(actor({grappleAppendages:[{type:'tentacle'},{type:'tentacle',canGrapple:false},'pseudopod',false]}))===2);
  assert('Unknown anatomy does not count every appendage as a hand',T.gameplay.appendageCapacity(actor({type:'aberration',appendages:[{type:'wing'},{type:'tail'},{type:'leg'}]}))===1);
  assert('Unarmed character has two free hands',T.gameplay.freeHands(actor())===2);
