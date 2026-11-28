@@ -927,6 +927,86 @@ function sr29PlayerTeleportPlan(player,feet,destination=null){
   }
   return candidates[0]||null;
 }
+
+let SR29_TELEPORT_PROMPT_ID='';
+function sr29TeleportState(){
+  const campaign=state?.campaign;if(!campaign||typeof campaign!=='object')return null;
+  campaign.sr29=campaign.sr29&&typeof campaign.sr29==='object'?campaign.sr29:{};
+  return campaign.sr29;
+}
+function sr29TeleportPlayerById(id){
+  const key=String(id||'solo');
+  const remote=(state?.campaign?.multiplayer?.players||[]).find(item=>String(item?.id||'')===key);
+  if(remote)return remote;
+  if(key==='solo'||String(state?.character?.id||'')===key)return {id:key,name:state?.character?.name||'Hero',character:state?.character};
+  return null;
+}
+function sr29TeleportDestinationPanel(){
+  const pending=sr29TeleportState()?.pendingTeleport;
+  if(!pending||!state?.combat)return '';
+  const localId=String(SR4?.myPlayerId||'solo');
+  if(String(pending.playerId)!==localId)return '';
+  const player=sr29TeleportPlayerById(pending.playerId);
+  if(!player)return '';
+  const candidates=sr29PlayerTeleportCandidates(player,pending.range);
+  const buttons=candidates.map(item=>'<button class="btn small" data-action="sr29-teleport-destination" data-x="'+item.to.x+'" data-y="'+item.to.y+'">'+item.to.x+', '+item.to.y+' · '+item.travelFeet+' ft</button>').join('');
+  return '<section class="card" id="sr29-teleport-destination-picker"><div class="eyebrow">V29 · Teleport</div><h3>Choose a destination for '+sr29Html(pending.spellName)+'</h3><p class="smalltext muted">Choose a visible, unoccupied square within '+Number(pending.range)+' feet. No Action, Bonus Action, or spell slot is spent until a valid destination is confirmed.</p><div class="item-actions">'+(buttons||'<span class="muted">No legal destinations remain.</span>')+'</div><div class="item-actions"><button class="btn small" data-action="sr29-teleport-cancel">Cancel teleport</button></div></section>';
+}
+function sr29RenderTeleportPrompt(){
+  const pending=sr29TeleportState()?.pendingTeleport;
+  if(!pending){SR29_TELEPORT_PROMPT_ID='';return;}
+  const localId=String(SR4?.myPlayerId||'solo');
+  if(String(pending.playerId)!==localId||String(pending.id||'')===SR29_TELEPORT_PROMPT_ID)return;
+  const markup=sr29TeleportDestinationPanel();
+  if(!markup)return;
+  SR29_TELEPORT_PROMPT_ID=String(pending.id||'pending');
+  if(typeof showModal==='function')showModal(markup);
+}
+function sr29QueueTeleportDestination(player,spellName,args,range){
+  const store=sr29TeleportState();if(!store||store.pendingTeleport)return false;
+  const candidates=sr29PlayerTeleportCandidates(player,range);
+  if(!candidates.length)return false;
+  const castArgs=Array.isArray(args)?args:[];
+  const castMode=castArgs[4]&&typeof castArgs[4]==='object'?{...castArgs[4]}:{};
+  store.pendingTeleport={
+    id:'teleport-'+Date.now()+'-'+String(player?.id||'solo'),
+    playerId:String(player?.id||'solo'),playerName:String(player?.name||player?.character?.name||'Hero'),
+    spellName:String(spellName),allyId:castArgs[2]??null,fromMP:!!castArgs[3],castMode,range:Number(range)
+  };
+  if(state?.combat)state.view='combat';
+  if(typeof save==='function')save();
+  if(typeof sr4Broadcast==='function')sr4Broadcast();
+  toast('Choose a legal destination to complete '+String(spellName)+'. No resources have been spent yet.');
+  sr29RenderTeleportPrompt();
+  if(typeof render==='function')render();
+  return true;
+}
+function sr29ResolvePendingTeleport(player,x,y){
+  const store=sr29TeleportState(),pending=store?.pendingTeleport;
+  if(!pending||!player||String(player.id||'')!==String(pending.playerId))return false;
+  if(player.connected===false||Number(player.character?.hp)<=0)return false;
+  const plan=sr29PlayerTeleportPlan(player,pending.range,{x:Number(x),y:Number(y)});
+  if(!plan){toast('That teleport destination is no longer legal. Choose another visible, unoccupied square within range.');return false;}
+  store.pendingTeleport=null;SR29_TELEPORT_PROMPT_ID='';
+  if(typeof closeModal==='function')closeModal();
+  const castMode={...(pending.castMode||{}),destination:{x:plan.to.x,y:plan.to.y}};
+  const result=sr14CastSpellComplete(player,pending.spellName,pending.allyId,pending.fromMP,castMode);
+  if(!result)toast('The spell could not be completed; no teleport destination was committed.');
+  if(typeof save==='function')save();
+  if(typeof sr4Broadcast==='function')sr4Broadcast();
+  if(typeof render==='function')render();
+  return result===true;
+}
+function sr29CancelPendingTeleport(player){
+  const store=sr29TeleportState(),pending=store?.pendingTeleport;
+  if(!pending||!player||String(player.id||'')!==String(pending.playerId))return false;
+  store.pendingTeleport=null;SR29_TELEPORT_PROMPT_ID='';
+  if(typeof closeModal==='function')closeModal();
+  if(typeof save==='function')save();
+  if(typeof sr4Broadcast==='function')sr4Broadcast();
+  if(typeof render==='function')render();
+  return true;
+}
 function sr29ApplyPlayerTeleport(player,plan){
   const combat=state?.combat,id=String(player?.id||'solo');
   if(!combat||!plan?.to)return false;
