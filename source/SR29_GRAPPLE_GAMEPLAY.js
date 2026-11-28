@@ -995,7 +995,6 @@ function sr29ResolvePendingTeleport(player,x,y){
   if(!result)toast('The spell could not be completed; no teleport destination was committed.');
   if(typeof save==='function')save();
   if(typeof sr4Broadcast==='function')sr4Broadcast();
-  if(typeof render==='function')render();
   return result===true;
 }
 function sr29CancelPendingTeleport(player){
@@ -1005,7 +1004,6 @@ function sr29CancelPendingTeleport(player){
   if(typeof closeModal==='function')closeModal();
   if(typeof save==='function')save();
   if(typeof sr4Broadcast==='function')sr4Broadcast();
-  if(typeof render==='function')render();
   return true;
 }
 function sr29ApplyPlayerTeleport(player,plan){
