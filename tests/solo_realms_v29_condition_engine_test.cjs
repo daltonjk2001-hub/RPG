@@ -514,8 +514,9 @@ try{
  T.apply(dualTriggerTarget,'frightened',10,'Dual Trigger Spell');
  const dualTriggerAttached=T.gameplay.attachRepeatSave(dualTriggerTarget,'frightened','Dual Trigger Spell',dualTriggerTarget,'WIS',13,dualTriggerRepeat);
  const dualEndFailure=T.processRepeatSaves(dualTriggerTarget,'end-turn','dual-end-turn',[1]);
+ const retainedAfterDualEndFailure=T.has(dualTriggerTarget,'frightened');
  const dualDamageSuccess=T.processRepeatSaves(dualTriggerTarget,'damage','dual-damage',[20]);
- assert('A repeat-save effect can trigger at end of turn and again on damage, with one success ending it',dualTriggerAttached&&dualEndFailure.failed===1&&T.has(dualTriggerTarget,'frightened')&&dualDamageSuccess.ended===1&&!T.has(dualTriggerTarget,'frightened'),JSON.stringify({dualTriggerAttached,dualEndFailure,dualDamageSuccess,condition:T.has(dualTriggerTarget,'frightened')}));
+ assert('A repeat-save effect can trigger at end of turn and again on damage, with one success ending it',dualTriggerAttached&&dualEndFailure.failed===1&&retainedAfterDualEndFailure&&dualDamageSuccess.ended===1&&!T.has(dualTriggerTarget,'frightened'),JSON.stringify({dualTriggerAttached,dualEndFailure,retainedAfterDualEndFailure,dualDamageSuccess,condition:T.has(dualTriggerTarget,'frightened')}));
  const concentrationCaster=actor({id:'concentration-caster',name:'Concentration Caster',concentration:{spell:'Dominate Person'},activeEffects:[{name:'Dominate Person',concentration:true}]});
  const dominatedFirst=actor({id:'dominated-first',name:'Dominated First'}),dominatedSecond=actor({id:'dominated-second',name:'Dominated Second'});
  T18.state={character:concentrationCaster,combat:{round:1,enemies:[dominatedFirst,dominatedSecond]},campaign:{},log:[]};
