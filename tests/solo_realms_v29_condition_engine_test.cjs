@@ -297,6 +297,10 @@ try{
  const teleportPlayer={id:'teleport-hero',name:'Teleport Hero',connected:true,character:teleportHero};
  T18.state={character:teleportHero,campaign:{multiplayer:{players:[teleportPlayer]}},combat:{mp:{heroPositions:{'teleport-hero':{x:1,y:3}}},heroPos:{x:1,y:3},enemies:[teleportEnemy],map:{width:8,height:6,terrain:teleportTerrain}},log:[]};
  const legalPlayerTeleport=T.gameplay.playerTeleportPlan(teleportPlayer,30);
+ const selectedPlayerTeleport=T.gameplay.playerTeleportPlan(teleportPlayer,30,{x:1,y:2});
+ const blockedSelectedTeleport=T.gameplay.playerTeleportPlan(teleportPlayer,30,{x:6,y:3});
+ const outOfRangeSelectedTeleport=T.gameplay.playerTeleportPlan(teleportPlayer,5,{x:4,y:3});
+ assert('Player-selected teleport destinations are honored only when visible, unoccupied, and within the spell range',selectedPlayerTeleport?.to.x===1&&selectedPlayerTeleport?.to.y===2&&selectedPlayerTeleport.travelFeet<=30&&blockedSelectedTeleport===null&&outOfRangeSelectedTeleport===null,JSON.stringify({selectedPlayerTeleport,blockedSelectedTeleport,outOfRangeSelectedTeleport}));
  assert('Player teleport planner stays within 30 feet, avoids occupied and blocked cells, and respects line of sight',!!legalPlayerTeleport&&legalPlayerTeleport.travelFeet<=30&&!(legalPlayerTeleport.to.x===teleportEnemy.pos.x&&legalPlayerTeleport.to.y===teleportEnemy.pos.y)&&!(legalPlayerTeleport.to.x===2&&legalPlayerTeleport.to.y===3)&&T18.state.combat.mp.heroPositions['teleport-hero'].x===1);
  T.apply(teleportEnemy,'grappled','permanent','Teleport Hero',{sourceId:'teleport-hero',grapplerId:'teleport-hero',grappleRange:5});
  const playerTeleportApplied=legalPlayerTeleport&&T.gameplay.applyPlayerTeleport(teleportPlayer,legalPlayerTeleport);
