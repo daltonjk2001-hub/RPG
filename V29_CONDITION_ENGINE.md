@@ -400,3 +400,11 @@ Still incomplete: Reincarnate's complete species-specific trait automation and p
 - Added a deterministic end-to-end combat stress test using the real multiplayer initiative processor. Raise Dead begins with its first Magic action, then the caster takes the required Magic action on each subsequent initiative turn.
 - After 599 actions, the spell must still be pending at exactly 3,594 seconds (59 minutes, 54 seconds), the target must remain dead, and the fifth-level slot must remain reserved. The 600th Magic action must complete at exactly 3,600 seconds, revive the target, spend one slot, and clear the pending cast.
 - The fixture uses a harmless high-AC training dummy and deterministic attack rolls so the 600-turn test isolates cast timing and initiative progression. This complements, but does not replace, live solo/two-device playtests.
+
+
+## V29.68 — Structured generic creature anatomy
+
+- Generic `appendages` arrays and object maps now count clearly grasping structures (hands, arms, tentacles, pseudopods, grasping limbs, and manipulators) even when the record does not redundantly repeat a `canGrapple` capability flag.
+- Explicit negative metadata such as `canGrapple: false`, `grappleCapable: false`, `usableForGrapple: false`, or `functional: false` still excludes that appendage. Locomotion and sensory structures such as wings, legs, fins, tails, horns, antennae, heads, and jaws are not inferred to be grasping appendages.
+- Added regression coverage for structured array records, named object-map anatomy, and explicit negative capability overrides. Full regression and V18 hardening passed on the current branch head.
+- This improves the anatomy data contract but does not complete the creature-by-creature anatomy catalogue. Unusual/custom creatures still need explicit anatomy or `grappleAppendages` data; unknown anatomy retains the conservative fallback. Multi-target dragging remains blocked on the single-occupant tactical grid rather than overlapping creature tokens.
