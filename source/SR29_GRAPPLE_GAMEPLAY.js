@@ -902,6 +902,21 @@ function sr29PlayerTeleportCandidates(player,feet){
         if(otherId!==id&&p&&Number(p.x)===x&&Number(p.y)===y)return true;
       }
     }
+    const friendlyCollections=[combat.allies,combat.companions,combat.summons,combat.npcs,state?.campaign?.companions];
+    for(const collection of friendlyCollections){
+      const entries=Array.isArray(collection)?collection:(collection&&typeof collection==='object'?Object.values(collection):[]);
+      if(entries.some(entry=>{
+        if(!entry||entry.dead===true||entry.isDead===true||Number(entry.character?.hp)===0||String(entry.id||entry.playerId||'')===id)return false;
+        const p=entry.pos||entry.position||entry;
+        return p&&Number(p.x)===x&&Number(p.y)===y;
+      }))return true;
+    }
+    if(combat.mp){
+      for(const collection of [combat.mp.companionPositions,combat.mp.allyPositions]){
+        const positions=collection&&typeof collection==='object'?Object.values(collection):[];
+        if(positions.some(p=>p&&Number(p.x)===x&&Number(p.y)===y))return true;
+      }
+    }
     return false;
   };
   const candidates=[];
