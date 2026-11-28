@@ -1,7 +1,7 @@
-/* SOLO REALMS V29.66 — Solo caster identity and active-player combat-panel routing.
-   V29.65 turn-by-turn Magic actions for minute-plus spellcasting.
+/* SOLO REALMS V29.73 — Player-friendly long-cast completion.
+   Safe out-of-combat casting advances campaign time in one player action; combat retains six-second Magic turns.
    Death saves occur at the downed hero's turn start; three successes stabilize at 0 HP. */
-const SR29_DEATH_SAVES_VERSION='29.66.0';
+const SR29_DEATH_SAVES_VERSION='29.73.0';
 function sr29SoloRemoveUnconscious(c){
   if(!c)return;
   c.unconscious=false;
@@ -949,7 +949,12 @@ function sr29LongCastAdvanceCampaignSeconds(seconds){
   clock.day+=days;clock.minuteOfDay=Math.floor(withinDay/60);clock.secondOfMinute=withinDay%60;
   clock.watch=Math.floor(clock.minuteOfDay/240)+1;
   state.campaign.day=Math.max(Number(state.campaign.day)||1,clock.day);
-  if(typeof sr18AdvanceWorld==='function')sr18AdvanceWorld('spellcasting',0);
+  if(typeof sr18AdvanceWorld==='function'&&amount>0){
+    // Preserve one world update per ten in-game minutes, but process all segments
+    // inside this single player-confirmed time advance.
+    const worldSegments=Math.max(1,Math.ceil(amount/600));
+    for(let i=0;i<worldSegments;i++)sr18AdvanceWorld('spellcasting',0);
+  }
   return {day:clock.day,minuteOfDay:clock.minuteOfDay,secondOfMinute:clock.secondOfMinute,watch:clock.watch,advancedSeconds:amount,advancedMinutes:Math.floor(amount/60)};
 }
 function sr29LongCastAdvanceCampaignMinutes(minutes){
@@ -1139,6 +1144,15 @@ function sr29AdvancePendingLongCast(minutes=10,options={}){
   sr29LongCastSaveAndRender();
   return {ok:completed,completed:true,result:completed,slotPayment,spellName:pending.spellName,elapsedMinutes:pending.elapsedMinutes,elapsedSeconds:pending.elapsedSeconds,world};
 }
+function sr29CompletePendingLongCast(){
+  const pending=sr29LongCastPending();if(!pending)return {ok:false,reason:'No long cast is in progress.'};
+  if(state?.combat)return {ok:false,reason:'A long cast cannot be fast-forwarded during active combat.'};
+  const requiredSeconds=Math.max(1,Number(pending.requiredSeconds)||Number(pending.requiredMinutes)*60);
+  const elapsedSeconds=Math.max(0,Number(pending.elapsedSeconds)||0);
+  const remainingSeconds=Math.max(0,requiredSeconds-elapsedSeconds);
+  if(remainingSeconds<=0)return {ok:false,reason:'The long cast has no remaining time to complete.'};
+  return sr29AdvancePendingLongCast(0,{seconds:remainingSeconds});
+}
 function sr29ContinueLongCastCombatTurn(player=null,options={}){
   const pending=sr29LongCastPending();if(!pending)return {ok:false,reason:'No long cast is in progress.'};
   if(!state?.combat)return {ok:false,reason:'There is no active combat turn.'};
@@ -1226,10 +1240,10 @@ if(typeof sr12CombatPage==='function'){
   sr12CombatPage=function(...args){return sr29CombatLongCastPanel()+sr29PriorMpCombatPageForLongCast.apply(this,args);};
 }
 function sr29LongCastPanel(){
-  const pending=sr29LongCastPending();if(!pending)return '';
-  const remaining=Math.max(0,pending.requiredMinutes-pending.elapsedMinutes),next=Math.min(10,remaining);
+  const pending=sr29LongCastPending();if(!pending||state?.combat)return '';
+  const remaining=Math.ceil(Math.max(0,pending.requiredMinutes-pending.elapsedMinutes));
   const percentage=Math.max(0,Math.min(100,100*pending.elapsedMinutes/pending.requiredMinutes));
-  return `<section class="card" id="sr29-long-cast"><div class="eyebrow">V29 · Focused casting</div><h3>${esc(pending.spellName)} in progress</h3><p class="smalltext muted">Maintain concentration. Taking another action, entering combat, becoming incapacitated, or failing a Constitution save after damage interrupts the cast. No spell slot or material has been spent yet.</p><div class="item-row"><span>Elapsed in-game time</span><strong>${pending.elapsedMinutes} / ${pending.requiredMinutes} minutes</strong></div><div class="bar"><i style="width:${percentage}%"></i></div><div class="item-actions"><button class="btn primary" data-sr29-long-cast="advance">Continue ${next} ${next===1?'minute':'minutes'}</button><button class="btn" data-sr29-long-cast="cancel">Cancel casting</button></div></section>`;
+  return `<section class="card" id="sr29-long-cast"><div class="eyebrow">V29 · Focused casting</div><h3>${esc(pending.spellName)} in progress</h3><p class="smalltext muted">Finish this cast to advance the campaign clock by the remaining casting time. This is an in-game time jump; no real-world timer or waiting is used. Taking another action, entering combat, becoming incapacitated, or failing a Constitution save after damage interrupts the cast. No spell slot or material has been spent yet.</p><div class="item-row"><span>Elapsed in-game time</span><strong>${pending.elapsedMinutes} / ${pending.requiredMinutes} minutes</strong></div><div class="bar"><i style="width:${percentage}%"></i></div><div class="item-actions"><button class="btn primary" data-sr29-long-cast="advance">Finish casting · advance ${remaining} in-game ${remaining===1?'minute':'minutes'}</button><button class="btn" data-sr29-long-cast="cancel">Cancel casting</button></div></section>`;
 }
 if(typeof spellPage==='function'){
   const sr29PriorSpellPage=spellPage;
@@ -1240,6 +1254,7 @@ if(typeof app!=='undefined'&&app&&typeof app.addEventListener==='function'){
     const button=event?.target?.closest?.('button');if(!button)return;
     const longCastAction=button.dataset?.sr29LongCast;
     if(longCastAction==='combat-continue'){event.preventDefault();event.stopImmediatePropagation?.();sr29ContinueLongCastCombatTurn();return;}
+    if(longCastAction==='finish'){event.preventDefault();event.stopImmediatePropagation?.();const result=sr29CompletePendingLongCast();if(!result?.ok)toast(result?.reason||'The spell could not be completed.');return;}
     if(longCastAction==='advance'){event.preventDefault();event.stopImmediatePropagation?.();sr29AdvancePendingLongCast(10);return;}
     if(longCastAction==='cancel'){event.preventDefault();event.stopImmediatePropagation?.();sr29InterruptPendingLongCast('The caster abandons the spell.');return;}
     const pending=sr29LongCastPending(),action=String(button.dataset?.action||'');
@@ -1277,7 +1292,7 @@ if(typeof sr12DamageHero==='function'){
 }
 
 globalThis.__SR29_DEATH_TEST={
-  version:SR29_DEATH_SAVES_VERSION,spellCastingTime:name=>SRD52_SPELLS?.[name]?.castingTime??null,longCastMinutes:sr29LongCastMinutes,startLongCast:sr29StartLongCast,commitLongCastSpellSlot:sr29CommitLongCastSpellSlot,advancePendingLongCast:sr29AdvancePendingLongCast,continueLongCastCombatTurn:sr29ContinueLongCastCombatTurn,combatLongCastPanel:sr29CombatLongCastPanel,interruptPendingLongCast:sr29InterruptPendingLongCast,longCastConcentrationCheck:sr29LongCastConcentrationCheck,pendingLongCast:sr29LongCastPending,campaignClock:sr29LongCastClock,applyTrueResurrectionEffects:sr29ApplyTrueResurrectionEffects,trueResurrectionBodyMissing:sr29TrueResurrectionBodyMissing,consumeMaterialComponent:sr29ConsumeMaterialComponent,materialComponentCost:sr29MaterialComponentCost,creatorMarkup:typeof renderCreator==='function'?renderCreator:null,injectDragonbornLineageField:sr29InjectDragonbornLineageField,isValidDraconicAncestry:sr29DraconicAncestryIsValid,reincarnateSpecies:SR29_REINCARNATE_SPECIES,reincarnateSpeciesFromRoll:sr29ReincarnateSpeciesFromRoll,applyReincarnateSpecies:sr29ApplyReincarnateSpecies,recordDeathSnapshot:sr29RecordDeathSnapshot,isOldAgeDeath:sr29IsOldAgeDeath,wasUndeadAtDeath:sr29WasUndeadAtDeath,isHumanoidAtDeath:sr29IsHumanoidAtDeath,missingBodyParts:sr29MissingBodyParts,hasMissingVitalParts:sr29HasMissingVitalParts,clearRevivalDeathMetadata:sr29ClearRevivalDeathMetadata,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestPenaltyRecovery:sr29ApplyLongRestPenaltyRecovery,hasResurrectionCasterTax:sr29HasResurrectionCasterTax,setResurrectionCasterTax:sr29SetResurrectionCasterTax,setDraconicAncestry:sr29SetDraconicAncestry,damageMultiplier:typeof sr14DamageMultiplier==='function'?sr14DamageMultiplier:null,dragonbornBreath:sr29DragonbornBreath,dragonbornBreathDamageDice:sr29DragonbornBreathDamageDice,dragonbornProficiencyBonus:sr29DragonbornProficiencyBonus,clearResurrectionCasterTax:sr29ClearResurrectionCasterTax,applyResurrectionTaxD20Result:sr29ApplyResurrectionTaxD20Result,rejectCastDuringResurrectionTax:sr29RejectCastDuringResurrectionTax,canonicalAbilityCheck:typeof sr29CanonicalAbilityCheck==='function'?sr29CanonicalAbilityCheck:null,attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
+  version:SR29_DEATH_SAVES_VERSION,spellCastingTime:name=>SRD52_SPELLS?.[name]?.castingTime??null,longCastMinutes:sr29LongCastMinutes,startLongCast:sr29StartLongCast,commitLongCastSpellSlot:sr29CommitLongCastSpellSlot,advancePendingLongCast:sr29AdvancePendingLongCast,completePendingLongCast:sr29CompletePendingLongCast,longCastPanel:sr29LongCastPanel,continueLongCastCombatTurn:sr29ContinueLongCastCombatTurn,combatLongCastPanel:sr29CombatLongCastPanel,interruptPendingLongCast:sr29InterruptPendingLongCast,longCastConcentrationCheck:sr29LongCastConcentrationCheck,pendingLongCast:sr29LongCastPending,campaignClock:sr29LongCastClock,applyTrueResurrectionEffects:sr29ApplyTrueResurrectionEffects,trueResurrectionBodyMissing:sr29TrueResurrectionBodyMissing,consumeMaterialComponent:sr29ConsumeMaterialComponent,materialComponentCost:sr29MaterialComponentCost,creatorMarkup:typeof renderCreator==='function'?renderCreator:null,injectDragonbornLineageField:sr29InjectDragonbornLineageField,isValidDraconicAncestry:sr29DraconicAncestryIsValid,reincarnateSpecies:SR29_REINCARNATE_SPECIES,reincarnateSpeciesFromRoll:sr29ReincarnateSpeciesFromRoll,applyReincarnateSpecies:sr29ApplyReincarnateSpecies,recordDeathSnapshot:sr29RecordDeathSnapshot,isOldAgeDeath:sr29IsOldAgeDeath,wasUndeadAtDeath:sr29WasUndeadAtDeath,isHumanoidAtDeath:sr29IsHumanoidAtDeath,missingBodyParts:sr29MissingBodyParts,hasMissingVitalParts:sr29HasMissingVitalParts,clearRevivalDeathMetadata:sr29ClearRevivalDeathMetadata,revivalEligibility:sr29RevivalEligibility,clearRevivedState:sr29ClearRevivedState,revivalD20Penalty:sr29RevivalD20Penalty,applyRevivalD20Penalty:sr29ApplyRevivalD20Penalty,setRevivalReturnPenalty:sr29SetRevivalReturnPenalty,reduceRevivalPenaltyAfterLongRest:sr29ReduceRevivalPenaltyAfterLongRest,applyLongRestPenaltyRecovery:sr29ApplyLongRestPenaltyRecovery,hasResurrectionCasterTax:sr29HasResurrectionCasterTax,setResurrectionCasterTax:sr29SetResurrectionCasterTax,setDraconicAncestry:sr29SetDraconicAncestry,damageMultiplier:typeof sr14DamageMultiplier==='function'?sr14DamageMultiplier:null,dragonbornBreath:sr29DragonbornBreath,dragonbornBreathDamageDice:sr29DragonbornBreathDamageDice,dragonbornProficiencyBonus:sr29DragonbornProficiencyBonus,clearResurrectionCasterTax:sr29ClearResurrectionCasterTax,applyResurrectionTaxD20Result:sr29ApplyResurrectionTaxD20Result,rejectCastDuringResurrectionTax:sr29RejectCastDuringResurrectionTax,canonicalAbilityCheck:typeof sr29CanonicalAbilityCheck==='function'?sr29CanonicalAbilityCheck:null,attackRoll:typeof sr11RollAttack==='function'?sr11RollAttack:null,savingThrow:typeof sr14SavingThrow==='function'?sr14SavingThrow:null,heroSave:typeof sr133HeroSave==='function'?sr133HeroSave:null,markDowned:sr29SoloMarkDowned,deathSave:sr29SoloDeathSave,
   clearDowned:sr29SoloClearDowned,damageAtZero:sr29SoloDamageAtZero,hasUnconscious:sr29SoloHasUnconscious,
   heal:typeof heal==='function'?heal:null,damagePlayer:typeof damagePlayer==='function'?damagePlayer:null,
   soloMonsterAttack:typeof sr10EnemyAttack==='function'?sr10EnemyAttack:null,soloHeroAttack:typeof sr11HeroAttack==='function'?sr29TestSoloHeroAttack:null,advanceStableTime:sr29SoloAdvanceStableTime,

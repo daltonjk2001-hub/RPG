@@ -432,3 +432,13 @@ Still incomplete: Reincarnate's complete species-specific trait automation and p
 - Tactical destination validation now rejects cells occupied by enemies, other player heroes, tactical allies, companions, summons, NPCs, and campaign companions with mapped positions. Defeated/dead companion records do not reserve a square.
 - Added regressions for tactical ally occupancy, campaign-companion occupancy, and reusing a defeated companion's square.
 - Verified on the current branch: **433/433 V29 assertions passed** and V18 hardening passed. Real guest/host mobile playtesting remains outstanding.
+
+
+## V29.73 — Player-friendly long casting outside combat
+
+- Replaced the six separate ten-minute Spellbook clicks for a one-hour out-of-combat spell with one explicit **Finish casting** action. The player sees the remaining fictional time and a clear notice that no real-world timer or waiting is involved.
+- Confirming Finish advances the campaign clock by the exact remaining casting duration, then resolves the spell through the existing canonical spell pipeline. Spell-slot and consumed-material costs are still committed only after successful resolution; the player can cancel beforehand.
+- World simulation retains its previous ten-minute cadence: the single time-jump processes one world update for each elapsed ten-minute segment, so a one-hour cast advances six world-pressure segments rather than being treated as a single ordinary action.
+- Damage-triggered Constitution saves, incapacitation, starting another action, and entering combat continue to interrupt the pending cast. The fast-finish helper is rejected during active combat and the Spellbook fast-finish panel is hidden there.
+- Combat casting is deliberately unchanged: the active caster still spends a Magic action on each six-second turn, concentration remains required, and other participants continue to act. A 600-turn regression remains in place for a one-hour spell in combat.
+- Added regressions for the single Finish action, exact 60-minute campaign-clock advance, six world ticks, unchanged spell resources before completion, combat fast-finish rejection, and preservation of the turn-by-turn combat casting path.
