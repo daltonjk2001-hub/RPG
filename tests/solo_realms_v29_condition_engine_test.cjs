@@ -1388,6 +1388,7 @@ try{
  const sixHundredthMagicAction=RV.continueLongCastCombatTurn(sixtyMinutePlayer);
  const oneHourClock=RV.campaignClock();
  assert('The 600th Magic action completes exactly one hour, revives the target, and expends exactly one spell slot',sixHundredthMagicAction?.completed===true&&sixHundredthMagicAction?.result===true&&sixHundredthMagicAction.elapsedSeconds===3600&&oneHourClock.minuteOfDay===60&&oneHourClock.secondOfMinute===0&&sixtyMinuteTarget.hp===1&&sixtyMinuteTarget.mpDead===false&&sixtyMinuteCaster.spellSlotsByLevel[5]===0&&RV.pendingLongCast()===null,JSON.stringify({sixHundredthMagicAction,clock:oneHourClock,targetHP:sixtyMinuteTarget.hp,dead:sixtyMinuteTarget.mpDead,slots:sixtyMinuteCaster.spellSlotsByLevel}));
+ assert('Combat completion restores the canonical Raise Dead casting-time definition after resolver handoff',RV.spellCastingTime('Raise Dead')==='1 hour',JSON.stringify({castingTime:RV.spellCastingTime('Raise Dead')}));
  context.render=stressRender;math.random=stressRandom;T18.state=sixtyMinuteStateBefore;T18.setActivePlayerId('');
  const noDoubleSpendCaster=actor({spellSlotsByLevel:{5:1},pactSlotsByLevel:{3:2}});
  const regularSlotPending={slotLevel:5,slotKind:'regular',slotCountBefore:1,legacySpellSlotsBefore:3};
