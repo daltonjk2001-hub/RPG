@@ -1118,8 +1118,22 @@ if(typeof sr14CastSpellComplete==='function'){
       const slotMap=slotKind==='pact'?caster?.pactSlotsByLevel:caster?.spellSlotsByLevel;
       const currentCount=Number(slotMap?.[slotLevel])||0;
       if(currentCount>=slotCountBefore){
-        if(typeof reservedSlot==='object'&&typeof sr7ConsumeCastSlot==='function'){sr7ConsumeCastSlot(caster,reservedSlot);if(castKind!=='reaction')caster.spellSlotSpentThisTurn=true;}
-        else if(slotMap){slotMap[slotLevel]=Math.max(0,currentCount-1);if(typeof sr7UpdateSlotTotals==='function')sr7UpdateSlotTotals(caster);if(castKind!=='reaction')caster.spellSlotSpentThisTurn=true;}
+        if(typeof reservedSlot==='object'&&typeof sr7ConsumeCastSlot==='function'){
+          try{sr7ConsumeCastSlot(caster,reservedSlot);}catch(error){console.warn('V29 slot helper failed; applying the verified slot fallback.',error);}
+          const afterHelper=Number(slotMap?.[slotLevel])||0;
+          // Some remote-player/legacy resolver routes can return success while the
+          // shared slot helper declines the remote character object. Verify the
+          // actual tier changed before considering the resource paid.
+          if(afterHelper>=currentCount&&slotMap){
+            slotMap[slotLevel]=Math.max(0,currentCount-1);
+            if(typeof sr7UpdateSlotTotals==='function')sr7UpdateSlotTotals(caster);
+          }
+          if(castKind!=='reaction')caster.spellSlotSpentThisTurn=true;
+        }else if(slotMap){
+          slotMap[slotLevel]=Math.max(0,currentCount-1);
+          if(typeof sr7UpdateSlotTotals==='function')sr7UpdateSlotTotals(caster);
+          if(castKind!=='reaction')caster.spellSlotSpentThisTurn=true;
+        }
       }
     }else if(result&&reservedSlot===0&&scalarSlotsBefore>0){
       const currentScalarSlots=Number(caster?.spellSlots)||0;
